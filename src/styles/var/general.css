@@ -1,0 +1,58 @@
+/*** Variables: general app. ***/
+
+:root {
+  /* Colors. */
+  --color-text: #111111;
+  --color-text-primary: #3498db;
+  --color-background: #ffffff;
+  --color-background-primary: #ffeebb;
+
+  /* Spacings. */
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /*** Typography. ***/
+  --font-size-base: 1rem;
+  /* UI elements. */
+  --font-family-ui: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Long-form reading. */
+  --font-family-general:
+    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT Bold', Calibri, sans-serif;
+  /* Headers. */
+  --font-family-header:
+    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT Bold', Calibri, sans-serif;
+
+  /*** General. ***/
+  --color-scheme: light;
+
+  --body-background: #fefefe;
+  --body-color: #111111;
+  --link-color: #2563eb;
+  --focus-outline: 2px solid #2563eb;
+  --focus-outline-offset: 3px;
+
+  /* Text headers. */
+  --h1-color: #484848;
+  --h1-text-size: 2.5rem;
+  --h1-text-shadow: 0 0 2px currentColor;
+  --h1-text-align: center;
+
+  --h2-color: #484848;
+  --h2-text-size: 1.8rem;
+  --h2-text-shadow: 0 0 1px currentColor;
+  --h2-text-align: center;
+
+  --h3-color: #484848;
+  --h3-text-size: 1.4rem;
+  --h3-text-shadow: 0 0 1px currentColor;
+  --h3-text-align: center;
+
+  --h4-color: #484848;
+  --h4-text-size: 1.2rem;
+  --h4-text-shadow: 0 0 0px currentColor;
+  --h4-text-align: center;
+}

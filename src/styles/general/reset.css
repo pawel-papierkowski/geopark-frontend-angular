@@ -1,0 +1,78 @@
+/********************************
+ * Modern minimal reset.        *
+ ********************************/
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; /* Prevents box sizing trap. */
+}
+
+html {
+  height: 100%;
+
+  line-height: 1.5; /* More readable than default (usually 1.2) */
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-base);
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased; /* Smoother text on macOS */
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html:focus-within {
+  scroll-behavior: smooth; /* Smooth scrolling */
+}
+
+body {
+  min-width: 100%;
+  min-height: 100dvh; /* Fill at least the full viewport */
+}
+
+ul,
+ol {
+  margin-block: revert;
+  padding-inline-start: revert;
+}
+
+/* Settings for specific elements. */
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block; /* Removes weird bottom gap from inline display */
+  max-width: 100%; /* Never overflow their container */
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit; /* Use the same font as surrounding text */
+}
+
+/* MEDIA */
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}

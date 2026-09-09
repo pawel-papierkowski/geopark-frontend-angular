@@ -1,0 +1,50 @@
+/* Angular convention: :host targets the component’s own element—in this case, <app-root>. */
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100dvh;
+}
+
+.app-main {
+  flex: 1;
+  margin: var(--main-margin);
+  padding: var(--main-padding);
+}
+
+.app-header {
+  font-size: var(--header-font-size);
+  text-align: center;
+
+  margin: var(--header-margin);
+  padding: var(--header-padding);
+
+  border: var(--header-border);
+  border-radius: var(--header-border-radius);
+  background: var(--header-background);
+  box-shadow: var(--header-box-shadow);
+}
+
+.app-footer {
+  font-size: var(--footer-font-size);
+  text-align: center;
+
+  align-self: center;
+  width: fit-content;
+  min-width: 40%;
+
+  margin: var(--footer-margin);
+  padding: var(--footer-padding);
+
+  border: var(--footer-border);
+  border-radius: var(--footer-border-radius);
+  background: var(--footer-background);
+  box-shadow: var(--footer-box-shadow);
+}
+
+.app-article {
+  inline-size: 100%;
+  max-inline-size: 120ch;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}

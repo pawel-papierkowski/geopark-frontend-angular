@@ -1,0 +1,45 @@
+/*** Variables: layout. ***/
+
+:root {
+  --main-margin: 0;
+  --main-padding: 1rem;
+
+  --header-font-size: 0.8rem;
+  --header-margin: 0;
+  --header-padding: 5px;
+  --header-border: 1px solid rgba(0, 0, 0, 0.05);
+  --header-border-radius: 0;
+  --header-background: linear-gradient(135deg, #fff3d0 0%, #ffeebb 100%);
+  --header-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+  --footer-font-size: 0.8rem;
+  --footer-margin: 14px;
+  --footer-padding: 10px;
+  --footer-border: none;
+  --footer-border-radius: 10px;
+  --footer-background: #f8f8f8;
+  --footer-box-shadow: none;
+
+  /* Navigation links. */
+  --nav-major-color: #484848;
+  --nav-major-font-size: 1rem;
+  --nav-major-font-weight: normal;
+  --nav-major-text-align: left;
+  --nav-major-text-shadow: none;
+
+  --nav-major-hover-color: #000000;
+  --nav-major-hover-text-shadow: 1px 1px 1px #cdcdcd;
+
+  --nav-major-active-color: #484848;
+  --nav-major-active-font-weight: bold;
+  --nav-major-active-text-shadow: none;
+
+  --nav-minor-color: #484848;
+  --nav-minor-font-size: 0.8rem;
+  --nav-minor-font-weight: normal;
+  --nav-minor-text-align: left;
+  --nav-minor-text-shadow: none;
+
+  --nav-minor-hover-color: #000000;
+  --nav-minor-hover-text-shadow: none;
+}
