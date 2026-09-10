@@ -1,0 +1,5 @@
+{
+  "header.title": "GeoPark",
+  "footer.repository": "Repozytorium",
+  "footer.copyright": "© {{dateRange}} {{author}} | v. {{version}} {{build}}"
+}

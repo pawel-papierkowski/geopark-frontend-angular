@@ -15,6 +15,6 @@ describe('AppHeader', () => {
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('header')?.textContent).toContain('HEADER PLACEHOLDER');
+    expect(compiled.querySelector('header')?.textContent).toContain('GeoPark');
   });
 });
