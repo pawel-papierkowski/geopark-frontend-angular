@@ -1,0 +1,6 @@
+{
+  "footer": {
+    "repository": "Repository",
+    "copyright": "© {{dateRange}} {{author}} | v. {{version}} {{build}}"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "app": {
+    "language": {
+      "label": "Język",
+      "name": {
+        "pl": "Polski",
+        "en": "Angielski"
+      },
+      "flag": {
+        "pl": "🇵🇱",
+        "en": "🇬🇧"
+      }
+    }
+  }
+}

@@ -42,7 +42,7 @@ Planned features includes:
 - Map views and allowing users with appropriate permissions (operators) to add/edit/remove parking meters, add/edit/remove zones (geofenced) and similar tasks.
 - Handling simulated events like car inspection by inspector or paying for parking by driver.
 
-### Pages
+## Pages
 
 Frontend is split into three major parts: **user-facing website**, **dev panel** and **admin panel**. Website as a whole is Single Page Application (SPA).
 
@@ -55,6 +55,10 @@ TODO: list important pages
 
 Note that by nature of portfolio project everything is actually available for you. For example, you can register admin user for yourself by just marking checkbox or enter development panel from anywhere. In real system obviously that would not be possible.
 
+### Translations
+
+Translations are provided in `/public/i18n`. Each directory inside contains data for given language.
+
 ## Commands
 
 ### Local startup
@@ -62,13 +66,13 @@ Note that by nature of portfolio project everything is actually available for yo
 To build the project, run:
 
 ```bash
-ng build
+npm run build
 ```
 
 To start a local development server, run:
 
 ```bash
-ng serve
+npm start
 ```
 
 ### Verification
@@ -80,13 +84,13 @@ TODO: add commands for verification, like lint etc
 To execute all unit tests with the Vitest test runner, use the following command:
 
 ```bash
-ng test --watch=false
+npm test
 ```
 
 To execute only selected file, run:
 
 ```bash
-ng test --include="src/app/example/example.spec.ts" --watch=false
+npm test -- src/app/example/example.spec.ts
 ```
 
 For end-to-end (e2e) testing, run:
@@ -111,4 +115,5 @@ TODO
 
 Besides Angular itself, we use additional libraries.
 - General libraries
+  - **ngx-translate** - For language support.
 - Development only

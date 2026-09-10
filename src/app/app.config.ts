@@ -1,11 +1,11 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, inject, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
-import { provideHttpClient } from '@angular/common/http';
-import { provideTranslateService } from '@ngx-translate/core';
-import { provideTranslateHttpLoader } from "@ngx-translate/http-loader";
+import { provideHttpClient, HttpClient } from '@angular/common/http';
+import { provideTranslateService, provideTranslateLoader } from '@ngx-translate/core';
 
 import { routes } from './app.routes';
+import { CustomHttpLoader } from '@/core/i18n/custom-http-loader';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,10 +15,9 @@ export const appConfig: ApplicationConfig = {
     provideTranslateService({
       fallbackLang: 'en',
       lang: navigator.language.split('-')[0], // auto-detect from browser
-      loader: provideTranslateHttpLoader({
-        prefix: '/i18n/',
-        suffix: '.json',
-      }),
+      loader: provideTranslateLoader(
+        () => new CustomHttpLoader(inject(HttpClient), '/i18n/'),
+      ),
     }),
   ]
 };

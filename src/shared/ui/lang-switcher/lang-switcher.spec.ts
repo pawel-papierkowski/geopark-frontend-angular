@@ -15,16 +15,20 @@ describe('LangSwitcher', () => {
     // note we manually set relevant translation keys
     translateService = TestBed.inject(TranslateService);
     translateService.setTranslation('en', {
-      'app.language.pl': 'Polish',
-      'app.language.en': 'English',
-      'app.language.flag.en': '🇬🇧',
-      'app.language.flag.pl': '🇵🇱',
+      app: {
+        language: {
+          name: { pl: 'Polish', en: 'English' },
+          flag: { en: '🇬🇧', pl: '🇵🇱' },
+        },
+      },
     });
     translateService.setTranslation('pl', {
-      'app.language.pl': 'Polski',
-      'app.language.en': 'Angielski',
-      'app.language.flag.en': '🇬🇧',
-      'app.language.flag.pl': '🇵🇱',
+      app: {
+        language: {
+          name: { pl: 'Polski', en: 'Angielski' },
+          flag: { en: '🇬🇧', pl: '🇵🇱' },
+        },
+      },
     });
   });
 

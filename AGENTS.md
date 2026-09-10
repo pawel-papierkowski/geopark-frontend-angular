@@ -18,6 +18,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
   - Use strict type checking.
   - Prefer type inference when the type is obvious.
   - Avoid the `any` type; use `unknown` when type is uncertain.
+  - Code must be well commented. Use `@param`, `@returns` and similar.
 - **Framework:**
   - Always use standalone components over NgModules.
   - Must NOT set `standalone: true` inside Angular decorators. It's the default in Angular v20+.
@@ -87,10 +88,10 @@ Core and shared should not import from features.
 ## Available Scripts & Commands
 
 - **Deployment**:
-  - Build: `ng build`
-  - Run: `ng serve`
+  - Build: `npm run build`
+  - Run: `npm start`
 - **Testing**:
   - Run all unit tests: `npm test`
   - Run single test file: `npm test -- src/app/example/example.spec.ts`
   - Run all e2e tests: `ng e2e`
-Note: `ng test` will NOT work.
+Note: `ng` command will NOT work.

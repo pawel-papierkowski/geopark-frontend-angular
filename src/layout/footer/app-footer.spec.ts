@@ -25,8 +25,10 @@ describe('AppFooter', () => {
     // note we manually set relevant translation keys
     translateService = TestBed.inject(TranslateService);
     translateService.setTranslation('en', {
-      'footer.repository': 'Repository',
-      'footer.copyright': '© {{dateRange}} {{author}} | v. {{version}} {{build}}',
+      footer: {
+        repository: 'Repository',
+        copyright: '© {{dateRange}} {{author}} | v. {{version}} {{build}}',
+      },
     });
   });
 
