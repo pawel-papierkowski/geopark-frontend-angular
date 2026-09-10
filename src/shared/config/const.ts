@@ -10,3 +10,19 @@ export const projectProp: ProjectProp = {
   build: environment.build,
   version: environment.version, // from package.json, defined in environment.ts and related
 };
+
+//
+
+/** Fallback language. */
+export const fallbackLang = 'en';
+
+/** List of known languages. */
+export const languages: string[] = [ 'en', 'pl' ];
+
+//
+
+/** Storage keys. */
+export const storageKeys = {
+  /** Currently set language. */
+  language: 'app.language',
+};

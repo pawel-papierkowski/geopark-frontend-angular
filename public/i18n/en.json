@@ -1,4 +1,10 @@
 {
+  "app.language": "Language",
+  "app.language.pl": "Polish",
+  "app.language.en": "English",
+  "app.language.flag.pl": "🇵🇱",
+  "app.language.flag.en": "🇬🇧",
+
   "header.title": "GeoPark",
   "footer.repository": "Repository",
   "footer.copyright": "© {{dateRange}} {{author}} | v. {{version}} {{build}}"

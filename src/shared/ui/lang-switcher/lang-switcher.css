@@ -1,0 +1,35 @@
+.flagWrapper {
+  display: block; /* Ensure container with flags is usually in top right corner.*/
+  position: fixed;
+  top: 0;
+  right: 0;
+
+  font-size: 1.3rem;
+
+  overflow-y: auto;
+  z-index: 100;
+}
+
+@media (max-width: 700px) {
+  .flagWrapper {
+    display: flex; /* Ensure container with flags is centered in top middle of viewport. */
+    position: static;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+.flagContainer {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+
+  grid-template-columns: 1fr 1fr;
+}
+
+.flag {
+  display: inline;
+  cursor: pointer;
+
+  padding: 0px 5px;
+}

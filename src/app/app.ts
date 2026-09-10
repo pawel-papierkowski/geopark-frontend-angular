@@ -1,5 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import {TranslateService} from "@ngx-translate/core";
+
+import { languages, fallbackLang, storageKeys } from "@/shared/config/const";
+
 import { AppHeader } from '@/layout/header/app-header';
 import { AppFooter } from '@/layout/footer/app-footer';
 
@@ -11,4 +15,38 @@ import { AppFooter } from '@/layout/footer/app-footer';
 })
 export class App {
   protected readonly title = signal('geopark-frontend-angular');
+
+  constructor(private translateService: TranslateService) {}
+
+  async ngOnInit() {
+    this.setupLang();
+  }
+
+  //
+
+  /** Setup language-related stuff. */
+  private setupLang() {
+    this.translateService.setFallbackLang(fallbackLang);
+    const storedLang = localStorage.getItem(storageKeys.language); // get current language from storage
+    if (storedLang) { // storage contains language: just use it
+      const currLang = this.verifyLang(storedLang) ? storedLang : fallbackLang;
+      this.translateService.use(currLang);
+    } else { // storage does not have language: resolve language, save to storage and use it
+      const browserLang = this.translateService.getBrowserLang() || fallbackLang;
+       // if unknown language, fall back to english
+      const currLang = this.verifyLang(browserLang) ? browserLang : fallbackLang;
+      localStorage.setItem(storageKeys.language, currLang);
+      this.translateService.use(currLang);
+    }
+  }
+
+  /**
+   * Check if we know language with given code.
+   * @param currLang Current language to check.
+   * @returns True if given language is known, otherwise false.
+   */
+  private verifyLang(currLang: string): boolean {
+    const index = languages.findIndex(lang => lang === currLang);
+    return index !== -1;
+  }
 }

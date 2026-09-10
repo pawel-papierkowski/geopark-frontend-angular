@@ -61,7 +61,8 @@ GeoPark handles all things related to city parking system: parking meters, zonin
 
 ### Testing
 
-TODO: describe proper testing guidelines
+- Group tests - `it()` - into logical test suites in `describe()`.
+- Every test must have marked sections: Arrange, Act, Assert. In some cases it is allowed to skip section (usually Act when Arrange also acts).
 
 ### Other
 - Ignore `TODO.md`, unless I explicitly refer it.
@@ -89,7 +90,7 @@ Core and shared should not import from features.
   - Build: `ng build`
   - Run: `ng serve`
 - **Testing**:
-  - Run all unit tests: `ng test --watch=false`
-  - Run single test file: `ng test --include="src/app/example/example.spec.ts" --watch=false`
+  - Run all unit tests: `npm test`
+  - Run single test file: `npm test -- src/app/example/example.spec.ts`
   - Run all e2e tests: `ng e2e`
-
+Note: `ng test` will NOT work.
