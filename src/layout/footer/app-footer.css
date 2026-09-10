@@ -1,0 +1,16 @@
+.app-footer {
+  font-size: var(--footer-font-size);
+  text-align: center;
+
+  align-self: center;
+  width: fit-content;
+  min-width: 40%;
+
+  margin: var(--footer-margin);
+  padding: var(--footer-padding);
+
+  border: var(--footer-border);
+  border-radius: var(--footer-border-radius);
+  background: var(--footer-background);
+  box-shadow: var(--footer-box-shadow);
+}

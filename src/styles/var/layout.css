@@ -13,7 +13,7 @@
   --header-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
   --footer-font-size: 0.8rem;
-  --footer-margin: 14px;
+  --footer-margin: 14px auto;
   --footer-padding: 10px;
   --footer-border: none;
   --footer-border-radius: 10px;

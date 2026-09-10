@@ -2,7 +2,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 # Angular 22 Frontend Project Instructions
 
-**UserLand** is a portfolio project for frontend in Angular. It is part of a bigger system that contains frontend and backend.
+**GeoPark** is a portfolio project for frontend in Angular. It is part of a bigger system that contains frontend and backend.
+
+GeoPark handles all things related to city parking system: parking meters, zoning (includes geofencing), fine processing, complaints, registry of operators and inspectors etc.
 
 ## Tech Stack & Architecture
 - **Language:** JavaScript/TypeScript.
@@ -40,7 +42,7 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   - Do NOT use `ngClass`, use `class` bindings instead.
   - Do NOT use `ngStyle`, use `style` bindings instead.
   - Do NOT import `CommonModule`, import only the directives and pipes the template uses, such as `AsyncPipe` or `DatePipe`.
-  - When using external templates/styles, use paths relative to the component TS file.
+  - When using external templates/styles, use absolute paths via `@/`. You can use relative paths for files within same feature.
 - **State Management:**
   - Use signals for local component state.
   - Use `computed()` for derived state.
@@ -66,14 +68,20 @@ TODO: describe proper testing guidelines
 
 ## Filesystem
 
-- `src`:
+- `public`: Assets.
+- `src`: Source code.
   - `app`: Actual application.
-  - `components`: Components used in application.
-  - `code`: Pure code.
-  - `styles`: Globally available styles are here.
+  - `core`: Application-wide infrastructure. Examples: authentication session, interceptors, configuration.
+  - `environments`: Defines data that differ between various types of deployment.
+  - `features`: Business functionality. Examples: user account handling.
+  - `layout`: Application shell. Examples: navigation, header, footer.
+  - `shared`: Reusable code indepedent of features. Examples: dialog, date pipe, generic utility.
+  - `styles`: Globally available styles.
     - `general`: Contain reset and base styles.
     - `var`: Contains variables.
     - `app`: Contains actually used styles.
+
+Core and shared should not import from features.
 
 ## Available Scripts & Commands
 

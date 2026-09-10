@@ -1,0 +1,12 @@
+.app-header {
+  font-size: var(--header-font-size);
+  text-align: center;
+
+  margin: var(--header-margin);
+  padding: var(--header-padding);
+
+  border: var(--header-border);
+  border-radius: var(--header-border-radius);
+  background: var(--header-background);
+  box-shadow: var(--header-box-shadow);
+}
