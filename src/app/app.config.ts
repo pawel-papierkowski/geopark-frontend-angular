@@ -16,7 +16,7 @@ export const appConfig: ApplicationConfig = {
       fallbackLang: 'en',
       lang: navigator.language.split('-')[0], // auto-detect from browser
       loader: provideTranslateLoader(
-        () => new CustomHttpLoader(inject(HttpClient), '/i18n/'),
+        () => new CustomHttpLoader(inject(HttpClient), 'i18n/'), // relative path
       ),
     }),
   ]

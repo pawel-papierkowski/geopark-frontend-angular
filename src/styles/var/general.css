@@ -18,13 +18,11 @@
   /*** Typography. ***/
   --font-size-base: 1rem;
   /* UI elements. */
-  --font-family-ui: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-family-ui: system-ui, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   /* Long-form reading. */
-  --font-family-general:
-    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT Bold', Calibri, sans-serif;
+  --font-family-general: ui-rounded, 'Hiragino Maru Gothic ProN', 'Quicksand', 'Comfortaa', 'Manjari', 'Arial Rounded MT Bold', 'Calibri', sans-serif;
   /* Headers. */
-  --font-family-header:
-    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT Bold', Calibri, sans-serif;
+  --font-family-header: ui-rounded, 'Hiragino Maru Gothic ProN', 'Quicksand', 'Comfortaa', 'Manjari', 'Arial Rounded MT Bold', 'Calibri', sans-serif;
 
   /*** General. ***/
   --color-scheme: light;

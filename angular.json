@@ -41,6 +41,7 @@
                 }
               ],
               "outputHashing": "all",
+              "baseHref": "/geopark-frontend-angular/",
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",

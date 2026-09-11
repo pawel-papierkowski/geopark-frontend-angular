@@ -1,0 +1,58 @@
+name: Deploy to GitHub Pages
+
+on: # When to run this action?
+  #push: # run automatically when push
+  #  branches: ['main']
+  workflow_dispatch: # run manually
+
+permissions: # Minimal permissions needed for Pages deploy. Without them action will fail.
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency: # How to act if someone runs two deploys at same time.
+  group: "pages"
+  cancel-in-progress: true # cancels previous deploy, ensuring only one runs at same time
+
+jobs: # Define jobs to run. They will be executed in parallel by default unless 'needs:' is specified.
+  build: # First job to run.
+    runs-on: ubuntu-latest # Uses a fresh Ubuntu VM.
+    steps:
+      - name: Checkout # Clones your repository's code into the virtual machine, so subsequent steps can actually access your files.
+        uses: actions/checkout@v6
+
+      - name: Setup Node # Install Node.js on the VM. Angular's build tools (npm, ng) require Node to run.
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x' # Install latest subversion of Node.js 24.
+          cache: 'npm'         # Caches node_modules for speed.
+
+      - name: Install dependencies # Installs all your project's dependencies from package.json.
+        run: npm ci                # Note: npm ci is faster/more reliable than npm install.
+
+      - name: Build # Builds your Angular app for production. This typically runs ng build as defined in your package.json scripts, outputting static files to dist/.
+        run: npm run build
+
+      - name: Generate 404 fallback for GitHub Pages # Otherwise Single Page Apps wont work properly when using different path
+        run: cp ./dist/geopark-frontend-angular/browser/index.html ./dist/geopark-frontend-angular/browser/404.html
+
+      - name: Setup Pages # Configures Pages environment (handles base path, etc.).
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact # Packages dist/ as a secure artifact (temporary zip file) for the next job.
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./dist/geopark-frontend-angular/browser # Angular builds project to "./dist/NAME_OF_APP_IN_ANGULAR/browser".
+
+  deploy: # Second job to run.
+    needs: build # Must wait for build job to finish.
+    runs-on: ubuntu-latest # New VM, but only starts after build succeeds.
+    environment: # Targets Pages environment (protection rules + publishes the final URL).
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Deploys the artifact created in build job to your GitHub Pages site.
+    # id: deployment lets previous steps reference its output (the live URL).
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
