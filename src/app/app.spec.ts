@@ -5,9 +5,7 @@ import { App } from './app';
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        App
-      ],
+      imports: [ App ],
     }).compileComponents();
   });
 
@@ -20,13 +18,13 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should render content', async () => {
     // Arrange: Create component.
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
     // Assert: Application contains correct data.
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('p')?.textContent).toContain('TEXT');
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 });

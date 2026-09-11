@@ -1,0 +1,7 @@
+/* Angular convention: :host targets the component’s own element. */
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100dvh;
+}

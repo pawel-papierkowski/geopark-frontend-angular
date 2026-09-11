@@ -62,21 +62,29 @@ GeoPark handles all things related to city parking system: parking meters, zonin
 
 ### Testing
 
-- Group tests - `it()` - into logical test suites in `describe()`.
+- Group tests into logical test suites in `describe()`.
 - Every test must have marked sections: Arrange, Act, Assert. In some cases it is allowed to skip section (usually Act when Arrange also acts).
 
 ### Other
 - Ignore `TODO.md`, unless I explicitly refer it.
 
-## Filesystem
+## Architecture
 
+### Structure
+
+Project is divided into three sections:
+- `/`: user-facing pages, publicly available
+- `/dev`: development pages, used for testing and debug
+- `/admin`: administration panel
+
+### Filesystem
 - `public`: Assets.
 - `src`: Source code.
   - `app`: Actual application.
   - `core`: Application-wide infrastructure. Examples: authentication session, interceptors, configuration.
   - `environments`: Defines data that differ between various types of deployment.
   - `features`: Business functionality. Examples: user account handling.
-  - `layout`: Application shell. Examples: navigation, header, footer.
+  - `layout`: Application layout and pages. Examples: navigation, header, footer.
   - `shared`: Reusable code indepedent of features. Examples: dialog, date pipe, generic utility.
   - `styles`: Globally available styles.
     - `general`: Contain reset and base styles.

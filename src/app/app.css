@@ -1,20 +1,7 @@
-/* Angular convention: :host targets the component’s own element—in this case, <app-root>. */
+/* Angular convention: :host targets the component’s own element — in this case, <app-root>. */
 :host {
   display: flex;
   flex-direction: column;
   width: 100%;
   min-height: 100dvh;
-}
-
-.app-main {
-  flex: 1;
-  margin: var(--main-margin);
-  padding: var(--main-padding);
-}
-
-.app-article {
-  inline-size: 100%;
-  max-inline-size: 120ch;
-  margin-inline: auto;
-  overflow-wrap: anywhere;
 }

@@ -1,14 +1,11 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {TranslateService} from "@ngx-translate/core";
 
 import { languages, fallbackLang, storageKeys } from "@/shared/config/const";
 
-import { AppHeader } from '@/layout/header/app-header';
-import { AppFooter } from '@/layout/footer/app-footer';
-
 @Component({
-  imports: [RouterOutlet, AppHeader, AppFooter],
+  imports: [RouterOutlet],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',

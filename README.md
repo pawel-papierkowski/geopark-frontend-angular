@@ -17,7 +17,7 @@ Used IDE: **Visual Studio Code**
 ### Tech stack
 
 - Languages: HTML, CSS, JavaScript/TypeScript
-- Frameworks: **Node.js** 24.19, **Angular** 22.1.5
+- Frameworks: **Node.js** 24.19, **Angular** 22.1.6
 - Tests: **Vitest** and **PlayWright**.
 
 ### Links
@@ -44,7 +44,7 @@ Planned features includes:
 
 ## Pages
 
-Frontend is split into three major parts: **user-facing website**, **dev panel** and **admin panel**. Website as a whole is Single Page Application (SPA).
+Frontend is split into three major sections: **user-facing website**, **dev panel** and **admin panel**. Website as a whole is Single Page Application (SPA).
 
 TODO: list important pages
 - **User website**: Available to everyone.
