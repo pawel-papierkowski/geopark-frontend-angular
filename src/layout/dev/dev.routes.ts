@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { PageNotFound } from '@/layout/not-found/page-not-found';
+
 import { DevLayout } from './layout/dev-layout';
 import { PageDashboard } from './pages/dashboard/page-dashboard';
 
@@ -11,6 +13,7 @@ export const devRoutes: Routes = [
     data: { section: 'dev' },    // Header reads this to know which nav to show.
     children: [
       { path: '', component: PageDashboard },
+      { path: '**', component: PageNotFound }
     ],
-  },
+  }
 ];

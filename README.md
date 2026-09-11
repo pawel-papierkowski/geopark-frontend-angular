@@ -27,9 +27,9 @@ Used IDE: **Visual Studio Code**
   - Dev panel: https://pawelpapierkowski.net.pl/geopark-frontend-angular/dev
   - Admin panel: https://pawelpapierkowski.net.pl/geopark-frontend-angular/admin
 - Locally run Angular server:
-  - User website: http://localhost:4200/geopark-frontend-angular/
-  - Admin panel: http://localhost:4200/geopark-frontend-angular/admin
-  - Dev panel: http://localhost:4200/geopark-frontend-angular/dev
+  - User website: http://localhost:4200/
+  - Admin panel: http://localhost:4200/admin
+  - Dev panel: http://localhost:4200/dev
 - Link to source code: https://github.com/pawel-papierkowski/geopark-frontend-angular
 
 ## Functionality

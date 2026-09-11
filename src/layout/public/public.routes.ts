@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { PageNotFound } from '@/layout/not-found/page-not-found';
+
 import { PublicLayout } from './layout/public-layout';
 import { PageLanding } from './pages/landing/page-landing';
 
@@ -12,7 +14,7 @@ export const publicRoutes: Routes = [
     children: [
       { path: '', component: PageLanding },
       { path: 'about', loadComponent: () => import('./pages/about/page-about').then(m => m.PageAbout) },
-      // ... more public pages
+      { path: '**', component: PageNotFound }
     ],
-  },
+  }
 ];

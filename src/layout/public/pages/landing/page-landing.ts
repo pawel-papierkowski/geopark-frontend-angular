@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 
 @Component({
-  imports: [],
   selector: 'page-landing',
+  imports: [],
   styleUrl: './page-landing.css',
   templateUrl: './page-landing.html',
 })

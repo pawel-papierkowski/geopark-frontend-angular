@@ -10,6 +10,9 @@
         "pl": "🇵🇱",
         "en": "🇬🇧"
       }
+    },
+    "page": {
+      "notFound": "404 Page Not Found"
     }
   }
 }
