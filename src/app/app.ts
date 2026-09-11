@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {TranslateService} from "@ngx-translate/core";
 
@@ -11,9 +11,7 @@ import { languages, fallbackLang, storageKeys } from "@/shared/config/const";
   templateUrl: './app.html',
 })
 export class App {
-  protected readonly title = signal('geopark-frontend-angular');
-
-  constructor(private translateService: TranslateService) {}
+  private readonly translateService = inject(TranslateService);
 
   async ngOnInit() {
     this.setupLang();

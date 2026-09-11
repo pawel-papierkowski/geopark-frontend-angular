@@ -12,7 +12,9 @@ export const devRoutes: Routes = [
     component: DevLayout,        // Has header + footer + child <router-outlet>.
     data: { section: 'dev' },    // Header reads this to know which nav to show.
     children: [
-      { path: '', component: PageDashboard },
+      { path: '', component: PageDashboard }, // Default.
+
+       // Must be last.
       { path: '**', component: PageNotFound }
     ],
   }

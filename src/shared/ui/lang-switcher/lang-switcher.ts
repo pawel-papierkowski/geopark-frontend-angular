@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {TranslateService, TranslatePipe} from '@ngx-translate/core';
 
 import { languages, storageKeys } from "@/shared/config/const";
@@ -10,9 +10,8 @@ import { languages, storageKeys } from "@/shared/config/const";
   styleUrl: './lang-switcher.css',
 })
 export class LangSwitcher {
+  private readonly translateService = inject(TranslateService);
   languages = languages;
-
-  constructor(private translateService: TranslateService) {}
 
   /**
    * Change language.

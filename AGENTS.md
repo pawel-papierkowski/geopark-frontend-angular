@@ -13,6 +13,8 @@ GeoPark handles all things related to city parking system: parking meters, zonin
 ## Development Guidelines
 
 ### General
+- **CSS:**
+  - Use kebab-case for CSS classes.
 - **Language:**
   - Use semicolons.
   - Use strict type checking.

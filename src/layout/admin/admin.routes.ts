@@ -12,7 +12,9 @@ export const adminRoutes: Routes = [
     component: AdminLayout,        // Has header + footer + child <router-outlet>.
     data: { section: 'admin' },    // Header reads this to know which nav to show.
     children: [
-      { path: '', component: PageOverview },
+      { path: '', component: PageOverview }, // Default.
+
+       // Must be last.
       { path: '**', component: PageNotFound }
     ],
   }
