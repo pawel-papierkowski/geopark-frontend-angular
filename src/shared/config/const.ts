@@ -13,7 +13,7 @@ export const projectProp: ProjectProp = {
 
 /* LANGUAGE */
 
-/** Fallback language. */
+/** Fallback language. It must exist in list of known languages. */
 export const fallbackLang = 'en';
 
 /** List of known languages. */

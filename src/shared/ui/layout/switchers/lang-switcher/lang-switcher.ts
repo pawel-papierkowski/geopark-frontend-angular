@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import {TranslateService, TranslatePipe} from '@ngx-translate/core';
 
 import { languages, storageKeys } from "@/shared/config/const";
+import { Lang } from '@/shared/config/types';
 
 /**
  * Provides flags that can be clicked, changing language used on page.
@@ -20,7 +21,7 @@ export class LangSwitcher {
    * Change language.
    * @param language Selected language.
    */
-  selectLang(language: string) {
+  selectLang(language: Lang) {
     localStorage.setItem(storageKeys.language, language);
     this.translateService.use(language);
   }
