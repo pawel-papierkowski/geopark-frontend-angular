@@ -1,0 +1,20 @@
+.flag-wrapper {
+  display: block;
+  position: static;
+
+  font-size: 1.3rem;
+
+  z-index: 102;
+}
+
+.flag-container {
+  display: flex;
+  justify-content: center;
+}
+
+.flag {
+  display: inline;
+  cursor: pointer;
+
+  padding: 0px 5px;
+}

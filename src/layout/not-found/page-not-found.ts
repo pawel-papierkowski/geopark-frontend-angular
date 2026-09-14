@@ -2,6 +2,9 @@ import { Component, inject } from '@angular/core';
 import { Meta } from '@angular/platform-browser';
 import {TranslatePipe} from '@ngx-translate/core';
 
+/**
+ * Default 404 page.
+ */
 @Component({
   selector: 'page-not-found',
   imports: [ TranslatePipe ],

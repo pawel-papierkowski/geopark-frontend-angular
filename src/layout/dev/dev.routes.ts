@@ -1,20 +1,20 @@
-import { Routes } from '@angular/router';
+import type { SectionRoute } from '@/shared/config/types';
 
 import { PageNotFound } from '@/layout/not-found/page-not-found';
 
-import { DevLayout } from './layout/dev-layout';
+import { SectionLayout } from '@/shared/ui/layout/section-layout/section-layout';
 import { PageDashboard } from './pages/dashboard/page-dashboard';
 
 /** Routes for developer section. */
-export const devRoutes: Routes = [
+export const devRoutes: SectionRoute[] = [
   {
     path: '',
-    component: DevLayout,        // Has header + footer + child <router-outlet>.
+    component: SectionLayout,    // Has header + footer + child <router-outlet>.
     data: { section: 'dev' },    // Header reads this to know which nav to show.
     children: [
       { path: '', component: PageDashboard }, // Default.
 
-       // Must be last.
+      // Must be last.
       { path: '**', component: PageNotFound }
     ],
   }

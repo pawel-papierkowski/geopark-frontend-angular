@@ -12,7 +12,7 @@ export const routes: Routes = [
     loadChildren: () => import('@/layout/dev/dev.routes')
       .then(m => m.devRoutes),
   },
-  { // Important: must be last or we will get false 404.
+  { // Important: must be last or we will get false 404s.
     path: '',
     loadChildren: () => import('@/layout/public/public.routes')
       .then(m => m.publicRoutes),

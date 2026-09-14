@@ -1,5 +1,8 @@
 import { Component } from '@angular/core';
 
+/**
+ * About page.
+ */
 @Component({
   selector: 'page-about',
   imports: [],

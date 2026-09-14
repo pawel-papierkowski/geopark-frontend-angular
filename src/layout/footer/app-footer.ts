@@ -3,6 +3,9 @@ import {TranslatePipe} from '@ngx-translate/core';
 
 import { projectProp } from "@/shared/config/const";
 
+/**
+ * Defines footer of webpage at bottom of page. Always same regardless of section etc.
+ */
 @Component({
   selector: 'app-footer',
   imports: [ TranslatePipe ],

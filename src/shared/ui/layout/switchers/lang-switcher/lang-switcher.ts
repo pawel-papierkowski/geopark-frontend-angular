@@ -3,6 +3,9 @@ import {TranslateService, TranslatePipe} from '@ngx-translate/core';
 
 import { languages, storageKeys } from "@/shared/config/const";
 
+/**
+ * Provides flags that can be clicked, changing language used on page.
+ */
 @Component({
   selector: 'lang-switcher',
   imports: [ TranslatePipe ],

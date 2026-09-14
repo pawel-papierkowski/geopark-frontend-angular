@@ -4,6 +4,9 @@ import {TranslateService} from "@ngx-translate/core";
 
 import { languages, fallbackLang, storageKeys } from "@/shared/config/const";
 
+/**
+ * Main application component.
+ */
 @Component({
   imports: [RouterOutlet],
   selector: 'app-root',

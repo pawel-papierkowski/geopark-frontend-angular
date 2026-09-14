@@ -20,6 +20,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
   - Use strict type checking.
   - Prefer type inference when the type is obvious.
   - Avoid the `any` type; use `unknown` when type is uncertain.
+  - Constants are camelCase.
   - Code must be well commented. Use `@param`, `@returns` and similar.
 - **Framework:**
   - Always use standalone components over NgModules.
@@ -74,7 +75,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
 
 ### Structure
 
-Project is divided into three sections:
+Website is divided into three sections:
 - `/`: user-facing pages, publicly available
 - `/dev`: development pages, used for testing and debug
 - `/admin`: administration panel

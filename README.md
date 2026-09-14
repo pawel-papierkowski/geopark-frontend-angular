@@ -22,7 +22,7 @@ Used IDE: **Visual Studio Code**
 
 ### Links
 
-- Webpage address:
+- Webpage addresses:
   - User website: https://pawelpapierkowski.net.pl/geopark-frontend-angular
   - Dev panel: https://pawelpapierkowski.net.pl/geopark-frontend-angular/dev
   - Admin panel: https://pawelpapierkowski.net.pl/geopark-frontend-angular/admin
@@ -44,7 +44,7 @@ Planned features includes:
 
 ## Pages
 
-Frontend is split into three major sections: **user-facing website**, **dev panel** and **admin panel**. Website as a whole is Single Page Application (SPA).
+Website is split into three major sections: **user-facing website**, **dev panel** and **admin panel**. Website as a whole is Single Page Application (SPA).
 
 TODO: list important pages
 - **User website**: Available to everyone.

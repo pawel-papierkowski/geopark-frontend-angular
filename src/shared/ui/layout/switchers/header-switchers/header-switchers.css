@@ -1,0 +1,23 @@
+.switchers {
+  display: flex;
+  position: absolute; /* Ensure container with switchers is at top right corner.*/
+
+  top: 50%;
+  transform: translateY(-50%); /* Ensure it is centered vertically within header. */
+  right: 0;
+
+  gap: 4px;
+
+  overflow-y: auto;
+  z-index: 100;
+}
+
+@media (max-width: 700px) {
+  .switchers {
+    display: flex;
+    position: static; /* Ensure container with switchers is centered in top of header. */
+    transform: none;
+    justify-content: center;
+    width: 100%;
+  }
+}

@@ -1,0 +1,10 @@
+<div class="section-wrapper">
+  <div class="section-container">
+  @for (section of otherSections(); track section) {
+    <div class="section" (click)="goToSection(section)"
+      [title]="'app.section.name.'+section | translate">
+      {{ 'app.section.icon.'+section | translate }}
+    </div>
+  }
+  </div>
+</div>

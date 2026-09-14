@@ -11,6 +11,18 @@
         "en": "🇬🇧"
       }
     },
+    "section": {
+      "name": {
+        "public": "Publicly available pages",
+        "dev": "Developer section",
+        "admin": "Admininstration panel"
+      },
+      "icon": {
+        "public": "🏠",
+        "dev": "🛠️",
+        "admin": "🏛️"
+      }
+    },
     "page": {
       "notFound": "404 Page Not Found"
     }

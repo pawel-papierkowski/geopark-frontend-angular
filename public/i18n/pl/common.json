@@ -11,6 +11,18 @@
         "en": "🇬🇧"
       }
     },
+    "section": {
+      "name": {
+        "public": "Strony ogólnodostępne",
+        "dev": "Sekcja deweloperska",
+        "admin": "Panel administracyjny"
+      },
+      "icon": {
+        "public": "🏠",
+        "dev": "🛠️",
+        "admin": "🏛️"
+      }
+    },
     "page": {
       "notFound": "404 Strona Nie Odnaleziona"
     }

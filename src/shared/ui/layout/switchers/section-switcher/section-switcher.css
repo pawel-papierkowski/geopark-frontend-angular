@@ -1,0 +1,20 @@
+.section-wrapper {
+  display: block;
+  position: static;
+
+  font-size: 1.1rem;
+
+  z-index: 101;
+}
+
+.section-container {
+  display: flex;
+  justify-content: center;
+}
+
+.section {
+  display: inline;
+  cursor: pointer;
+
+  padding: 0px 5px;
+}

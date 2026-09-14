@@ -1,4 +1,6 @@
 .app-header {
+  position: relative;
+
   font-size: var(--header-font-size);
   text-align: center;
 
