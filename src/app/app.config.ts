@@ -7,13 +7,15 @@ import { provideTranslateService, provideTranslateLoader } from '@ngx-translate/
 import { routes } from './app.routes';
 import { CustomHttpLoader } from '@/core/i18n/custom-http-loader';
 
+import { fallbackLang } from "@/shared/config/const";
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(),
     provideTranslateService({
-      fallbackLang: 'en',
+      fallbackLang: fallbackLang,
       lang: navigator.language.split('-')[0], // auto-detect from browser
       loader: provideTranslateLoader(
         () => new CustomHttpLoader(inject(HttpClient), 'i18n/'), // relative path
@@ -21,5 +23,3 @@ export const appConfig: ApplicationConfig = {
     }),
   ]
 };
-
-

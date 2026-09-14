@@ -1,4 +1,5 @@
 import type { Route } from '@angular/router';
+import { languages, sections } from './const';
 
 /* GENERAL */
 
@@ -19,10 +20,12 @@ export type ProjectProp = {
   version: string;
 };
 
-/* ROUTING */
+/* LANGUAGE */
 
-/** Definition of sections existing in project. */
-export const sections = ['public', 'dev', 'admin'] as const;
+/** Definition of type describing known languages for this project. */
+export type Lang = typeof languages[number];
+
+/* ROUTING */
 
 /** Definition of type describing sections. */
 export type Section = typeof sections[number];

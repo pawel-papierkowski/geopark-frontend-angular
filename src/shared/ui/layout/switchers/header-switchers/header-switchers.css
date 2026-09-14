@@ -8,6 +8,7 @@
 
   gap: 4px;
 
+  user-select: none;
   overflow-y: auto;
   z-index: 100;
 }

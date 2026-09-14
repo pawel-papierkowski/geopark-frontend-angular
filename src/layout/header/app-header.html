@@ -1,5 +1,5 @@
-<header [class]="cssClass">
-  <header-switchers />
-
+<header [class]="cssClass()">
+  <header-switchers [currSection]="currSection()" />
+  
   {{ 'header.title' | translate }}
 </header>

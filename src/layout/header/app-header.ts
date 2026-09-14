@@ -1,12 +1,16 @@
-import { Component, inject } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, computed, input } from '@angular/core';
 import {TranslatePipe} from '@ngx-translate/core';
+
+import { Section } from '@/shared/config/types';
 
 import { HeaderSwitchers } from '@/shared/ui/layout/switchers/header-switchers/header-switchers';
 
 /**
- * Defines header bar on top of webpage. All sections have it, but every section shows it slightly
- * differently.
+ * Defines header bar on top of webpage. All sections have it, but can show it slightly differently
+ * via section-specific CSS classes.
+ *
+ * Inputs:
+ * - currSection - Current section.
  */
 @Component({
   selector: 'app-header',
@@ -15,7 +19,6 @@ import { HeaderSwitchers } from '@/shared/ui/layout/switchers/header-switchers/h
   styleUrl: './app-header.css',
 })
 export class AppHeader {
-  private readonly route = inject(ActivatedRoute);
-  private readonly currSection = this.route.snapshot.data['section'];
-  cssClass = 'app-header ' + this.currSection;
+  readonly currSection = input.required<Section>();
+  readonly cssClass = computed(() => 'app-header ' + this.currSection());
 }

@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { ActivatedRoute, RouterOutlet } from '@angular/router';
+
+import { Section } from '@/shared/config/types';
 
 import { AppHeader } from '@/layout/header/app-header';
 import { AppFooter } from '@/layout/footer/app-footer';
@@ -14,4 +16,6 @@ import { AppFooter } from '@/layout/footer/app-footer';
   templateUrl: './section-layout.html',
 })
 export class SectionLayout {
+  private readonly route = inject(ActivatedRoute);
+  readonly currSection: Section = this.route.snapshot.data['section'];
 }

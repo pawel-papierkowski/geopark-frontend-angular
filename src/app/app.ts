@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import {TranslateService} from "@ngx-translate/core";
 
 import { languages, fallbackLang, storageKeys } from "@/shared/config/const";
+import { Lang } from '@/shared/config/types';
 
 /**
  * Main application component.
@@ -16,7 +17,7 @@ import { languages, fallbackLang, storageKeys } from "@/shared/config/const";
 export class App {
   private readonly translateService = inject(TranslateService);
 
-  async ngOnInit() {
+  ngOnInit() {
     this.setupLang();
   }
 
@@ -44,7 +45,6 @@ export class App {
    * @returns True if given language is known, otherwise false.
    */
   private verifyLang(currLang: string): boolean {
-    const index = languages.findIndex(lang => lang === currLang);
-    return index !== -1;
+    return languages.includes(currLang as Lang);
   }
 }
