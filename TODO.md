@@ -4,7 +4,6 @@
 Finish designing app and determining what we need for required functionality.
 
 ## Now
-- Add keyboard accesibility and ARIA to language-switcher. Add tests for that.
 - Install and configure PlayWright.
 - Add appropriate e2e tests in PlayWright.
   - Changing sections

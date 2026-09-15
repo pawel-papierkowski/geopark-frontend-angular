@@ -31,6 +31,7 @@
     "@angular/build": "^22.1.8",
     "@angular/cli": "^22.1.8",
     "@angular/compiler-cli": "^22.1.6",
+    "@testing-library/user-event": "^14.6.7",
     "@types/node": "^22.20.2",
     "jsdom": "^30.0.1",
     "prettier": "^3.8.1",

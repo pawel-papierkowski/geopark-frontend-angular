@@ -117,3 +117,4 @@ Besides Angular itself, we use additional libraries.
 - General libraries
   - **ngx-translate** - For language support.
 - Development only
+  - **testing-library/user-event** - For proper suppor of keyboard events, as JSDOM alone do not implement it.

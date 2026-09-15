@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
+import userEvent from '@testing-library/user-event';
 
 import { LangSwitcher } from './lang-switcher';
 import { storageKeys } from "@/shared/config/const";
@@ -128,20 +129,26 @@ describe('LangSwitcher', () => {
       expect(flags[1].getAttribute('aria-pressed')).toBe('true');
     });
 
-    it('should support keyboard navigation between flag buttons', async () => {
+    it('should support Tab navigation between flag buttons', async () => {
       // Arrange: Create component.
+      const user = userEvent.setup();
       const fixture = TestBed.createComponent(LangSwitcher);
       await fixture.whenStable();
 
       const compiled = fixture.nativeElement as HTMLElement;
       const flags = compiled.querySelectorAll<HTMLButtonElement>('.flag-item');
 
-      // Assert: All flags are focusable and follow correct tab order.
-      flags[0].focus();
-      expect(document.activeElement, 'first flag should receive focus').toBe(flags[0]);
+      // Act: Tab to first flag button.
+      await user.tab();
 
-      flags[1].focus();
-      expect(document.activeElement, 'second flag should receive focus').toBe(flags[1]);
+      // Assert: First flag receives focus.
+      expect(document.activeElement, 'first flag should receive focus after Tab').toBe(flags[0]);
+
+      // Act: Tab to second flag button.
+      await user.tab();
+
+      // Assert: Second flag receives focus.
+      expect(document.activeElement, 'second flag should receive focus after Tab').toBe(flags[1]);
 
       // Assert: Flags are in DOM order matching expected language order (en, pl).
       expect(flags[0].getAttribute('data-testid')).toBe('lang-switcher.en');
@@ -150,15 +157,17 @@ describe('LangSwitcher', () => {
 
     it('should switch language when Enter is pressed on a flag button', async () => {
       // Arrange: Create component.
+      const user = userEvent.setup();
       const fixture = TestBed.createComponent(LangSwitcher);
       await fixture.whenStable();
 
       const compiled = fixture.nativeElement as HTMLElement;
       const flags = compiled.querySelectorAll<HTMLButtonElement>('.flag-item');
 
-      // Act: Focus second flag (Polish) and simulate Enter key activation.
-      flags[1].focus();
-      flags[1].click();
+      // Act: Tab twice to get to second flag (Polish), then activate Polish via Enter.
+      await user.tab();
+      await user.tab();
+      await user.keyboard('{Enter}');
       await fixture.whenStable();
 
       // Assert: Language switched to Polish.
@@ -168,15 +177,17 @@ describe('LangSwitcher', () => {
 
     it('should switch language when Space is pressed on a flag button', async () => {
       // Arrange: Create component.
+      const user = userEvent.setup();
       const fixture = TestBed.createComponent(LangSwitcher);
       await fixture.whenStable();
 
       const compiled = fixture.nativeElement as HTMLElement;
       const flags = compiled.querySelectorAll<HTMLButtonElement>('.flag-item');
 
-      // Act: Focus second flag (Polish) and simulate Space key activation.
-      flags[1].focus();
-      flags[1].click();
+      // Act: Tab twice to get to second flag (Polish), then activate Polish via Space.
+      await user.tab();
+      await user.tab();
+      await user.keyboard(' ');
       await fixture.whenStable();
 
       // Assert: Language switched to Polish.

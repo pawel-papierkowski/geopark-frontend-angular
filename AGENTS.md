@@ -74,6 +74,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
   - Exception: given translation key is parametrized and we want to make sure everything is correctly shown on screen.
 
 ### Other
+- Do not install new packages unless explicitly permitted or requested.
 - Ignore `TODO.md`, unless I explicitly refer it.
 
 ## Architecture

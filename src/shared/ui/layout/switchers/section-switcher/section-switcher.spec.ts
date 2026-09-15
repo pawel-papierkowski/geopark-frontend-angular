@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, Routes } from '@angular/router';
-import { TranslateService } from '@ngx-translate/core';
+import userEvent from '@testing-library/user-event';
 
 import { SectionSwitcher } from './section-switcher';
 
@@ -80,6 +80,7 @@ describe('SectionSwitcher', () => {
   describe('accessibility', () => {
     it('should support keyboard navigation between section links', async () => {
       // Arrange: Create component.
+      const user = userEvent.setup();
       const fixture = TestBed.createComponent(SectionSwitcher);
       fixture.componentRef.setInput('currSection', 'public');
       await fixture.whenStable();
@@ -87,12 +88,17 @@ describe('SectionSwitcher', () => {
       const compiled = fixture.nativeElement as HTMLElement;
       const links = compiled.querySelectorAll<HTMLAnchorElement>('.section-link');
 
-      // Assert: All links are focusable and follow correct tab order.
-      links[0].focus();
-      expect(document.activeElement, 'first link should receive focus').toBe(links[0]);
+      // Act: Tab to first link.
+      await user.tab();
 
-      links[1].focus();
-      expect(document.activeElement, 'second link should receive focus').toBe(links[1]);
+      // Assert: First link receives focus.
+      expect(document.activeElement, 'first link should receive focus after Tab').toBe(links[0]);
+
+      // Act: Tab to second link.
+      await user.tab();
+
+      // Assert: Second link receives focus.
+      expect(document.activeElement, 'second link should receive focus after Tab').toBe(links[1]);
 
       // Assert: No link has tabindex that would break natural tab order.
       for (const link of links) {
@@ -106,6 +112,7 @@ describe('SectionSwitcher', () => {
 
     it('should navigate when Enter is pressed on a section link', async () => {
       // Arrange: Create component and spy on router navigation.
+      const user = userEvent.setup();
       const fixture = TestBed.createComponent(SectionSwitcher);
       fixture.componentRef.setInput('currSection', 'public');
       await fixture.whenStable();
@@ -116,9 +123,9 @@ describe('SectionSwitcher', () => {
       const compiled = fixture.nativeElement as HTMLElement;
       const links = compiled.querySelectorAll<HTMLAnchorElement>('.section-link');
 
-      // Act: Focus second link and simulate Enter key activation (click is what browser triggers).
-      links[1].focus();
-      links[1].click();
+      // Act: Tab to first link, then Enter to activate it.
+      await user.tab();
+      await user.keyboard('{Enter}');
       await fixture.whenStable();
 
       // Assert: Router navigation was triggered.
