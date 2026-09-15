@@ -2,6 +2,7 @@
   <div class="flag-container">
   @for (language of languages; track language) {
     <div class="flag" (click)="selectLang(language)"
+      [attr.data-testid]="'lang-switcher.'+language"
       [title]="'app.language.name.'+language | translate">
       {{ 'app.language.flag.'+language | translate }}
     </div>

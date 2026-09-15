@@ -1,10 +1,15 @@
-<div class="section-wrapper">
-  <div class="section-container">
-  @for (section of otherSections(); track section) {
-    <div class="section-icon" (click)="goToSection(section)"
-      [title]="'app.section.name.'+section | translate">
-      {{ 'app.section.icon.'+section | translate }}
-    </div>
-  }
-  </div>
-</div>
+<nav class="section-wrapper" [attr.aria-label]="'app.section.navLabel' | translate">
+  <ul class="section-container">
+    @for (section of otherSections(); track section) {
+      <li>
+        <a class="section-link"
+          [routerLink]="sectionRoutes[section]"
+          [attr.data-testid]="'section-switcher.'+section"
+          [attr.aria-label]="'app.section.name.'+section | translate"
+          [title]="'app.section.name.'+section | translate">
+          {{ 'app.section.icon.'+section | translate }}
+        </a>
+      </li>
+    }
+  </ul>
+</nav>

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { AppHeader } from './app-header';
 
@@ -6,6 +7,7 @@ describe('AppHeader', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ AppHeader ],
+      providers: [ provideRouter([]) ],
     }).compileComponents();
   });
 

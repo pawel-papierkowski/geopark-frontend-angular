@@ -4,10 +4,11 @@
 Finish designing app and determining what we need for required functionality.
 
 ## Now
-- Add keyboard accesibility to section-switcher and language-switcher. Add tests for that.
+- Add keyboard accesibility and ARIA to language-switcher. Add tests for that.
 - Install and configure PlayWright.
 - Add appropriate e2e tests in PlayWright.
-  - Changing sections, changing languages
+  - Changing sections
+  - Changing languages
 
 ## Pending
 - Add dev page for custom components. These will be shown in form and with texts representing actual values of these components.
@@ -18,3 +19,4 @@ Finish designing app and determining what we need for required functionality.
   - ComboBox
 
 ## Later
+- Configure project security-wise (reinforcing against npm chain attacks etc).

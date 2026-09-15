@@ -21,7 +21,8 @@
         "public": "🏠",
         "dev": "🛠️",
         "admin": "🏛️"
-      }
+      },
+      "navLabel": "Nawigacja między sekcjami"
     },
     "page": {
       "notFound": "404 Strona Nie Odnaleziona"

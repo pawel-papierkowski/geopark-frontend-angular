@@ -31,7 +31,7 @@
   --body-color: #111111;
   --link-color: #2563eb;
   --focus-outline: 2px solid #2563eb;
-  --focus-outline-offset: 3px;
+  --focus-outline-offset: 1px;
 
   /* Text headers. */
   --h1-color: #484848;
