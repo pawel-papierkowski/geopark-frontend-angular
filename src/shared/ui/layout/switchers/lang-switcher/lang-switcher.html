@@ -1,11 +1,15 @@
 <div class="flag-wrapper">
-  <div class="flag-container">
+  <div class="flag-container" role="group" [attr.aria-label]="'app.language.label' | translate">
   @for (language of languages; track language) {
-    <div class="flag" (click)="selectLang(language)"
+    <button class="flag-item"
+      type="button"
+      (click)="selectLang(language)"
       [attr.data-testid]="'lang-switcher.'+language"
+      [attr.aria-label]="'app.language.name.'+language | translate"
+      [attr.aria-pressed]="currentLang() === language"
       [title]="'app.language.name.'+language | translate">
       {{ 'app.language.flag.'+language | translate }}
-    </div>
+    </button>
   }
   </div>
 </div>

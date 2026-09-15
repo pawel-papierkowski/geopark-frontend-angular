@@ -10,11 +10,24 @@
 .flag-container {
   display: flex;
   justify-content: center;
+
+  margin: 0;
+  padding: 2px;
 }
 
-.flag {
+.flag-item {
   display: inline;
   cursor: pointer;
 
   padding: 0px 5px;
+
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+}
+
+.flag-item:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
