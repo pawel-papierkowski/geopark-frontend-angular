@@ -40,7 +40,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
 
 Planned features includes:
 - Map views and allowing users with appropriate permissions (operators) to add/edit/remove parking meters, add/edit/remove zones (geofenced) and similar tasks.
-- Handling simulated events like car inspection by inspector or paying for parking by driver.
+- Handling simulated events like car inspection by inspector or paying for parking by driver. These must be simulated, as making smartphone app for inspector or programming ticket dispenser is out of scope for this project.
 
 ## Pages
 
@@ -93,13 +93,17 @@ To execute only selected file, run:
 npm test -- src/app/example/example.spec.ts
 ```
 
-For end-to-end (e2e) testing, run:
+For end-to-end (e2e) testing using Playwright, run:
 
 ```bash
-ng e2e
+npx playwright test
 ```
 
-This project uses PlayWright.
+For testing single file using Playwright, run:
+
+```bash
+npx playwright test e2e/path/to/file/fileName.spec.ts
+```
 
 ### Other
 
@@ -118,3 +122,4 @@ Besides Angular itself, we use additional libraries.
   - **ngx-translate** - For language support.
 - Development only
   - **testing-library/user-event** - For proper suppor of keyboard events, as JSDOM alone do not implement it.
+  - **axe-core/playwright** - Accessibility testing library for Playwright.

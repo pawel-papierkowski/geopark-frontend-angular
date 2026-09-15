@@ -110,5 +110,9 @@ Core and shared should not import from features.
 - **Testing**:
   - Run all unit tests: `npm test`
   - Run single test file: `npm test -- src/app/example/example.spec.ts`
-  - Run all e2e tests: `ng e2e`
+  - Run all e2e tests: `npx playwright test`
+  - Run one e2e file: `npx playwright test e2e/path/to/file/fileName.spec.ts`
+  - Run single e2e test in file: `npx playwright test e2e/path/to/file/fileName.spec.ts -g "name of test"`
+  - Run e2e tests (UI mode): `npx playwright test --ui`
+  - Show e2e report: `npx playwright show-report`
 Note: `ng` command will NOT work.

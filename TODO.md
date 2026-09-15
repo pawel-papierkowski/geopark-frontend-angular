@@ -4,9 +4,7 @@
 Finish designing app and determining what we need for required functionality.
 
 ## Now
-- Install and configure PlayWright.
 - Add appropriate e2e tests in PlayWright.
-  - Changing sections
   - Changing languages
 
 ## Pending
