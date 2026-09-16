@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import {TranslateService, TranslatePipe} from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 
 import { languages, storageKeys } from "@/shared/config/const";
 import { Lang } from '@/shared/config/types';
@@ -22,14 +23,31 @@ export class LangSwitcher {
   /** Currently active language. */
   readonly currentLang = signal<Lang>(this.translateService.currentLang() as Lang);
 
+  /** Guard against stale switch completing after a newer selection. */
+  private switchSeq = 0;
+  /** Active switch subscription, kept to cancel superseded attempts. */
+  private switchSub: Subscription | null = null;
+
   /**
-   * Change language.
+   * Change language. State is updated only when translation load succeeds.
+   * On failure previous language is kept.
    * @param language Selected language.
    */
   selectLang(language: Lang) {
-    localStorage.setItem(storageKeys.language, language);
-    this.translateService.use(language);
-    this.documentLang.setDocumentLang(language);
-    this.currentLang.set(language);
+    this.switchSub?.unsubscribe();
+    const seq = ++this.switchSeq;
+
+    this.switchSub = this.translateService.use(language).subscribe({
+      next: () => {
+        if (seq !== this.switchSeq) return;
+        localStorage.setItem(storageKeys.language, language);
+        this.documentLang.setDocumentLang(language);
+        this.currentLang.set(language);
+      },
+      error: (err: unknown) => {
+        if (seq !== this.switchSeq) return;
+        console.error(`Failed to switch language to '${language}'.`, err);
+      },
+    });
   }
 }

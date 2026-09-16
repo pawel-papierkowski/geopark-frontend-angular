@@ -1,14 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { TranslateLoader, TranslationObject } from '@ngx-translate/core';
-import { Observable, of } from 'rxjs';
-import { forkJoin } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { Observable, forkJoin, throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { translationManifest } from '@/shared/config/translation-manifest';
 
 /**
  * Custom language loader. Reads manifest file and merges all found json files into single object representing
- * all keys and their translations.
+ * all keys and their translations. Fails when language is not known or any translation file cannot be loaded.
  */
 export class CustomHttpLoader extends TranslateLoader {
   constructor(
@@ -24,20 +23,26 @@ export class CustomHttpLoader extends TranslateLoader {
    * @returns Translation object that contains all keys and their translations.
    */
   getTranslation(lang: string): Observable<TranslationObject> {
-    if (!Object.hasOwn(translationManifest, lang)) return of({});
+    const files = this.resolveFiles(lang);
+    if (!files) return throwError(() => new Error(`Unknown language '${lang}'.`));
 
-    const files: readonly string[] = translationManifest[lang as keyof typeof translationManifest];
-    if (!files || files.length === 0) return of({});
-
-    const requests = files.map((file) =>
-      this.http.get<TranslationObject>(`${this.basePath}${lang}/${file}.json`).pipe(
-        catchError(() => of({})),
-      ),
-    );
+    const requests = files.map((file) => this.http.get<TranslationObject>(`${this.basePath}${lang}/${file}.json`));
 
     return forkJoin(requests).pipe(
       map((results) => results.reduce((merged, current) => deepMerge(merged, current), {})),
     );
+  }
+
+  /**
+   * Resolve list of translation files for given language.
+   * @param lang Language code.
+   * @returns List of files or null when language is not defined in manifest.
+   */
+  private resolveFiles(lang: string): readonly string[] | null {
+    if (!Object.hasOwn(translationManifest, lang)) return null;
+
+    const files: readonly string[] = translationManifest[lang as keyof typeof translationManifest];
+    return files && files.length > 0 ? files : null;
   }
 }
 
