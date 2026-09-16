@@ -1,12 +1,6 @@
 /*** Variables: general app. ***/
 
 :root {
-  /* Colors. */
-  --color-text: #111111;
-  --color-text-primary: #3498db;
-  --color-background: #ffffff;
-  --color-background-primary: #ffeebb;
-
   /* Spacings. */
   --spacing-xxs: 2px;
   --spacing-xs: 4px;
@@ -19,6 +13,8 @@
   --font-size-base: 1rem;
   /* UI elements. */
   --font-family-ui: system-ui, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  /* Navigation. */
+  --font-family-nav: system-ui, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   /* Long-form reading. */
   --font-family-general: ui-rounded, 'Hiragino Maru Gothic ProN', 'Quicksand', 'Comfortaa', 'Manjari', 'Arial Rounded MT Bold', 'Calibri', sans-serif;
   /* Headers. */

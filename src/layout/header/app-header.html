@@ -1,5 +1,15 @@
 <header [class]="cssClass()">
+  @switch (currSection()) {
+    @case ('admin') {
+      <nav-admin />
+    }
+    @case ('dev') {
+      <nav-dev />
+    }
+    @default {
+      <nav-public />
+    }
+  }
+
   <header-switchers [currSection]="currSection()" />
-  
-  {{ 'header.title' | translate }}
 </header>

@@ -33,6 +33,10 @@ body {
   min-height: 100dvh; /* Fill at least the full viewport */
 }
 
+nav {
+  font-family: var(--font-family-nav);
+}
+
 ul,
 ol {
   margin-block: revert;

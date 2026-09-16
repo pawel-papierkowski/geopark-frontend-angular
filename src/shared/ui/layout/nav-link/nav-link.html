@@ -1,0 +1,7 @@
+<a class="app-nav-link"
+  [class.currentPage]="isActive()"
+  [routerLink]="target()"
+  [attr.data-testid]="currSection()+'-nav.'+name()"
+  [attr.aria-label]="'header.'+currSection()+'.'+name()+'.label' | translate">
+  {{ 'header.'+currSection()+'.'+name()+'.content' | translate }}
+</a>

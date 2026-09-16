@@ -5,9 +5,9 @@ body {
   flex-direction: column;
   align-items: stretch;
   justify-content: start;
-  /* Other stuff. */
-  color-scheme: var(--color-scheme);
 
+  /* Visuals. */
+  color-scheme: var(--color-scheme);
   color: var(--body-color);
   background: var(--body-background);
 }
@@ -78,6 +78,44 @@ code {
   max-inline-size: 120ch;
   margin-inline: auto;
   overflow-wrap: anywhere;
+}
+
+/* Navigation */
+
+.app-nav-wrapper {
+  display: flex;
+  position: relative;
+  align-items: center;
+
+  top: 0;
+  right: 0;
+
+  gap: 4px;
+
+  user-select: none;
+  z-index: 100;
+}
+
+.app-nav-container {
+  display: flex;
+  justify-content: center;
+
+  margin: 0;
+  padding: 2px;
+  list-style: none;
+}
+
+.app-nav-link {
+  display: inline;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+
+  padding: 0px 5px;
+}
+
+.app-nav-link.currentPage {
+  font-weight: 600;
 }
 
 /**/

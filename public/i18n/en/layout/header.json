@@ -1,5 +1,34 @@
 {
   "header": {
-    "title": "GeoPark"
+    "title": "GeoPark",
+    "public": {
+      "navLabel": "Navigation for public section",
+      "landing": {
+        "label": "Home",
+        "content": "🏠 Home"
+      },
+      "about":{
+        "label": "About",
+        "content": "ℹ️ About"
+      }
+    },
+    "dev": {
+      "navLabel": "Navigation for dev section",
+      "dashboard":{
+        "label": "Dashboard",
+        "content": "📝 Dashboard"
+      },
+      "components":{
+        "label": "Components",
+        "content": "🧩 Components"
+      }
+    },
+    "admin": {
+      "navLabel": "Navigation for admin section",
+      "overview":{
+        "label": "Overview",
+        "content": "🏛️ Overview"
+      }
+    }
   }
 }

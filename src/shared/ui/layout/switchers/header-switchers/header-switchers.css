@@ -1,6 +1,6 @@
 .switchers {
   display: flex;
-  position: absolute; /* Ensure container with switchers is at top right corner.*/
+  position: absolute; /* Ensure container with switchers is at top right corner. */
   align-items: center;
 
   top: 50%;

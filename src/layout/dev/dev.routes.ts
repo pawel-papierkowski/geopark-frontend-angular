@@ -13,6 +13,7 @@ export const devRoutes: SectionRoute[] = [
     data: { section: 'dev' },    // Header reads this to know which nav to show.
     children: [
       { path: '', component: PageDashboard }, // Default.
+      { path: 'components', loadComponent: () => import('./pages/custom-components/page-custom-components').then(m => m.PageCustomComponents) },
 
       // Must be last.
       { path: '**', component: PageNotFound }

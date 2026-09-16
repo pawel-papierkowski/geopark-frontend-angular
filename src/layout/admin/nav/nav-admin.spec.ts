@@ -1,25 +1,26 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 
-import { SectionLayout } from './section-layout';
+import { NavAdmin } from './nav-admin';
 
-describe('SectionLayout', () => {
+describe('NavAdmin', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ SectionLayout ],
+      imports: [ NavAdmin ],
       providers: [
-        { provide: ActivatedRoute, useValue: { snapshot: { data: { section: 'public' } } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { data: { section: 'admin' } } } },
       ],
     }).compileComponents();
   });
 
+
   it('should render content', async () => {
     // Arrange: Create component.
-    const fixture = TestBed.createComponent(SectionLayout);
+    const fixture = TestBed.createComponent(NavAdmin);
     await fixture.whenStable();
 
-    // Assert: Layout contains correct data.
+    // Assert: Page contains correct data.
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('header')?.textContent).toContain('header.public.landing');
+    expect(compiled.querySelector('nav')?.textContent).toContain('header.admin.overview');
   });
 });

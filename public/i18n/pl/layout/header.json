@@ -1,5 +1,34 @@
 {
   "header": {
-    "title": "GeoPark"
+    "title": "GeoPark",
+    "public": {
+      "navLabel": "Nawigacja dla sekcji publicznej",
+      "landing": {
+        "label": "Strona główna",
+        "content": "🏠 Strona główna"
+      },
+      "about":{
+        "label": "O stronie",
+        "content": "ℹ️ O stronie"
+      }
+    },
+    "dev": {
+      "navLabel": "Nawigacja dla sekcji deweloperskiej",
+      "dashboard":{
+        "label": "Panel sterowania",
+        "content": "📝 Panel sterowania"
+      },
+      "components":{
+        "label": "Komponenty",
+        "content": "🧩 Komponenty"
+      }
+    },
+    "admin": {
+      "navLabel": "Nawigacja dla sekcji administracyjnej",
+      "overview":{
+        "label": "Przegląd",
+        "content": "🏛️ Przegląd"
+      }
+    }
   }
 }

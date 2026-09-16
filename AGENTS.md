@@ -65,17 +65,17 @@ GeoPark handles all things related to city parking system: parking meters, zonin
 
 ### Testing
 
-- We use **vitest** for unit tests.
+- We use **Vitest** for unit tests and **Playwright** for e2e tests.
 - Group tests into logical test suites in `describe()`.
 - Every test must have marked sections: Arrange, Act, Assert. In some cases it is allowed to skip section (usually Act when Arrange also acts).
-- Assertions should use context messages (as second argument for `expect()`) where applicable.
+- Assertions should use context messages (as second argument for `expect()`), unless it is obvious what failure means.
 - Use `data-testid` attribute to uniquely identify elements for testing.
 - Usually there is no need to set up translation service. Just assert presence of translation keys.
   - Exception: given translation key is parametrized and we want to make sure everything is correctly shown on screen.
 
 ### Other
 - Do not install new packages unless explicitly permitted or requested.
-- Ignore `TODO.md`, unless I explicitly refer it.
+- Ignore `TODO.md`, unless explicitly referred.
 
 ## Architecture
 

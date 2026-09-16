@@ -4,8 +4,6 @@
 Finish designing app and determining what we need for required functionality.
 
 ## Now
-- Add appropriate e2e tests in PlayWright.
-  - Changing languages
 
 ## Pending
 - Add dev page for custom components. These will be shown in form and with texts representing actual values of these components.

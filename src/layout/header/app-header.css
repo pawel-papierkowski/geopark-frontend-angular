@@ -1,11 +1,15 @@
 .app-header {
   position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
   font-size: var(--header-font-size);
   text-align: center;
 
   margin: var(--header-margin);
   padding: var(--header-padding);
+  min-height: var(--header-min-height);
 
   border: var(--header-border);
   border-radius: var(--header-border-radius);
