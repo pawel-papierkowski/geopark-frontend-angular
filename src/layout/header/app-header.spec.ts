@@ -23,7 +23,7 @@ describe('AppHeader', () => {
       expect(compiled.querySelector('header')?.textContent).toContain('header.public.landing.content');
       expect(compiled.querySelector('header-switchers')).toBeTruthy();
 
-      // Assert: Header has correct css.
+      // Assert: Header has correct CSS.
       expect(compiled.querySelector('header')?.classList.contains('app-header')).toBe(true);
       expect(compiled.querySelector('header')?.classList.contains('public')).toBe(true);
     });
@@ -39,7 +39,7 @@ describe('AppHeader', () => {
       expect(compiled.querySelector('header')?.textContent).toContain('header.dev.dashboard.content');
       expect(compiled.querySelector('header-switchers')).toBeTruthy();
 
-      // Assert: Header has correct css.
+      // Assert: Header has correct CSS.
       expect(compiled.querySelector('header')?.classList.contains('app-header')).toBe(true);
       expect(compiled.querySelector('header')?.classList.contains('dev')).toBe(true);
     });
@@ -55,7 +55,7 @@ describe('AppHeader', () => {
       expect(compiled.querySelector('header')?.textContent).toContain('header.admin.overview.content');
       expect(compiled.querySelector('header-switchers')).toBeTruthy();
 
-      // Assert: Header has correct css.
+      // Assert: Header has correct CSS.
       expect(compiled.querySelector('header')?.classList.contains('app-header')).toBe(true);
       expect(compiled.querySelector('header')?.classList.contains('admin')).toBe(true);
     });

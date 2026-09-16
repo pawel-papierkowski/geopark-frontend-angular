@@ -13,7 +13,6 @@ describe('NavDev', () => {
     }).compileComponents();
   });
 
-
   it('should render content', async () => {
     // Arrange: Create component.
     const fixture = TestBed.createComponent(NavDev);

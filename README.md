@@ -113,7 +113,7 @@ TODO: other useful commands.
 
 Source code is on **GitHub**. This app lives on **GitHub Pages** and is deployed there via **GitHub Actions**.
 
-TODO
+TODO: finish description
 
 ## Additional packages
 

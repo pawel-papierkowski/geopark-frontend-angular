@@ -17,11 +17,10 @@ import { Lang } from '@/shared/config/types';
 export class App {
   private readonly translateService = inject(TranslateService);
 
+  /** Initialization. */
   ngOnInit() {
     this.setupLang();
   }
-
-  //
 
   /** Setup language-related stuff. */
   private setupLang() {

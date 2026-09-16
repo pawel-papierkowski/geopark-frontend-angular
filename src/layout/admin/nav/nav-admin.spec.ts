@@ -13,7 +13,6 @@ describe('NavAdmin', () => {
     }).compileComponents();
   });
 
-
   it('should render content', async () => {
     // Arrange: Create component.
     const fixture = TestBed.createComponent(NavAdmin);

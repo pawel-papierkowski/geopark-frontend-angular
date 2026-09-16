@@ -24,7 +24,7 @@ export class SectionSwitcher {
   readonly currSection = input.required<Section>();
   readonly otherSections = computed(() => sections.filter(s => s !== this.currSection()));
 
-  /** Available sections and their target URL. */
+  /** Available sections and their target URLs. */
   readonly sectionRoutes: Record<Section, string[]> = {
     public: ['/'],
     admin: ['/admin'],

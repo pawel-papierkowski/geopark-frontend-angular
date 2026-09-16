@@ -4,6 +4,7 @@ import { TranslateService } from '@ngx-translate/core';
 
 import { AppFooter } from './app-footer';
 
+// Mock production config. We only care about build, as it is shown in footer.
 vi.mock('@/shared/config/const', () => ({
   projectProp: {
     title: "GeoPark",
@@ -22,7 +23,8 @@ describe('AppFooter', () => {
       imports: [ AppFooter ],
     }).compileComponents();
 
-    // note we manually set relevant translation keys
+    // Note we manually set relevant translation keys for this test suite.
+    // Needed for test 'should display correct bottom text'.
     translateService = TestBed.inject(TranslateService);
     translateService.setTranslation('en', {
       footer: {

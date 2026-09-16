@@ -19,7 +19,7 @@ describe('SectionSwitcher', () => {
     }).compileComponents();
   });
 
-    describe('general', () => {
+  describe('general', () => {
     it('should render all section links (except current section) inside nav landmark', async () => {
       // Arrange: Create component.
       const fixture = TestBed.createComponent(SectionSwitcher);

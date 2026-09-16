@@ -9,6 +9,7 @@ import { CustomHttpLoader } from '@/core/i18n/custom-http-loader';
 
 import { fallbackLang } from "@/shared/config/const";
 
+/** General application configuration. */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
