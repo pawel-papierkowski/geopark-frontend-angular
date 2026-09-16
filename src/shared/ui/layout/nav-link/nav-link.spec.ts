@@ -29,7 +29,7 @@ describe('NavLink', () => {
 
     // Assert: Component contains correct styles.
     expect(compiled.querySelector('a')?.classList.contains('app-nav-link')).toBe(true);
-    expect(compiled.querySelector('a')?.classList.contains('currentPage')).toBe(false);
+    expect(compiled.querySelector('a')?.classList.contains('current-page')).toBe(false);
   });
 
   it('should render content for dev section', async () => {
@@ -48,6 +48,6 @@ describe('NavLink', () => {
 
     // Assert: Component contains correct styles.
     expect(compiled.querySelector('a')?.classList.contains('app-nav-link')).toBe(true);
-    expect(compiled.querySelector('a')?.classList.contains('currentPage')).toBe(true);
+    expect(compiled.querySelector('a')?.classList.contains('current-page')).toBe(true);
   });
 });

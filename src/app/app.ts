@@ -27,7 +27,11 @@ export class App {
     this.translateService.setFallbackLang(fallbackLang);
     const storedLang = localStorage.getItem(storageKeys.language); // get current language from storage
     if (storedLang) { // storage contains language: just use it
-      const currLang = this.verifyLang(storedLang) ? storedLang : fallbackLang;
+      let currLang = storedLang;
+      if (!this.verifyLang(storedLang)) {
+        currLang = fallbackLang;
+        localStorage.setItem(storageKeys.language, currLang); // fix invalid language in storage
+      }
       this.translateService.use(currLang);
     } else { // storage does not have language: resolve language, save to storage and use it
       const browserLang = this.translateService.getBrowserLang() || fallbackLang;

@@ -5,8 +5,8 @@
 import { readdirSync, writeFileSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
 
-const I18N_DIR = join(import.meta.dirname, '..', 'public', 'i18n');
-const OUTPUT_FILE = join(import.meta.dirname, '..', 'src', 'core', 'i18n', 'translation-manifest.ts');
+const i18nDir = join(import.meta.dirname, '..', 'public', 'i18n');
+const outputFile = join(import.meta.dirname, '..', 'src', 'core', 'i18n', 'translation-manifest.ts');
 
 /**
  * Searches recursively for all json files.
@@ -37,7 +37,7 @@ function findJsonFiles(dir, baseDir) {
  * @returns List of directories.
  */
 function discoverLanguages() {
-  const entries = readdirSync(I18N_DIR, { withFileTypes: true });
+  const entries = readdirSync(i18nDir, { withFileTypes: true });
   return entries
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
@@ -50,7 +50,7 @@ function generate() {
   const manifest = {};
 
   for (const lang of languages) {
-    const langDir = join(I18N_DIR, lang);
+    const langDir = join(i18nDir, lang);
     manifest[lang] = findJsonFiles(langDir, langDir);
   }
 
@@ -60,7 +60,7 @@ function generate() {
 export const translationManifest: Record<string, string[]> = ${JSON.stringify(manifest, null, 2)};
 `;
 
-  writeFileSync(OUTPUT_FILE, content, 'utf-8');
+  writeFileSync(outputFile, content, 'utf-8');
   console.log(`Generated i18n manifest: ${Object.keys(manifest).length} languages, ${Object.values(manifest).flat().length} files total.`);
 }
 

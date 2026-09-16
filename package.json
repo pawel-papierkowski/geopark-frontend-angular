@@ -12,7 +12,12 @@
     "test:ng": "ng test",
     "e2e": "npx playwright test",
     "e2e:ui": "npx playwright test --ui",
-    "e2e:report": "npx playwright show-report"
+    "e2e:report": "npx playwright show-report",
+    "pretypecheck": "node scripts/generate-i18n-manifest.mjs",
+    "typecheck": "npm run typecheck:app && npm run typecheck:spec && npm run typecheck:e2e",
+    "typecheck:app": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck:spec": "tsc -p tsconfig.spec.json --noEmit",
+    "typecheck:e2e": "tsc -p tsconfig.playwright.json --noEmit"
   },
   "private": true,
   "packageManager": "npm@11.17.0",

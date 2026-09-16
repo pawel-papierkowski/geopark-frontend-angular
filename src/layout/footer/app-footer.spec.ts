@@ -28,7 +28,10 @@ describe('AppFooter', () => {
     translateService = TestBed.inject(TranslateService);
     translateService.setTranslation('en', {
       footer: {
-        repository: 'Repository',
+        repository: {
+          text: "Repository",
+          label: "Repository for geopark-frontend-angular project on GitHub."
+        },
         copyright: '© {{dateRange}} {{author}} | v. {{version}} {{build}}',
       },
     });
