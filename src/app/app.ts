@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, type OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {TranslateService} from "@ngx-translate/core";
 
@@ -15,7 +15,7 @@ import { DocumentLang } from '@/shared/document-lang';
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
-export class App {
+export class App implements OnInit {
   private readonly translateService = inject(TranslateService);
   private readonly documentLang = inject(DocumentLang);
 

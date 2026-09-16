@@ -219,9 +219,6 @@ describe('LangSwitcher', () => {
       const fixture = TestBed.createComponent(LangSwitcher);
       await fixture.whenStable();
 
-      const compiled = fixture.nativeElement as HTMLElement;
-      const flags = compiled.querySelectorAll<HTMLButtonElement>('.flag-item');
-
       // Act: Tab twice to get to second flag (Polish), then activate Polish via Space.
       await user.tab();
       await user.tab();

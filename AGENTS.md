@@ -107,6 +107,8 @@ Core and shared should not import from features.
 - **Deployment**:
   - Build: `npm run build`
   - Run: `npm start`
+- **Verification**:
+  - Run lint: `npm run lint`
 - **Testing**:
   - Run all unit tests: `npm test`
   - Run single test file: `npm test -- src/app/example/example.spec.ts`

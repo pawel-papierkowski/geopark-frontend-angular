@@ -77,7 +77,11 @@ npm start
 
 ### Verification
 
-TODO: add commands for verification, like lint etc
+To run lint:
+
+```bash
+npm run lint
+```
 
 ### Testing
 

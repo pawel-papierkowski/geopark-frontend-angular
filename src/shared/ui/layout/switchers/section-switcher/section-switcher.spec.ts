@@ -120,9 +120,6 @@ describe('SectionSwitcher', () => {
       const router = TestBed.inject(Router);
       const navigateSpy = vi.spyOn(router, 'navigateByUrl');
 
-      const compiled = fixture.nativeElement as HTMLElement;
-      const links = compiled.querySelectorAll<HTMLAnchorElement>('.section-link');
-
       // Act: Tab to first link, then Enter to activate it.
       await user.tab();
       await user.keyboard('{Enter}');

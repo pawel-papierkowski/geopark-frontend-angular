@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, type OnDestroy, type OnInit } from '@angular/core';
 import { Meta } from '@angular/platform-browser';
 import {TranslatePipe} from '@ngx-translate/core';
 
@@ -12,7 +12,7 @@ import {TranslatePipe} from '@ngx-translate/core';
   styleUrl: './page-not-found.css',
   templateUrl: './page-not-found.html',
 })
-export class PageNotFound {
+export class PageNotFound implements OnInit, OnDestroy {
   private readonly meta = inject(Meta);
   private tag: HTMLMetaElement | null = null;
 
