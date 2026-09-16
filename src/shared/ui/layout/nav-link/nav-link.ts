@@ -46,7 +46,30 @@ export class NavLink {
       map(e => e.urlAfterRedirects),
       startWith(this.router.url),
     ),
+    { requireSync: true },
   );
 
-  readonly isActive = computed(() => this.currentUrl() === this.target());
+  /**
+   * Strip query parameters and fragment from a URL string.
+   * @param url URL to clean, may contain `?query` and/or `#fragment` parts.
+   * @returns Path part of the URL, with trailing slash removed (except for root `/`).
+   */
+  private static readonly stripExtraParts = (url: string): string => {
+    const path = url.split(/[?#]/)[0];
+    // Normalize trailing slash so `/about/` and `/about` compare equal.
+    return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+  };
+
+  /**
+   * Check if this link is the current page.
+   * Uses exact matching on the normalized path part of the URL.
+   * Query parameters, fragments, and trailing slashes are ignored.
+   * Parent targets do not match nested paths (e.g. `/dev` does not match `/dev/components`).
+   * @returns True if this link should be marked as current page.
+   */
+  readonly isActive = computed(() => {
+    const path = NavLink.stripExtraParts(this.currentUrl());
+    const target = NavLink.stripExtraParts(this.target());
+    return path === target;
+  });
 }

@@ -1,5 +1,6 @@
 <a class="app-nav-link"
   [class.current-page]="isActive()"
+  [attr.aria-current]="isActive() ? 'page' : null"
   [routerLink]="target()"
   [attr.data-testid]="currSection()+'-nav.'+name()"
   [attr.aria-label]="'header.'+currSection()+'.'+name()+'.label' | translate">
