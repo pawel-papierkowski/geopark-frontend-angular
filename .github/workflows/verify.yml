@@ -1,0 +1,90 @@
+# Run unit tests/lint/typecheck and e2e tests in two parallel jobs.
+name: Verify
+
+on: # When to run this action?
+  #push: # run automatically when push
+  #  branches: [main]
+  #pull_request:
+  workflow_dispatch: # run manually
+
+# Verification only needs read access to the repository.
+permissions:
+  contents: read
+
+# Cancel superseded runs for the same branch or pull request.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Fast checks and browser tests run independently in parallel.
+jobs:
+  # Run checks: lint, typecheck and unit tests.
+  checks:
+    name: Lint, typecheck, and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Clones your repository's code into the virtual machine, so subsequent steps can actually access your files.
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Install Node.js on the VM. Angular's build tools (npm, ng) require Node to run.
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x' # Match the deployment workflow's Node.js version.
+          cache: npm # Cache npm downloads, not node_modules.
+
+      # Installs all your project's dependencies from package.json.
+      - name: Install dependencies
+        run: npm ci # Note: npm ci is faster/more reliable than npm install.
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test
+
+  # Run e2e tests using Playwright.
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Clones your repository's code into the virtual machine, so subsequent steps can actually access your files.
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Install Node.js on the VM. Angular's build tools (npm, ng) require Node to run.
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x' # Install latest subversion of Node.js 24
+          cache: 'npm'         # Caches node_modules for speed.
+
+      # Installs all your project's dependencies from package.json.
+      - name: Install dependencies
+        run: npm ci # Note: npm ci is faster/more reliable than npm install.
+
+      # Install the configured browsers and their Linux system dependencies.
+      - name: Install playwright stuff
+        run: npx playwright install --with-deps chromium firefox
+
+      # Playwright starts npm start; GitHub's CI environment enables retries
+      # and a single worker, rejects test.only, and disables server reuse.
+      - name: Run e2e tests
+        run: npm run e2e
+
+      # Preserve HTML reports and test results (including retry traces) on failure.
+      - name: Upload Playwright reports and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
