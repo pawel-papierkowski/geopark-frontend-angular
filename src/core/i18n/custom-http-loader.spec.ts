@@ -65,6 +65,19 @@ describe('CustomHttpLoader', () => {
       // Assert: Server error should reject the load.
       expect(result, 'HTTP error should reject the whole load').toBeInstanceOf(HttpErrorResponse);
     });
+
+    it('should propagate network failures', async () => {
+      // Arrange & Act: Load language with network failure on one file.
+      const promise = firstValueFrom(loader.getTranslation('pl')).catch((err: unknown) => err);
+      httpMock.expectOne('i18n/pl/layout/footer.json').flush({ footer: { copyright: '©' } });
+      httpMock.expectOne('i18n/pl/layout/header.json').flush({ header: { title: 'Nagłówek' } });
+      httpMock.expectOne('i18n/pl/common.json').error(new ProgressEvent('network error'));
+      const result = await promise;
+
+      // Assert: Network failure should reject the whole load.
+      expect(result, 'network failure should reject the whole load').toBeInstanceOf(HttpErrorResponse);
+      expect((result as HttpErrorResponse).status, 'network failure should have zero status').toBe(0);
+    });
   });
 
   describe('unknown language', () => {
