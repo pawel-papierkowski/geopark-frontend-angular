@@ -19,7 +19,7 @@ export default defineConfig([
     'test-results/**',
     'playwright/.cache/**',
     'playwright/.auth/**',
-    'src/core/i18n/translation-manifest.ts',
+    'src/shared/config/translation-manifest.ts',
   ]),
   {
     files: ['**/*.{js,mjs,cjs}'],

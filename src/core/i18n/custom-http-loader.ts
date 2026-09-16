@@ -4,7 +4,7 @@ import { Observable, of } from 'rxjs';
 import { forkJoin } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
-import { translationManifest } from './translation-manifest';
+import { translationManifest } from '@/shared/config/translation-manifest';
 
 /**
  * Custom language loader. Reads manifest file and merges all found json files into single object representing
@@ -24,7 +24,9 @@ export class CustomHttpLoader extends TranslateLoader {
    * @returns Translation object that contains all keys and their translations.
    */
   getTranslation(lang: string): Observable<TranslationObject> {
-    const files = translationManifest[lang];
+    if (!Object.hasOwn(translationManifest, lang)) return of({});
+
+    const files: readonly string[] = translationManifest[lang as keyof typeof translationManifest];
     if (!files || files.length === 0) return of({});
 
     const requests = files.map((file) =>

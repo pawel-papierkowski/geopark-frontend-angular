@@ -1,6 +1,7 @@
 import { environment } from '@/environments/environment';
 
 import type { ProjectProp } from './types';
+import { languages } from './translation-manifest';
 
 /** Project properties. */
 export const projectProp: ProjectProp = {
@@ -14,10 +15,10 @@ export const projectProp: ProjectProp = {
 /* LANGUAGE */
 
 /** Fallback language. It must exist in list of known languages. */
-export const fallbackLang = 'en';
+export const fallbackLang = 'en' satisfies typeof languages[number];
 
 /** List of known languages. */
-export const languages = [ 'en', 'pl' ] as const;
+export { languages };
 
 /* ROUTING */
 
