@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
 import userEvent from '@testing-library/user-event';
@@ -7,8 +8,12 @@ import { storageKeys } from "@/shared/config/const";
 
 describe('LangSwitcher', () => {
   let translateService: TranslateService;
+  let originalLang: string | null;
+  let storedLang: string | null;
 
   beforeEach(async () => {
+    originalLang = document.documentElement.getAttribute('lang');
+    storedLang = localStorage.getItem(storageKeys.language);
     await TestBed.configureTestingModule({
       imports: [ LangSwitcher ],
     }).compileComponents();
@@ -34,6 +39,19 @@ describe('LangSwitcher', () => {
         },
       },
     });
+  });
+
+  afterEach(() => {
+    if (originalLang === null) {
+      document.documentElement.removeAttribute('lang');
+    } else {
+      document.documentElement.lang = originalLang;
+    }
+    if (storedLang === null) {
+      localStorage.removeItem(storageKeys.language);
+    } else {
+      localStorage.setItem(storageKeys.language, storedLang);
+    }
   });
 
   describe('general', () => {
@@ -83,6 +101,29 @@ describe('LangSwitcher', () => {
   });
 
   describe('accessibility', () => {
+    it('should update the document language when switching to Polish and back', async () => {
+      const user = userEvent.setup();
+      const fixture = TestBed.createComponent(LangSwitcher);
+      const testDocument = TestBed.inject(DOCUMENT);
+      testDocument.documentElement.lang = 'en';
+      await fixture.whenStable();
+      const compiled = fixture.nativeElement as HTMLElement;
+      const polishButton = compiled.querySelector<HTMLButtonElement>('[data-testid="lang-switcher.pl"]')!;
+      const englishButton = compiled.querySelector<HTMLButtonElement>('[data-testid="lang-switcher.en"]')!;
+
+      await user.click(polishButton);
+      await fixture.whenStable();
+
+      expect(testDocument.documentElement.lang, 'Polish content should declare Polish').toBe('pl');
+      expect(translateService.currentLang()).toBe('pl');
+
+      await user.click(englishButton);
+      await fixture.whenStable();
+
+      expect(testDocument.documentElement.lang, 'English content should declare English').toBe('en');
+      expect(translateService.currentLang()).toBe('en');
+    });
+
     it('should render flags with correct ARIA attributes', async () => {
       // Arrange: Create component.
       const fixture = TestBed.createComponent(LangSwitcher);

@@ -4,6 +4,7 @@ import {TranslateService} from "@ngx-translate/core";
 
 import { languages, fallbackLang, storageKeys } from "@/shared/config/const";
 import { Lang } from '@/shared/config/types';
+import { DocumentLang } from '@/shared/document-lang';
 
 /**
  * Main application component.
@@ -16,6 +17,7 @@ import { Lang } from '@/shared/config/types';
 })
 export class App {
   private readonly translateService = inject(TranslateService);
+  private readonly documentLang = inject(DocumentLang);
 
   /** Initialization. */
   ngOnInit() {
@@ -25,21 +27,13 @@ export class App {
   /** Setup language-related stuff. */
   private setupLang() {
     this.translateService.setFallbackLang(fallbackLang);
-    const storedLang = localStorage.getItem(storageKeys.language); // get current language from storage
-    if (storedLang) { // storage contains language: just use it
-      let currLang = storedLang;
-      if (!this.verifyLang(storedLang)) {
-        currLang = fallbackLang;
-        localStorage.setItem(storageKeys.language, currLang); // fix invalid language in storage
-      }
-      this.translateService.use(currLang);
-    } else { // storage does not have language: resolve language, save to storage and use it
-      const browserLang = this.translateService.getBrowserLang() || fallbackLang;
-       // if unknown language, fall back to english
-      const currLang = this.verifyLang(browserLang) ? browserLang : fallbackLang;
-      localStorage.setItem(storageKeys.language, currLang);
-      this.translateService.use(currLang);
-    }
+    const storedLang = localStorage.getItem(storageKeys.language);
+    const preferredLang = storedLang || this.translateService.getBrowserLang() || fallbackLang;
+    const currLang = this.verifyLang(preferredLang) ? preferredLang : fallbackLang;
+
+    localStorage.setItem(storageKeys.language, currLang);
+    this.translateService.use(currLang);
+    this.documentLang.setDocumentLang(currLang);
   }
 
   /**
@@ -47,7 +41,7 @@ export class App {
    * @param currLang Current language to check.
    * @returns True if given language is known, otherwise false.
    */
-  private verifyLang(currLang: string): boolean {
+  private verifyLang(currLang: string): currLang is Lang {
     return languages.includes(currLang as Lang);
   }
 }

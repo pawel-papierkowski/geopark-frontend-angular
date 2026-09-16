@@ -1,12 +1,59 @@
+import { DOCUMENT } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 
+import { storageKeys } from '@/shared/config/const';
 import { App } from './app';
 
 describe('App', () => {
+  let originalLang: string | null;
+  let storedLang: string | null;
+
   beforeEach(async () => {
+    originalLang = document.documentElement.getAttribute('lang');
+    storedLang = localStorage.getItem(storageKeys.language);
+    localStorage.removeItem(storageKeys.language);
     await TestBed.configureTestingModule({
       imports: [ App ],
     }).compileComponents();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    if (originalLang === null) {
+      document.documentElement.removeAttribute('lang');
+    } else {
+      document.documentElement.lang = originalLang;
+    }
+    if (storedLang === null) {
+      localStorage.removeItem(storageKeys.language);
+    } else {
+      localStorage.setItem(storageKeys.language, storedLang);
+    }
+  });
+
+  it.each([
+    { stored: 'pl', browser: 'en', expected: 'pl' },
+    { stored: 'en', browser: 'pl', expected: 'en' },
+    { stored: 'invalid', browser: 'pl', expected: 'en' },
+    { stored: null, browser: 'pl', expected: 'pl' },
+    { stored: null, browser: 'de', expected: 'en' },
+    { stored: null, browser: undefined, expected: 'en' },
+  ])('should initialize document language to $expected with stored=$stored and browser=$browser', async ({ stored, browser, expected }) => {
+    if (stored !== null) {
+      localStorage.setItem(storageKeys.language, stored);
+    }
+    const translateService = TestBed.inject(TranslateService);
+    vi.spyOn(translateService, 'getBrowserLang').mockReturnValue(browser);
+    const testDocument = TestBed.inject(DOCUMENT);
+    testDocument.documentElement.lang = expected === 'pl' ? 'en' : 'pl';
+
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    expect(testDocument.documentElement.lang, 'HTML language should match resolved language').toBe(expected);
+    expect(translateService.currentLang(), 'translations should match document language').toBe(expected);
+    expect(localStorage.getItem(storageKeys.language), 'resolved language should be persisted').toBe(expected);
   });
 
   it('should create the app', () => {

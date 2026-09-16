@@ -3,6 +3,7 @@ import {TranslateService, TranslatePipe} from '@ngx-translate/core';
 
 import { languages, storageKeys } from "@/shared/config/const";
 import { Lang } from '@/shared/config/types';
+import { DocumentLang } from '@/shared/document-lang';
 
 /**
  * Provides flags that can be clicked, changing language used on page.
@@ -15,6 +16,7 @@ import { Lang } from '@/shared/config/types';
 })
 export class LangSwitcher {
   private readonly translateService = inject(TranslateService);
+  private readonly documentLang = inject(DocumentLang);
   languages = languages;
 
   /** Currently active language. */
@@ -27,6 +29,7 @@ export class LangSwitcher {
   selectLang(language: Lang) {
     localStorage.setItem(storageKeys.language, language);
     this.translateService.use(language);
+    this.documentLang.setDocumentLang(language);
     this.currentLang.set(language);
   }
 }
