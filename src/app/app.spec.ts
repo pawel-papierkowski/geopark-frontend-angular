@@ -46,7 +46,11 @@ describe('App', () => {
   it.each([
     { stored: 'pl', browser: 'en', expected: 'pl' },
     { stored: 'en', browser: 'pl', expected: 'en' },
-    { stored: 'invalid', browser: 'pl', expected: 'en' },
+    { stored: 'PL', browser: 'en', expected: 'pl' },
+    { stored: 'eN', browser: 'pl', expected: 'en' },
+    { stored: 'invalid', browser: 'pl', expected: 'pl' },
+    { stored: 'invalid', browser: 'de', expected: 'en' },
+    { stored: 'invalid', browser: undefined, expected: 'en' },
     { stored: null, browser: 'pl', expected: 'pl' },
     { stored: null, browser: 'de', expected: 'en' },
     { stored: null, browser: undefined, expected: 'en' },

@@ -120,6 +120,29 @@ describe('LanguageService', () => {
   }
 
   describe('initialization', () => {
+    it.each([
+      { stored: 'PL', browser: 'en', expected: 'pl' as const },
+      { stored: 'eN', browser: 'pl', expected: 'en' as const },
+      { stored: 'invalid', browser: 'pl', expected: 'pl' as const },
+      { stored: 'invalid', browser: 'de', expected: 'en' as const },
+      { stored: 'invalid', browser: undefined, expected: 'en' as const },
+    ])('should resolve stored=$stored and browser=$browser to $expected and persist only after activation', ({ stored, browser, expected }) => {
+      // Arrange
+      localStorage.setItem(storageKeys.language, stored);
+      vi.spyOn(translateService, 'getBrowserLang').mockReturnValue(browser);
+
+      // Act
+      languageService.initialize();
+      expect(languageService.pendingLanguage(), 'resolved language should be pending').toBe(expected);
+      expect(localStorage.getItem(storageKeys.language), 'preference must not change before activation').toBe(stored);
+      respond('en');
+      if (expected === 'pl') respond('pl');
+
+      // Assert
+      expectConfirmed(expected);
+      expect(activations, 'only the resolved language should activate').toEqual([expected]);
+    });
+
     it('should activate only once when initialize is repeated before and after loading', () => {
       // Arrange
       localStorage.setItem(storageKeys.language, 'en');

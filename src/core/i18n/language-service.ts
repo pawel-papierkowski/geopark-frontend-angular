@@ -17,6 +17,10 @@ import { DocumentService } from '@/shared/utils/document-service';
  *
  * A language is confirmed only when `TranslateService` reports it through
  * `onLangChange`, so stale or failed loads never claim success.
+ *
+ * This service uses two subscriptions:
+ * - track `translateService.onLangChange`: this language has actually become active (single for entire service)
+ * - track `translateService.use(language)`: watch an individual activation request for failure (instanced)
  */
 @Service()
 export class LanguageService {
@@ -41,26 +45,42 @@ export class LanguageService {
 
   /** Listens for real activations and cancels coordinator requests on teardown. */
   constructor() {
-    this.translateService.onLangChange.pipe(takeUntilDestroyed()).subscribe(({ lang }) => {
-      if (!this.isLanguage(lang) || lang !== this.requestedLanguage) return;
-      this.active.set(lang);
-      this.pending.set(null);
-      this.documentService.setDocumentLang(lang);
-      this.persistLanguage(lang);
-    });
+    // Subscription: when ngx-translate activates a language.
+    this.translateService.onLangChange // observable that emits an event when ngx-translate activates a language
+      .pipe(takeUntilDestroyed()) // automatically end this subscription when Angular destroys the service
+      .subscribe({ // we use only `next` callback, no need for `error` or `complete`
+        next: event => {
+          const lang = event.lang;
+          if (!this.isLanguage(lang) || lang !== this.requestedLanguage) return; // reject unsupported or no-longer-requested languages
+          // Set all relevant language state in application.
+          this.active.set(lang);
+          this.pending.set(null);
+          this.documentService.setDocumentLang(lang);
+          this.persistLanguage(lang);
+        }
+      });
     this.destroyRef.onDestroy(() => this.requestSubscription.unsubscribe());
   }
 
   /**
    * Resolve and activate the initial language. Idempotent; later calls do nothing.
    * Resolution order: stored preference, browser language, fallback language.
-   * Unreadable or unknown stored preference falls back like a missing one.
+   * Stored codes are lowercased before validation; invalid or unreadable values
+   * are skipped in favor of the browser language. Successful activation persists
+   * the confirmed lowercase code on a best-effort basis.
    */
   initialize(): void {
     if (this.initialized || this.destroyRef.destroyed) return;
     this.initialized = true;
-    const preferred = this.readLanguage() || this.translateService.getBrowserLang() || fallbackLang;
-    this.activate(this.isLanguage(preferred) ? preferred : fallbackLang, true);
+    const storedLang = this.readLanguage();
+    if (storedLang && this.isLanguage(storedLang)) {
+      this.activate(storedLang, true); // Stored language is valid.
+      return;
+    }
+    // Stored language is invalid. Fall back to browser language first then final fallback if all else fails.
+    const browserLang = this.translateService.getBrowserLang();
+    const finalLang = browserLang && this.isLanguage(browserLang) ? browserLang : fallbackLang;
+    this.activate(finalLang, true);
   }
 
   /**
@@ -89,17 +109,23 @@ export class LanguageService {
    * @param retryFallback True when even the fallback language may be retried on failure.
    */
   private activate(language: Lang, allowRecovery: boolean, retryFallback = false): void {
-    const sequence = ++this.requestSequence;
-    this.requestSubscription.unsubscribe();
+    const sequence = ++this.requestSequence; // Track current activation request.
+    this.requestSubscription.unsubscribe(); // Stop listening to previous request, if any.
+
+    // New subscription per activation request. That prevents potential race conditions.
     const subscription = new Subscription();
     this.requestSubscription = subscription;
     this.requestedLanguage = language;
     this.pending.set(language);
 
+    // Subscription: watch an individual activation request for failure.
     subscription.add(this.translateService.use(language).subscribe({
+      // We use only `error` callback. Success is handled by other subscription.
       error: (error: unknown) => {
+        // We handle this failure only if this is still the latest request and the service is still alive.
         if (sequence !== this.requestSequence || this.destroyRef.destroyed) return;
         console.error(`Failed to activate language '${language}'.`, error);
+        // Attempt to restore the last confirmed language or use fallback if allowed.
         const confirmed = this.active();
         if (allowRecovery && confirmed !== null) {
           this.activate(confirmed, false);
@@ -122,19 +148,20 @@ export class LanguageService {
   }
 
   /**
-   * Read the persisted language preference.
-   * @returns Stored language code or null when missing or storage is unavailable.
+   * Read the persisted language preference from web storage.
+   * @returns Stored language code (lowercase) or null when missing or storage is unavailable.
    */
   private readLanguage(): string | null {
     try {
-      return localStorage.getItem(storageKeys.language);
+      const storedLang = localStorage.getItem(storageKeys.language);
+      return storedLang?.toLowerCase() || null;
     } catch {
       return null;
     }
   }
 
   /**
-   * Persist the language preference. Best-effort: failures are ignored so that
+   * Persist the language preference in web storage. Best-effort: failures are ignored so that
    * storage problems never interrupt language synchronization.
    * @param language Language code to store.
    */
