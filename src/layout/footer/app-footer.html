@@ -1,10 +1,13 @@
 <footer class="app-footer">
   <p>{{ 'footer.repository.text' | translate }}:
     <a href="https://github.com/pawel-papierkowski/geopark-frontend-angular"
-      [attr.aria-label]="'footer.repository.label' | translate"
+      aria-describedby="footer-repository-description"
+      data-testid="footer-repository-link"
       target="_blank"
       rel="noopener noreferrer">
       https://github.com/pawel-papierkowski/geopark-frontend-angular
-    </a></p>
+    </a>
+    <span id="footer-repository-description" hidden>{{ 'footer.repository.label' | translate }}</span>
+  </p>
   <p>{{ 'footer.copyright' | translate:{dateRange: projectProp.dateRange, author: projectProp.author, version: projectProp.version, build: projectProp.build} }}</p>
 </footer>

@@ -47,6 +47,21 @@ describe('AppFooter', () => {
     expect(compiled.querySelector('p:nth-of-type(1)')?.textContent).toContain('Repository');
   });
 
+  it('should preserve the repository URL and reference a separate description', async () => {
+    const fixture = TestBed.createComponent(AppFooter);
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const link = compiled.querySelector<HTMLAnchorElement>('[data-testid="footer-repository-link"]');
+    const description = compiled.querySelector<HTMLElement>('#footer-repository-description');
+
+    expect(link?.textContent?.trim(), 'link text should remain the full URL').toBe('https://github.com/pawel-papierkowski/geopark-frontend-angular');
+    expect(link?.hasAttribute('aria-label'), 'the visible URL must not be overridden').toBe(false);
+    expect(link?.getAttribute('aria-describedby'), 'the link should reference its description').toBe(description?.id);
+    expect(description?.textContent, 'description should be translated').toBe('Repository for geopark-frontend-angular project on GitHub.');
+    expect(description?.hidden, 'supplementary text should not change the visible footer').toBe(true);
+  });
+
   it('should display correct bottom text', async () => {
     // Arrange: Create component.
     const fixture = TestBed.createComponent(AppFooter);
