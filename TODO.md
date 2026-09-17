@@ -13,5 +13,10 @@ Finish designing app and determining what we need for required functionality.
   - RadioBox
   - ComboBox
 
+- Add temporary floating messages that allow user feedback on their actions. Apparently, they are called *toasts* or *snackbars*.
+  We need separate dev page to test various notifications, including toasts.
+
+- Add indicator that page is working on something. These are called *spinners*.
+
 ## Later
 - Configure project security-wise (reinforcing against npm chain attacks etc).

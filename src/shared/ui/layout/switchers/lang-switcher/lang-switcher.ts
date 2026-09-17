@@ -1,13 +1,15 @@
-import { Component, inject, signal } from '@angular/core';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { Subscription } from 'rxjs';
+import { Component, inject } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
-import { languages, storageKeys } from "@/shared/config/const";
-import { Lang } from '@/shared/config/types';
-import { DocumentLang } from '@/shared/document-lang';
+import { LanguageService } from '@/core/i18n/language-service';
+import { languages } from '@/shared/config/const';
+import type { Lang } from '@/shared/config/types';
 
 /**
- * Provides flags that can be clicked, changing language used on page.
+ * Language switcher component.
+ *
+ * Shows all known languages as buttons with flag emojis. Clicking changes language used on website.
+ * Choice is remembered.
  */
 @Component({
   selector: 'lang-switcher',
@@ -16,38 +18,16 @@ import { DocumentLang } from '@/shared/document-lang';
   styleUrl: './lang-switcher.css',
 })
 export class LangSwitcher {
-  private readonly translateService = inject(TranslateService);
-  private readonly documentLang = inject(DocumentLang);
-  languages = languages;
-
-  /** Currently active language. */
-  readonly currentLang = signal<Lang>(this.translateService.currentLang() as Lang);
-
-  /** Guard against stale switch completing after a newer selection. */
-  private switchSeq = 0;
-  /** Active switch subscription, kept to cancel superseded attempts. */
-  private switchSub: Subscription | null = null;
+  private readonly languageService = inject(LanguageService);
+  readonly languages = languages;
+  readonly currentLang = this.languageService.activeLanguage;
 
   /**
-   * Change language. State is updated only when translation load succeeds.
-   * On failure previous language is kept.
-   * @param language Selected language.
+   * Change language of website to given language.
+   * @param language Language.
    */
-  selectLang(language: Lang) {
-    this.switchSub?.unsubscribe();
-    const seq = ++this.switchSeq;
-
-    this.switchSub = this.translateService.use(language).subscribe({
-      next: () => {
-        if (seq !== this.switchSeq) return;
-        localStorage.setItem(storageKeys.language, language);
-        this.documentLang.setDocumentLang(language);
-        this.currentLang.set(language);
-      },
-      error: (err: unknown) => {
-        if (seq !== this.switchSeq) return;
-        console.error(`Failed to switch language to '${language}'.`, err);
-      },
-    });
+  selectLang(language: Lang): void {
+    // Delegate the selection to the application-wide language coordinator.
+    this.languageService.select(language);
   }
 }

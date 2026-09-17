@@ -1,22 +1,25 @@
 import { DOCUMENT } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { DocumentLang } from './document-lang';
+import { DocumentService } from './document-service';
 
 describe('DocumentLang', () => {
   it('should update the injected document language in both directions', () => {
+    // Arrange: Prepare document.
     const testDocument = document.implementation.createHTMLDocument();
     TestBed.configureTestingModule({
       providers: [{ provide: DOCUMENT, useValue: testDocument }],
     });
-    const service = TestBed.inject(DocumentLang);
+    const documentService = TestBed.inject(DocumentService);
 
-    service.setDocumentLang('pl');
-
+    // Act: Set document language to Polish.
+    documentService.setDocumentLang('pl');
+    // Assert: Document language is actually Polish.
     expect(testDocument.documentElement.lang, 'document language should be Polish').toBe('pl');
 
-    service.setDocumentLang('en');
-
+    // Act: Set document language to English.
+    documentService.setDocumentLang('en');
+    // Assert: Document language is actually English.
     expect(testDocument.documentElement.lang, 'document language should return to English').toBe('en');
   });
 });

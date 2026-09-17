@@ -21,7 +21,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
   - Prefer type inference when the type is obvious.
   - Avoid the `any` type; use `unknown` when type is uncertain.
   - Constants are camelCase.
-  - Code must be well commented. Use `@param`, `@returns` and similar.
+  - Code must be well commented. Comment classes and functions. Use `@param`, `@returns` and similar.
 - **Framework:**
   - Always use standalone components over NgModules.
   - Must NOT set `standalone: true` inside Angular decorators. It's the default in Angular v20+.
@@ -58,6 +58,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
   - Use the async pipe to handle observables.
   - Do not assume globals like (`new Date()`) are available.
 - **Services:**
+  - Services must have `Service` suffix. For example, service that handles language is `LanguageService` in file `language-service.ts`.
   - Design services around a single responsibility.
   - Use the `providedIn: 'root'` option for singleton services.
   - Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services (Angular v22+).

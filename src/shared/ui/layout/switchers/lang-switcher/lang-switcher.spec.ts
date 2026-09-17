@@ -1,11 +1,13 @@
 import { DOCUMENT } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { TranslateService, type TranslationObject } from '@ngx-translate/core';
-import { Subject, throwError } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
+import { throwError } from 'rxjs';
 import userEvent from '@testing-library/user-event';
 
 import { LangSwitcher } from './lang-switcher';
 import { storageKeys } from "@/shared/config/const";
+
+import { LanguageService } from '@/core/i18n/language-service';
 
 describe('LangSwitcher', () => {
   let translateService: TranslateService;
@@ -40,6 +42,8 @@ describe('LangSwitcher', () => {
         },
       },
     });
+    localStorage.setItem(storageKeys.language, 'en');
+    TestBed.inject(LanguageService).initialize();
   });
 
   afterEach(() => {
@@ -129,31 +133,21 @@ describe('LangSwitcher', () => {
       expect(localStorage.getItem(storageKeys.language), 'storage should not be updated on failure').toBe(storedBefore);
     });
 
-    it('should apply only the latest selection when switching rapidly', async () => {
-      // Arrange: Controlled deferred responses, Polish resolves after English.
+    it('should delegate successive selections to the application coordinator', async () => {
+      // Arrange
       const fixture = TestBed.createComponent(LangSwitcher);
-      const testDocument = TestBed.inject(DOCUMENT);
-      testDocument.documentElement.lang = 'en';
+      const selectSpy = vi.spyOn(TestBed.inject(LanguageService), 'select');
       await fixture.whenStable();
-      const responses = new Map<string, Subject<TranslationObject>>();
-      vi.spyOn(translateService, 'use').mockImplementation((lang: string) => {
-        const subject = new Subject<TranslationObject>();
-        responses.set(lang, subject);
-        return subject.asObservable();
-      });
-      vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      // Act: Select Polish, then quickly English; complete English first, then stale Polish.
+      // Act
       fixture.componentInstance.selectLang('pl');
       fixture.componentInstance.selectLang('en');
-      responses.get('en')!.next({}); responses.get('en')!.complete();
-      responses.get('pl')!.next({}); responses.get('pl')!.complete();
       await fixture.whenStable();
 
-      // Assert: Latest selection (English) wins, stale Polish completion is ignored.
-      expect(fixture.componentInstance.currentLang(), 'latest selection should win').toBe('en');
-      expect(localStorage.getItem(storageKeys.language), 'storage should hold latest selection').toBe('en');
-      expect(testDocument.documentElement.lang, 'document language should hold latest selection').toBe('en');
+      // Assert
+      expect(selectSpy.mock.calls, 'every selection should go through the coordinator').toEqual([['pl'], ['en']]);
+      expect(fixture.componentInstance.currentLang(), 'switcher should follow confirmed activation').toBe('en');
+      expect(translateService.currentLang()).toBe('en');
     });
   });
 
