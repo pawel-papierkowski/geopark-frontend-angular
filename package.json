@@ -13,8 +13,6 @@
     "lint": "eslint . --max-warnings=0",
     "pretest": "npm run i18n:generate",
     "test": "vitest run",
-    "pretest:ng": "npm run i18n:generate",
-    "test:ng": "ng test",
     "e2e": "npx playwright test",
     "e2e:ui": "npx playwright test --ui",
     "e2e:report": "npx playwright show-report",
