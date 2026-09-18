@@ -73,6 +73,7 @@ We use **Vitest** for unit tests and **Playwright** for e2e tests.
   - Assertions should use context messages (as second argument for `expect()`), unless it is obvious what failure means.
   - Use `data-testid` attribute to uniquely identify elements for testing.
 - Vitest:
+  - For user events (keyboard) use userEvent from `@testing-library/user-event`.
   - Usually there is no need to set up translation service. Just assert presence of translation keys.
     - Exception: given translation key is parametrized and we want to make sure everything is correctly shown on screen.
 
