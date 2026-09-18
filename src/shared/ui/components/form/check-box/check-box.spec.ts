@@ -18,14 +18,14 @@ describe('CheckBox', () => {
     canNull = false,
     disabled = false,
     invalid = false,
-    id = 'test-checkbox',
+    ident = 'test-checkbox',
   ) {
     await TestBed.configureTestingModule({
       imports: [CheckBox],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(CheckBox);
-    fixture.componentRef.setInput('id', id);
+    fixture.componentRef.setInput('ident', ident);
     fixture.componentRef.setInput('canNull', canNull);
     fixture.componentRef.setInput('disabled', disabled);
     fixture.componentRef.setInput('invalid', invalid);

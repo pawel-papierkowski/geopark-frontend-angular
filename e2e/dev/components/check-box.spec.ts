@@ -6,7 +6,7 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
  * @returns Locator for the checkbox.
  */
 function getCheckbox(page: Page): Locator {
-  return page.getByTestId('checkBox');
+  return page.getByTestId('cc-checkBox');
 }
 
 /**

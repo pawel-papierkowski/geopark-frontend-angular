@@ -1,11 +1,11 @@
 <div class="checkbox-wrapper">
   <!-- Hidden button: labelable target for <label for="...">. -->
-  <button [id]="id()" class="hidden-label-button" tabindex="-1" aria-hidden="true"></button>
+  <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true" (click)="toggle()"></button>
   <div
     class="checkbox"
     [class.disabled]="disabled()"
     [class.invalid]="invalid()"
-    [attr.data-testid]="id()"
+    [attr.data-testid]="ident()"
     role="checkbox"
     [attr.aria-checked]="ariaChecked()"
     [attr.aria-disabled]="disabled()"

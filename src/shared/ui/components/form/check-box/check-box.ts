@@ -8,8 +8,8 @@ import { FormValueControl } from '@angular/forms/signals';
  * - formField - use field from form data, like standard `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - id - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional.
- * - canNull - If true, can use null values when changing value of checkbox.
+ * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
+ * - canNull - If true, can use `null` values when changing value of checkbox.
  * - disabled - If true, acts as disabled component. Optional, default is false.
  * - invalid - If true, shows component as having invalid state. Visual only. Optional, default is false.
  *
@@ -24,7 +24,7 @@ import { FormValueControl } from '@angular/forms/signals';
 })
 export class CheckBox implements FormValueControl<boolean | null> {
   /** Identifier for this component. */
-  id = input<string>('');
+  ident = input<string>('');
   /** Value held by component. */
   value = model<boolean | null>(null);
   /** Can use null value? */
