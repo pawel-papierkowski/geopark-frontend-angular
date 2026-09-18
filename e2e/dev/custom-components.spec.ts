@@ -10,7 +10,7 @@ test.describe('Custom components page', () => {
     await page.goto('/dev/components');
 
     // Assert: Custom components page content is visible.
-    await expect(page.locator('body')).toContainText('CUSTOM COMPONENTS PLACEHOLDER');
+    await expect(page.locator('body')).toContainText('Custom components');
   });
 
   test('is correct axe-wise', async ({ page }) => {
