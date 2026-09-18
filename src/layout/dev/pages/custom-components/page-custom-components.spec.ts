@@ -16,6 +16,6 @@ describe('PageCustomComponents', () => {
 
     // Assert: Page contains correct data.
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('main')?.textContent).toContain('CUSTOM COMPONENTS PLACEHOLDER');
+    expect(compiled.querySelector('main')?.textContent).toContain('customComponents.title');
   });
 });

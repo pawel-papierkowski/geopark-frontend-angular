@@ -1,1 +1,102 @@
-/* For now, this is a placeholder. */
+/* CSS classes for standard components. */
+
+/* Inputs. */
+
+input {
+  width: 100%;
+  margin: var(--input-margin);
+  padding: var(--input-padding);
+
+  color: var(--input-color);
+  background: var(--input-background);
+  border: var(--input-border);
+  border-radius: var(--input-border-radius);
+}
+
+input:focus-visible {
+  /* Acceptable as cursor is visible. */
+  outline: none;
+  outline-offset: none;
+}
+
+input:hover {
+  color: var(--input-hover-color);
+  background: var(--input-hover-background);
+}
+
+input:disabled {
+  color: var(--input-disabled-color);
+  background: var(--input-disabled-background);
+  border: var(--input-disabled-border);
+}
+
+input.err {
+  color: var(--input-err-color);
+  background: var(--input-err-background);
+  border: var(--input-err-border);
+}
+
+.table-cell input {
+  padding: var(--input-padding-small);
+  font-size: var(--input-text-small);
+}
+
+/* Buttons. */
+
+button {
+  width: 100%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: var(--button-margin);
+  padding: var(--button-padding);
+
+  color: var(--button-color);
+  background: var(--button-background);
+  border: var(--button-border);
+  border-radius: var(--button-border-radius);
+  box-shadow: var(--button-box-shadow);
+  transition: var(--button-transition);
+}
+
+button:hover {
+  color: var(--button-hover-color);
+  background: var(--button-hover-background);
+  border: var(--button-hover-border);
+  box-shadow: var(--button-hover-box-shadow);
+}
+
+button:active {
+  transform: var(--button-active-transform);
+  box-shadow: var(--button-active-box-shadow);
+}
+
+button:disabled {
+  cursor: not-allowed;
+
+  color: var(--button-disabled-color);
+  background: var(--button-disabled-background);
+  border: var(--button-disabled-border);
+  box-shadow: var(--button-disabled-box-shadow);
+}
+
+button.danger {
+  color: var(--button-danger-color);
+  background: var(--button-danger-background);
+  border: var(--button-danger-border);
+}
+
+button:hover.danger {
+  color: var(--button-hover-danger-color);
+  background: var(--button-hover-danger-background);
+  border: var(--button-hover-danger-border);
+}
+
+button:disabled.danger {
+  color: var(--button-disabled-color);
+  background: var(--button-disabled-background);
+  border: var(--button-disabled-border);
+}
+

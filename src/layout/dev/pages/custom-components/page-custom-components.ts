@@ -70,8 +70,11 @@ export class PageCustomComponents {
   /**
    * React on submit button press.
    */
-  onSubmit = submit(this.compForm , async (formData) => {
-    // formData is the resolved model value
-    console.log('Derp: '+formData.checkBox().value());
-  });
+  async handleSubmit(event: Event) {
+    event.preventDefault();
+    await submit(this.compForm, async (formData) => {
+      // in future we will show actual feedback for user visible in browser
+      console.log('Derp: ' + formData.checkBox().value());
+    });
+  }
 }

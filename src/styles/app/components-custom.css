@@ -1,4 +1,6 @@
-/** Hidden button target for <label> clicking. */
+/* CSS classes for custom components. */
+
+/* Hidden button target for <label> clicking. */
 .hidden-label-button {
   position: absolute;
   width: 1px;

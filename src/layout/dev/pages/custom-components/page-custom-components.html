@@ -2,7 +2,7 @@
   <article class="app-article">
     <div class="form-semiwide">
       <h3>{{ 'customComponents.title' | translate }}</h3>
-      <form>
+      <form (submit)="handleSubmit($event)">
         <div class="form-subform-double">
           <label for="mode">{{ 'customComponents.form.mode.label' | translate }}</label>
           <check-box id="mode" /> <!-- Placeholder, ignore for now -->
