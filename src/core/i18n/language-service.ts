@@ -5,7 +5,7 @@ import { Subscription } from 'rxjs';
 
 import { fallbackLang, languages, storageKeys } from '@/shared/config/const';
 import type { Lang } from '@/shared/config/types';
-import { DocumentService } from '@/shared/utils/document-service';
+import { DocumentService } from '@/shared/utils/document/document-service';
 
 /**
  * Application-wide coordinator for language selection and activation.

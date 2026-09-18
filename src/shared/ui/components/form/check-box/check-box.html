@@ -1,0 +1,21 @@
+<div class="checkbox-wrapper">
+  <!-- Hidden button: labelable target for <label for="...">. -->
+  <button [id]="id()" class="hidden-label-button" tabindex="-1" aria-hidden="true"></button>
+  <div
+    class="checkbox"
+    [class.disabled]="disabled()"
+    [class.invalid]="invalid()"
+    [attr.data-testid]="id()"
+    role="checkbox"
+    [attr.aria-checked]="ariaChecked()"
+    [attr.aria-disabled]="disabled()"
+    [tabindex]="disabled() ? -1 : 0"
+    (click)="toggle()"
+    (keydown.enter)="toggle()"
+    (keydown.space)="toggle(); $event.preventDefault()"
+    (blur)="touch.emit()">
+    <div class="checkbox-inside">
+      {{ showSymbol() }}
+    </div>
+  </div>
+</div>

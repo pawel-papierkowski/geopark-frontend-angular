@@ -8,7 +8,7 @@ import { Subscription, throwError } from 'rxjs';
 import { storageKeys } from '@/shared/config/const';
 import { translationManifest } from '@/shared/config/translation-manifest';
 import type { Lang } from '@/shared/config/types';
-import { DocumentService } from '@/shared/utils/document-service';
+import { DocumentService } from '@/shared/utils/document/document-service';
 
 import { CustomHttpLoader } from './custom-http-loader';
 import { LanguageService } from './language-service';

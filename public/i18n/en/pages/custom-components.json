@@ -1,0 +1,39 @@
+{
+  "customComponents": {
+    "title": "Custom components",
+    "submit": {
+      "label": "Submit",
+      "inProgress": "Submitting..."
+    },
+    "form": {
+      "mode": {
+        "label":  "Mode",
+        "0": "Standard",
+        "1": "Disabled",
+        "2": "Error"
+      },
+      "textBox": {
+        "label":  "Normal input field",
+        "placeholder": "Enter some text"
+      },
+      "checkBox": {
+        "label":  "Checkbox"
+      },
+      "comboBox": {
+        "label":  "Combobox"
+      },
+      "radioBox": {
+        "label":  "Radiobox"
+      },
+      "dateTimePicker": {
+        "label": "Date/time picker (UTC)"
+      },
+      "datePicker": {
+        "label": "Date picker (UTC)"
+      },
+      "timePicker": {
+        "label": "Time picker (UTC)"
+      }
+    }
+  }
+}

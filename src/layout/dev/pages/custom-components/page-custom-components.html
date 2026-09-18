@@ -1,6 +1,52 @@
 <main class="app-main">
   <article class="app-article">
-    <h1>DEV PANEL</h1>
-    <p>CUSTOM COMPONENTS PLACEHOLDER</p>
+    <div class="form-semiwide">
+      <h3>{{ 'customComponents.title' | translate }}</h3>
+      <form>
+        <div class="form-subform-double">
+          <label for="mode">{{ 'customComponents.form.mode.label' | translate }}</label>
+          <check-box id="mode" />
+        </div>
+
+        <hr />
+
+        <div class="form-subform-triple">
+          <label for="textBox">{{ 'customComponents.form.textBox.label' | translate }}</label>
+          <check-box id="textBox" />
+          <div>{{ show(compForm.textBox().value()) }}</div>
+        </div>
+        <div class="form-subform-triple">
+          <label for="checkBox">{{ 'customComponents.form.checkBox.label' | translate }}</label>
+          <check-box id="checkBox" [formField]="compForm.checkBox" [canNull]="true" />
+          <div>{{ show(compForm.checkBox().value()) }}</div>
+        </div>
+        <div class="form-subform-triple">
+          <label for="comboBox">{{ 'customComponents.form.comboBox.label' | translate }}</label>
+          <check-box id="comboBox" />
+          <div>{{ show(compForm.comboBox().value()) }}</div>
+        </div>
+        <div class="form-subform-triple">
+          <label for="radioBox">{{ 'customComponents.form.radioBox.label' | translate }}</label>
+          <check-box id="radioBox" />
+          <div>{{ show(compForm.radioBox().value()) }}</div>
+        </div>
+        <div class="form-subform-triple">
+          <label for="dateTimePicker">{{ 'customComponents.form.dateTimePicker.label' | translate }}</label>
+          <check-box id="dateTimePicker" />
+          <div>{{ show(compForm.dateTimePicker().value()) }}</div>
+        </div>
+        <div class="form-subform-triple">
+          <label for="datePicker">{{ 'customComponents.form.datePicker.label' | translate }}</label>
+          <check-box id="datePicker" />
+          <div>{{ show(compForm.datePicker().value()) }}</div>
+        </div>
+        <div class="form-subform-triple">
+          <label for="timePicker">{{ 'customComponents.form.timePicker.label' | translate }}</label>
+          <check-box id="timePicker" />
+          <div>{{ show(compForm.timePicker().value()) }}</div>
+        </div>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
   </article>
 </main>

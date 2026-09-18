@@ -1,1 +1,43 @@
-/* For now, this is a placeholder. */
+/* CSS classes for forms. */
+
+/*** FORMS ***/
+
+.form-semiwide {
+  min-width: 50%;
+  margin: 0 auto;
+  padding: var(--form-padding);
+
+  background: var(--form-background);
+  border: var(--form-border);
+  border-radius: var(--form-border-radius);
+}
+
+/*** SUBFORMS ***/
+
+.form-subform-double {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 0.3rem;
+
+  align-items: center;
+  justify-content: center;
+  justify-items: stretch;
+
+  margin-bottom: 6px;
+
+  white-space: nowrap;
+}
+
+.form-subform-triple {
+  display: grid;
+  grid-template-columns: 1fr 3fr 1fr;
+  gap: 0.3rem;
+
+  align-items: center;
+  justify-content: center;
+  justify-items: stretch;
+
+  margin-bottom: 6px;
+
+  white-space: nowrap;
+}

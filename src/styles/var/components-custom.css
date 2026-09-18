@@ -1,1 +1,19 @@
-/* For now, this is a placeholder. */
+/*** Variables: custom components. ***/
+
+:root {
+  /* CheckBox specific vars. */
+  --checkbox-color: var(--input-color);
+  --checkbox-background: var(--input-background);
+  --checkbox-border: var(--input-border);
+  --checkbox-border-radius: 4px;
+
+  --checkbox-err-color: var(--input-err-color);
+  --checkbox-err-background: var(--input-err-background);
+  --checkbox-err-border: var(--input-err-border);
+
+  --checkbox-disabled-color: var(--input-disabled-color);
+  --checkbox-disabled-background: var(--input-disabled-background);
+
+  --checkbox-hover-color: var(--input-hover-color);
+  --checkbox-hover-background: #f6f6f6;
+}

@@ -1,1 +1,14 @@
-/* For now, this is a placeholder. */
+/*** Variables: forms. ***/
+
+:root {
+  /* General form variables. */
+  --form-padding: 5px;
+
+  --form-background: linear-gradient(to bottom right, #fdfdfd 0px, #f1f1f1 300px);
+  --form-border: 1px solid #ccc;
+  --form-border-radius: 8px;
+
+  /* Standalone form. */
+  --form-alone-width: 400px;
+  --form-alone-padding: 10px;
+}
