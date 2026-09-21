@@ -10,7 +10,8 @@ describe('CheckBox', () => {
    * @param canNull Whether null values are allowed.
    * @param disabled Whether the checkbox is disabled.
    * @param invalid Whether the checkbox is in invalid state.
-   * @param id Identifier for the checkbox.
+   * @param ident Identifier for the checkbox.
+   * @param label Label reference for aria-labelledby.
    * @returns Fixture of the created component.
    */
   async function arrangeCheckBox(
@@ -19,6 +20,7 @@ describe('CheckBox', () => {
     disabled = false,
     invalid = false,
     ident = 'test-checkbox',
+    label = '',
   ) {
     await TestBed.configureTestingModule({
       imports: [CheckBox],
@@ -26,6 +28,7 @@ describe('CheckBox', () => {
 
     const fixture = TestBed.createComponent(CheckBox);
     fixture.componentRef.setInput('ident', ident);
+    fixture.componentRef.setInput('label', label);
     fixture.componentRef.setInput('canNull', canNull);
     fixture.componentRef.setInput('disabled', disabled);
     fixture.componentRef.setInput('invalid', invalid);
@@ -37,7 +40,8 @@ describe('CheckBox', () => {
 
   describe('general', () => {
     it('should render with default values', async () => {
-      // Arrange: Create component with defaults.
+      // Note canNull affects only user ability to set null value. Component still can have null set programmatically.
+      // Arrange: Create component with defaults, including null value and canNull = false.
       const fixture = await arrangeCheckBox();
 
       // Assert: Default state is null with mixed symbol.
@@ -79,15 +83,16 @@ describe('CheckBox', () => {
     it('should cycle null → true → false → null when canNull is true', async () => {
       // Arrange: Create component with null value and canNull enabled.
       const fixture = await arrangeCheckBox(null, true);
+      const checkbox = fixture.nativeElement.querySelector('.checkbox');
 
       // Act & Assert: null → true.
-      fixture.componentInstance.toggle();
+      checkbox.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.value(), 'null should toggle to true').toBe(true);
       expect(fixture.nativeElement.textContent, 'should display checkmark').toContain('✔');
 
       // Act & Assert: true → false.
-      fixture.componentInstance.toggle();
+      checkbox.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.value(), 'true should toggle to false').toBe(false);
       const insideText2 = fixture.nativeElement.querySelector('.checkbox-inside')!.textContent!;
@@ -95,7 +100,7 @@ describe('CheckBox', () => {
       expect(insideText2.includes('◼'), 'false state should not show mixed symbol').toBe(false);
 
       // Act & Assert: false → null.
-      fixture.componentInstance.toggle();
+      checkbox.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.value(), 'false should toggle to null').toBeNull();
       expect(fixture.nativeElement.textContent, 'should display mixed symbol').toContain('◼');
@@ -104,28 +109,17 @@ describe('CheckBox', () => {
     it('should cycle true → false → true when canNull is false', async () => {
       // Arrange: Create component with true value and canNull disabled.
       const fixture = await arrangeCheckBox(true, false);
+      const checkbox = fixture.nativeElement.querySelector('.checkbox');
 
       // Act & Assert: true → false.
-      fixture.componentInstance.toggle();
+      checkbox.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.value(), 'true should toggle to false').toBe(false);
 
       // Act & Assert: false → true (no null when canNull is false).
-      fixture.componentInstance.toggle();
+      checkbox.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.value(), 'false should toggle to true').toBe(true);
-    });
-
-    it('should not change value when disabled', async () => {
-      // Arrange: Create component with disabled state.
-      const fixture = await arrangeCheckBox(false, false, true);
-
-      // Act: Attempt to toggle.
-      fixture.componentInstance.toggle();
-      fixture.detectChanges();
-
-      // Assert: Value remains unchanged.
-      expect(fixture.componentInstance.value(), 'disabled checkbox should not toggle').toBe(false);
     });
 
     it('should emit touch event on blur', async () => {
@@ -142,22 +136,51 @@ describe('CheckBox', () => {
       expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
     });
 
-    it('should apply disabled class when disabled is true', async () => {
-      // Arrange: Create component with disabled state.
-      const fixture = await arrangeCheckBox(null, false, true);
+    it('should act as disabled when disabled is true', async () => {
+      // Arrange: Create component with disabled state and user event setup.
+      const user = userEvent.setup();
+      const fixture = await arrangeCheckBox(false, false, true);
 
       // Assert: Disabled class is present.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
       expect(checkbox.classList.contains('disabled'), 'should have disabled class').toBe(true);
+
+      // Act: Tab through the document.
+      await user.tab();
+
+      // Assert: Focus should not be on the checkbox.
+      expect(document.activeElement, 'disabled checkbox should not receive focus').not.toBe(checkbox);
+
+      // Act: Click the checkbox div.
+      checkbox.click();
+      fixture.detectChanges();
+
+      // Assert: Value remains unchanged.
+      expect(fixture.componentInstance.value(), 'disabled checkbox should not toggle on click').toBe(false);
     });
 
-    it('should apply invalid class when invalid is true', async () => {
-      // Arrange: Create component with invalid state.
+    it('should act as invalid when invalid is true', async () => {
+      // Invalid state is purely visual, checkbox should function normally.
+      // Arrange: Create component with invalid state and user event setup.
+      const user = userEvent.setup();
       const fixture = await arrangeCheckBox(null, false, false, true);
 
       // Assert: Invalid class is present.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
       expect(checkbox.classList.contains('invalid'), 'should have invalid class').toBe(true);
+
+      // Act: Tab through the document.
+      await user.tab();
+
+      // Assert: Focus should be on the checkbox.
+      expect(document.activeElement, 'invalid checkbox should receive focus').toBe(checkbox);
+
+      // Act: Click the checkbox div.
+      checkbox.click();
+      fixture.detectChanges();
+
+      // Assert: Value is unchanged.
+      expect(fixture.componentInstance.value(), 'invalid checkbox should toggle on click').toBe(true);
     });
   });
 
@@ -291,6 +314,24 @@ describe('CheckBox', () => {
       expect(hiddenButton.getAttribute('id'), 'hidden button id should match component id').toBe('my-checkbox');
       expect(hiddenButton.getAttribute('tabindex'), 'hidden button should not be focusable').toBe('-1');
       expect(hiddenButton.getAttribute('aria-hidden'), 'hidden button should be hidden from assistive technology').toBe('true');
+    });
+
+    it('should set aria-labelledby when label is provided', async () => {
+      // Arrange: Create component with label input.
+      const fixture = await arrangeCheckBox(null, false, false, false, 'test-checkbox', 'my-label');
+
+      // Assert: aria-labelledby matches the label input.
+      const checkbox = fixture.nativeElement.querySelector('.checkbox');
+      expect(checkbox.getAttribute('aria-labelledby'), 'aria-labelledby should match label input').toBe('my-label');
+    });
+
+    it('should not set aria-labelledby when label is empty', async () => {
+      // Arrange: Create component without label input.
+      const fixture = await arrangeCheckBox();
+
+      // Assert: aria-labelledby is not present.
+      const checkbox = fixture.nativeElement.querySelector('.checkbox');
+      expect(checkbox.hasAttribute('aria-labelledby'), 'aria-labelledby should not be set when label is empty').toBe(false);
     });
   });
 });

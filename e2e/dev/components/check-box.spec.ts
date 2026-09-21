@@ -78,6 +78,15 @@ test.describe('CheckBox', () => {
       await expect(checkbox).toHaveAttribute('aria-checked', 'true');
       await expect(getValueDisplay(page)).toContainText('✅');
     });
+
+    test('should have accessible name from label', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+      const checkbox = getCheckbox(page);
+
+      // Assert: aria-labelledby points to the label element's id.
+      await expect(checkbox).toHaveAttribute('aria-labelledby', 'cc-checkBox-label');
+    });
   });
 
   test.describe('keyboard', () => {
