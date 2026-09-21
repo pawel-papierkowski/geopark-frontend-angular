@@ -76,6 +76,8 @@ We use **Vitest** for unit tests and **Playwright** for e2e tests.
   - For user events (keyboard) use userEvent from `@testing-library/user-event`.
   - Usually there is no need to set up translation service. Just assert presence of translation keys.
     - Exception: given translation key is parametrized and we want to make sure everything is correctly shown on screen.
+- Playwright:
+  - Minimize overlap between unit tests and e2e tests. E2e should be for things that are hard or impossible to test in unit test. Also for interactions between components etc.
 
 
 ### Other

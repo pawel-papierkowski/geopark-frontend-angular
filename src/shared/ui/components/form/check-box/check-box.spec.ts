@@ -55,7 +55,7 @@ describe('CheckBox', () => {
       // Arrange: Create component with true value.
       const fixture = await arrangeCheckBox(true);
 
-      // Assert: Shows checkmark symbol.
+      // Assert: Shows checkmark symbol for true.
       expect(fixture.componentInstance.value(), 'value should be true').toBe(true);
       expect(fixture.nativeElement.textContent, 'should display checkmark for true').toContain('✔');
     });
@@ -66,9 +66,7 @@ describe('CheckBox', () => {
 
       // Assert: Shows non-breaking space for false.
       expect(fixture.componentInstance.value(), 'value should be false').toBe(false);
-      const insideText = fixture.nativeElement.querySelector('.checkbox-inside')!.textContent!;
-      expect(insideText.includes('✔'), 'false state should not show checkmark').toBe(false);
-      expect(insideText.includes('◼'), 'false state should not show mixed symbol').toBe(false);
+      expect(fixture.nativeElement.textContent, 'should display non-breaking space for false').toContain('\u00A0');
     });
 
     it('should render mixed symbol when value is null with canNull', async () => {
@@ -85,6 +83,10 @@ describe('CheckBox', () => {
       const fixture = await arrangeCheckBox(null, true);
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
 
+      // Assert: Starting value should be null.
+      expect(fixture.componentInstance.value(), 'value should be null').toBeNull();
+      expect(fixture.nativeElement.textContent, 'should display mixed symbol for null').toContain('◼');
+
       // Act & Assert: null → true.
       checkbox.click();
       fixture.detectChanges();
@@ -95,9 +97,7 @@ describe('CheckBox', () => {
       checkbox.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.value(), 'true should toggle to false').toBe(false);
-      const insideText2 = fixture.nativeElement.querySelector('.checkbox-inside')!.textContent!;
-      expect(insideText2.includes('✔'), 'false state should not show checkmark').toBe(false);
-      expect(insideText2.includes('◼'), 'false state should not show mixed symbol').toBe(false);
+      expect(fixture.nativeElement.textContent, 'should display non-breaking space').toContain('\u00A0');
 
       // Act & Assert: false → null.
       checkbox.click();
@@ -106,10 +106,19 @@ describe('CheckBox', () => {
       expect(fixture.nativeElement.textContent, 'should display mixed symbol').toContain('◼');
     });
 
-    it('should cycle true → false → true when canNull is false', async () => {
-      // Arrange: Create component with true value and canNull disabled.
-      const fixture = await arrangeCheckBox(true, false);
+    it('should cycle null → true → false → true when canNull is false', async () => {
+      // Arrange: Create component with null value and canNull disabled.
+      const fixture = await arrangeCheckBox(null, false);
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
+
+      // Assert: Starting value should be null.
+      expect(fixture.componentInstance.value(), 'value should be null').toBeNull();
+      expect(fixture.nativeElement.textContent, 'should display mixed symbol for null').toContain('◼');
+
+      // Act & Assert: null → true.
+      checkbox.click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value(), 'null should toggle to true').toBe(true);
 
       // Act & Assert: true → false.
       checkbox.click();
@@ -120,6 +129,19 @@ describe('CheckBox', () => {
       checkbox.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.value(), 'false should toggle to true').toBe(true);
+    });
+
+    it('should update display when value changes programmatically', async () => {
+      // Arrange: Create component with null value.
+      const fixture = await arrangeCheckBox(null, true);
+
+      // Act: Change value programmatically.
+      fixture.componentRef.setInput('value', true);
+      fixture.detectChanges();
+
+      // Assert: DOM reflects the new value.
+      expect(fixture.componentInstance.value(), 'value should update to true').toBe(true);
+      expect(fixture.nativeElement.textContent, 'should display checkmark after update').toContain('✔');
     });
 
     it('should emit touch event on blur', async () => {
@@ -181,6 +203,16 @@ describe('CheckBox', () => {
 
       // Assert: Value is unchanged.
       expect(fixture.componentInstance.value(), 'invalid checkbox should toggle on click').toBe(true);
+    });
+
+    it('should have both disabled and invalid classes when both inputs are true', async () => {
+      // Arrange: Create component with both disabled and invalid.
+      const fixture = await arrangeCheckBox(null, false, true, true);
+
+      // Assert: Both classes present.
+      const checkbox = fixture.nativeElement.querySelector('.checkbox');
+      expect(checkbox.classList.contains('disabled'), 'should have disabled class').toBe(true);
+      expect(checkbox.classList.contains('invalid'), 'should have invalid class').toBe(true);
     });
   });
 
