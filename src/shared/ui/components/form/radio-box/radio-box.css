@@ -1,0 +1,83 @@
+.radiobox-wrapper {
+  user-select: none;
+  position: relative;
+}
+
+.radiobox-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+/**/
+
+.radiobox-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--radiobox-color);
+  background: var(--radiobox-background);
+  border: var(--radiobox-border);
+  border-radius: var(--radiobox-border-radius);
+
+  align-self: center;
+
+  width: 0.9em;
+  height: 0.9em;
+
+  cursor: pointer;
+}
+
+.radiobox-option:hover .radiobox-circle {
+  color: var(--radiobox-hover-color);
+  background-color: var(--radiobox-hover-background);
+}
+
+.radiobox.err .radiobox-circle {
+  color: var(--radiobox-err-color);
+  background: var(--radiobox-err-background);
+  border: var(--radiobox-err-border);
+}
+
+.radiobox.disabled .radiobox-circle {
+  color: var(--radiobox-disabled-color);
+  background: var(--radiobox-disabled-background);
+
+  cursor: default;
+}
+
+.radiobox-inside {
+  align-self: center;
+
+  width: 0.5em;
+  height: 0.5em;
+}
+
+.radiobox-inside.mark {
+  background: var(--radiobox-inside-background);
+  border-radius: var(--radiobox-inside-border-radius);
+}
+
+.radiobox-wrapper.err .radiobox-inside.mark {
+  background: var(--radiobox-inside-err-background);
+}
+
+.radiobox.disabled .radiobox-inside.mark {
+  background: var(--radiobox-disabled-color);
+}
+
+/**/
+
+.radiobox-label {
+  padding: 2px;
+  cursor: pointer;
+}
+
+.radiobox-wrapper.err .radiobox-label {
+  color: var(--radiobox-err-color);
+}
+
+.radiobox.disabled .radiobox-label {
+  color: var(--radiobox-disabled-color);
+  cursor: default;
+}

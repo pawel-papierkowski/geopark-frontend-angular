@@ -5,7 +5,8 @@
       <form (submit)="handleSubmit($event)">
         <div class="form-subform-double">
           <label id="cc-mode-label" for="cc-mode">{{ 'customComponents.form.mode.label' | translate }}</label>
-          <check-box ident="cc-mode" label="cc-mode-label" /> <!-- Placeholder, ignore for now -->
+          <radio-box ident="cc-mode" label="cc-mode-label" [formField]="compForm.mode" [options]="enModeOptions"
+            langPrefix="customComponents.form.mode" />
         </div>
 
         <hr />
@@ -27,7 +28,8 @@
         </div>
         <div class="form-subform-triple">
           <label id="cc-radioBox-label" for="cc-radioBox">{{ 'customComponents.form.radioBox.label' | translate }}</label>
-          <check-box ident="cc-radioBox" label="cc-checkBox-label" /> <!-- Placeholder, ignore for now -->
+          <radio-box ident="cc-radioBox" label="cc-radioBox-label" [formField]="compForm.radioBox" [options]="enRadioBoxOptions"
+            langPrefix="customComponents.form.radioBox" />
           <div>{{ show(compForm.radioBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">

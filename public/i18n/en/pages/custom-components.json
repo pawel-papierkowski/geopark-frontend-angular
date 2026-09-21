@@ -10,7 +10,8 @@
         "label":  "Mode",
         "0": "Standard",
         "1": "Disabled",
-        "2": "Error"
+        "2": "Error",
+        "3": "Disabled & Error"
       },
       "textBox": {
         "label":  "Normal input field",
@@ -23,7 +24,10 @@
         "label":  "Combobox"
       },
       "radioBox": {
-        "label":  "Radiobox"
+        "label":  "Radiobox",
+        "null": "Null",
+        "a": "First option",
+        "b": "Second option"
       },
       "dateTimePicker": {
         "label": "Date/time picker (UTC)"

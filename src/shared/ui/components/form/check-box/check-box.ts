@@ -4,6 +4,12 @@ import { FormValueControl } from '@angular/forms/signals';
 /**
  * Custom form component that allows choice between true, false and null (optional). Equivalent of `<input type="checkbox">`.
  *
+ * Features:
+ * - Accept true, false or null (not set) value.
+ * - Can disable or mark as invalid.
+ * - Mouse click and keyboard (enter or space) cycles between possible values.
+ * - Supports WAI-ARIA.
+ *
  * Template binding:
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
@@ -11,7 +17,7 @@ import { FormValueControl } from '@angular/forms/signals';
  * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
  * - label - For `aria-labelledby`.
  * - canNull - If true, can use `null` value when cycling checkbox. Note `canNull` affects only user ability to set `null` value. Component still can have `null` set programmatically.
- * - disabled - If true, acts as disabled component. Optional, default is false.
+ * - disable - If true, acts as disabled component. Optional, default is false.
  * - invalid - If true, acts as invalid component. Visual only. Optional, default is false.
  *
  * Outputs:
@@ -24,16 +30,16 @@ import { FormValueControl } from '@angular/forms/signals';
   templateUrl: './check-box.html',
 })
 export class CheckBox implements FormValueControl<boolean | null> {
+  /** Value held by component. */
+  value = model<boolean | null>(null);
   /** Identifier for this component. */
   ident = input<string>('');
   /** Label reference. */
   label = input<string>('');
-  /** Value held by component. */
-  value = model<boolean | null>(null);
   /** Can use null value? */
   canNull = input<boolean>(false);
   /** Is component disabled? */
-  disabled = input<boolean>(false);
+  disable = input<boolean>(false);
   /** Is component invalid? */
   invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
@@ -59,7 +65,7 @@ export class CheckBox implements FormValueControl<boolean | null> {
    * Toggle value of checkbox.
    */
   toggle() {
-    if (this.disabled()) return;
+    if (this.disable()) return;
     this.value.update(v => this.resolveValue(v));
   }
 

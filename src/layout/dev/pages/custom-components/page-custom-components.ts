@@ -4,6 +4,7 @@ import { form, FormField, submit } from '@angular/forms/signals';
 import {TranslatePipe} from '@ngx-translate/core';
 
 import { CheckBox } from '@/shared/ui/components/form/check-box/check-box';
+import { RadioBox } from '@/shared/ui/components/form/radio-box/radio-box';
 import { TimeUtils } from '@/core/utils/TimeUtils';
 
 /** Mode of inputs. */
@@ -17,7 +18,9 @@ export enum EnInputMode {
 }
 
 /** List of values for mode radiobox. */
-export const enModeOptions: (number | null)[] = [EnInputMode.Standard, EnInputMode.Disabled, EnInputMode.Error];
+export const enModeOptions: (number)[] = [EnInputMode.Standard, EnInputMode.Disabled, EnInputMode.Error];
+/** List of values for form radiobox. */
+export const enRadioBoxOptions: (string | null)[] = [null, 'a', 'b'];
 
 /** Custom components type. */
 export type CustomComponentsForm = {
@@ -36,7 +39,7 @@ export type CustomComponentsForm = {
  */
 @Component({
   selector: 'page-custom-components',
-  imports: [ TranslatePipe, FormField, CheckBox ],
+  imports: [ TranslatePipe, FormField, CheckBox, RadioBox ],
   styleUrl: './page-custom-components.css',
   templateUrl: './page-custom-components.html',
 })
@@ -54,6 +57,10 @@ export class PageCustomComponents {
   });
   /** Custom components form. */
   compForm = form(this.compModel);
+  /** Mode. */
+  enModeOptions = enModeOptions;
+  /** Options for radio box. */
+  enRadioBoxOptions = enRadioBoxOptions;
 
   /**
    * Show value as text or emoji.

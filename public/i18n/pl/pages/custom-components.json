@@ -10,7 +10,8 @@
         "label":  "Tryb",
         "0": "Standardowy",
         "1": "Zablokowany",
-        "2": "Błąd"
+        "2": "Błąd",
+        "3": "Zablokowany i Błąd"
       },
       "textBox": {
         "label": "Pole do wpisania tekstu",
@@ -23,7 +24,10 @@
         "label":  "Lista rozwijana"
       },
       "radioBox": {
-        "label":  "Lista wyboru"
+        "label":  "Lista wyboru",
+        "null": "Null",
+        "a": "Pierwsza opcja",
+        "b": "Druga opcja"
       },
       "dateTimePicker": {
         "label": "Wybór daty/czasu (UTC)"

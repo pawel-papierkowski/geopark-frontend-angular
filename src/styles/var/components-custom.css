@@ -16,4 +16,24 @@
 
   --checkbox-hover-color: var(--input-hover-color);
   --checkbox-hover-background: #f6f6f6;
+
+  /* RadioBox specific vars. */
+  --radiobox-color: var(--input-color);
+  --radiobox-background: var(--input-background);
+  --radiobox-border: var(--input-border);
+  --radiobox-border-radius: 50%;
+
+  --radiobox-err-color: var(--input-err-color);
+  --radiobox-err-background: var(--input-err-background);
+  --radiobox-err-border: var(--input-err-border);
+
+  --radiobox-disabled-color: var(--input-disabled-color);
+  --radiobox-disabled-background: var(--input-disabled-background);
+
+  --radiobox-hover-color: var(--input-hover-color);
+  --radiobox-hover-background: #f6f6f6;
+
+  --radiobox-inside-background: var(--radiobox-color);
+  --radiobox-inside-border-radius: 50%;
+  --radiobox-inside-err-background: var(--radiobox-err-color);
 }
