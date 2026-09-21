@@ -4,45 +4,45 @@
       <h1>{{ 'customComponents.title' | translate }}</h1>
       <form (submit)="handleSubmit($event)">
         <div class="form-subform-double">
-          <label for="cc-mode">{{ 'customComponents.form.mode.label' | translate }}</label>
-          <check-box ident="cc-mode" /> <!-- Placeholder, ignore for now -->
+          <label id="cc-mode-label" for="cc-mode">{{ 'customComponents.form.mode.label' | translate }}</label>
+          <check-box ident="cc-mode" label="cc-mode-label" /> <!-- Placeholder, ignore for now -->
         </div>
 
         <hr />
 
         <div class="form-subform-triple">
-          <label for="cc-textBox">{{ 'customComponents.form.textBox.label' | translate }}</label>
-          <check-box ident="cc-textBox" /> <!-- Placeholder, ignore for now -->
+          <label id="cc-textBox-label" for="cc-textBox">{{ 'customComponents.form.textBox.label' | translate }}</label>
+          <check-box ident="cc-textBox" label="cc-textBox-label" /> <!-- Placeholder, ignore for now -->
           <div>{{ show(compForm.textBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
-          <label for="cc-checkBox">{{ 'customComponents.form.checkBox.label' | translate }}</label>
-          <check-box ident="cc-checkBox" [formField]="compForm.checkBox" [canNull]="true" />
+          <label id="cc-checkBox-label" for="cc-checkBox">{{ 'customComponents.form.checkBox.label' | translate }}</label>
+          <check-box ident="cc-checkBox" label="cc-checkBox-label" [formField]="compForm.checkBox" [canNull]="true" />
           <div>{{ show(compForm.checkBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
-          <label for="cc-comboBox">{{ 'customComponents.form.comboBox.label' | translate }}</label>
-          <check-box ident="cc-comboBox" /> <!-- Placeholder, ignore for now -->
+          <label id="cc-comboBox-label" for="cc-comboBox">{{ 'customComponents.form.comboBox.label' | translate }}</label>
+          <check-box ident="cc-comboBox" label="cc-comboBox-label" /> <!-- Placeholder, ignore for now -->
           <div>{{ show(compForm.comboBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
-          <label for="cc-radioBox">{{ 'customComponents.form.radioBox.label' | translate }}</label>
-          <check-box ident="cc-radioBox" /> <!-- Placeholder, ignore for now -->
+          <label id="cc-radioBox-label" for="cc-radioBox">{{ 'customComponents.form.radioBox.label' | translate }}</label>
+          <check-box ident="cc-radioBox" label="cc-checkBox-label" /> <!-- Placeholder, ignore for now -->
           <div>{{ show(compForm.radioBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
-          <label for="cc-dateTimePicker">{{ 'customComponents.form.dateTimePicker.label' | translate }}</label>
-          <check-box ident="cc-dateTimePicker" /> <!-- Placeholder, ignore for now -->
+          <label id="cc-dateTimePicker-label" for="cc-dateTimePicker">{{ 'customComponents.form.dateTimePicker.label' | translate }}</label>
+          <check-box ident="cc-dateTimePicker" label="cc-dateTimePicker-label" /> <!-- Placeholder, ignore for now -->
           <div>{{ show(compForm.dateTimePicker().value()) }}</div>
         </div>
         <div class="form-subform-triple">
-          <label for="datePicker">{{ 'customComponents.form.datePicker.label' | translate }}</label>
-          <check-box ident="datePicker" /> <!-- Placeholder, ignore for now -->
+          <label id="cc-datePicker-label" for="datePicker">{{ 'customComponents.form.datePicker.label' | translate }}</label>
+          <check-box ident="datePicker" label="cc-datePicker-label" /> <!-- Placeholder, ignore for now -->
           <div>{{ show(compForm.datePicker().value()) }}</div>
         </div>
         <div class="form-subform-triple">
-          <label for="cc-timePicker">{{ 'customComponents.form.timePicker.label' | translate }}</label>
-          <check-box ident="cc-timePicker" /> <!-- Placeholder, ignore for now -->
+          <label id="cc-timePicker-label" for="cc-timePicker">{{ 'customComponents.form.timePicker.label' | translate }}</label>
+          <check-box ident="cc-timePicker" label="cc-timePicker-label" /> <!-- Placeholder, ignore for now -->
           <div>{{ show(compForm.timePicker().value()) }}</div>
         </div>
         <button type="submit">Submit</button>

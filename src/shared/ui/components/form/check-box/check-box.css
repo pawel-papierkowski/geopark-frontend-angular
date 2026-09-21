@@ -1,5 +1,5 @@
 .checkbox-wrapper {
-  display: flex-start;
+  display: flex;
   align-items: left;
   justify-content: left;
   position: relative;

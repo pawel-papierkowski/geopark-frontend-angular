@@ -2,13 +2,14 @@ import { Component, model, input, output, computed } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 /**
- * Custom form component that allows choice between true, false and null (optional).
+ * Custom form component that allows choice between true, false and null (optional). Equivalent of `<input type="checkbox">`.
  *
- * Property:
- * - formField - use field from form data, like standard `<input [formField]="someForm.someField" />`.
+ * Template binding:
+ * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
  * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
+ * - label - For `aria-labelledby`.
  * - canNull - If true, can use `null` values when changing value of checkbox.
  * - disabled - If true, acts as disabled component. Optional, default is false.
  * - invalid - If true, shows component as having invalid state. Visual only. Optional, default is false.
@@ -25,6 +26,8 @@ import { FormValueControl } from '@angular/forms/signals';
 export class CheckBox implements FormValueControl<boolean | null> {
   /** Identifier for this component. */
   ident = input<string>('');
+  /** Label reference. */
+  label = input<string>('');
   /** Value held by component. */
   value = model<boolean | null>(null);
   /** Can use null value? */
@@ -33,7 +36,7 @@ export class CheckBox implements FormValueControl<boolean | null> {
   disabled = input<boolean>(false);
   /** Is component invalid? */
   invalid = input<boolean>(false);
-  /** Informs that user blured out of component. */
+  /** Informs that user blurred out of component. */
   touch = output<void>();
 
   /** Compute value needed for aria-checked. */

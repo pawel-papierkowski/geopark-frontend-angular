@@ -8,9 +8,9 @@ Finish designing app and determining what we need for required functionality.
 ## Pending
 - Add dev page for custom components. These will be shown in form and with texts representing actual values of these components.
 - Add all needed custom components (all with unit/e2e tests, ARIA, keyboard handling etc):
-  - CheckBox
-  - TextBox
+  - CheckBox (DONE)
   - RadioBox
+  - TextBox
   - ComboBox
 
 - Add temporary floating messages that allow user feedback on their actions. Apparently, they are called *toasts* or *snackbars*.
