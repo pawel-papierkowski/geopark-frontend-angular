@@ -1,0 +1,25 @@
+<div class="textbox-wrapper">
+  <input
+    [id]="ident()"
+    [attr.data-testid]="ident()"
+    [class.invalid]="invalid()"
+
+    [value]="value()"
+    (input)="value.set($any($event.target).value)"
+
+    [type]="type()"
+    [autocomplete]="autocomplete()"
+    [placeholder]="placeholder()"
+    [required]="required()"
+    [disabled]="disabled()"
+    [tabindex]="disabled() ? -1 : 0"
+
+    [attr.aria-labelledby]="label() || null"
+    [attr.aria-required]="required() || null"
+    [attr.aria-invalid]="invalid() || null"
+    [attr.aria-disabled]="disabled() || null"
+
+    (blur)="touch.emit()"
+    (paste)="onPaste($event)"
+  />
+</div>

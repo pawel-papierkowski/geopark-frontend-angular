@@ -14,7 +14,7 @@ input {
 }
 
 input:focus-visible {
-  /* Acceptable as cursor is visible. */
+  /* We hide focus outline for standard input. Acceptable as cursor is visible. */
   outline: none;
   outline-offset: none;
 }
@@ -30,7 +30,7 @@ input:disabled {
   border: var(--input-disabled-border);
 }
 
-input.err {
+input.invalid {
   color: var(--input-err-color);
   background: var(--input-err-background);
   border: var(--input-err-border);

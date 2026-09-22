@@ -17,6 +17,7 @@ import { FormValueControl } from '@angular/forms/signals';
  * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
  * - label - For `aria-labelledby`.
  * - canNull - If true, can use `null` value when cycling checkbox. Note `canNull` affects only user ability to set `null` value. Component still can have `null` set programmatically.
+ * - required - If true, component is required. Optional, default is false.
  * - disabled - If true, acts as disabled component. Optional, default is false.
  * - invalid - If true, acts as invalid component. Visual only. Optional, default is false.
  *
@@ -38,6 +39,8 @@ export class CheckBox implements FormValueControl<boolean | null> {
   label = input<string>('');
   /** Can use null value? */
   canNull = input<boolean>(false);
+  /** Is component required? */
+  readonly required = input<boolean>(false);
   /** Is component disabled? */
   readonly disabled = input<boolean>(false);
   /** Is component invalid? */

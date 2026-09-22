@@ -1,8 +1,18 @@
 /* CSS classes for forms. */
 
-/*** FORMS ***/
+/*** PANELS ***/
 
-.form-semiwide {
+.panel-wide {
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--form-padding);
+
+  background: var(--form-background);
+  border: var(--form-border);
+  border-radius: var(--form-border-radius);
+}
+
+.panel-semiwide {
   min-width: 50%;
   margin: 0 auto;
   padding: var(--form-padding);
@@ -10,6 +20,15 @@
   background: var(--form-background);
   border: var(--form-border);
   border-radius: var(--form-border-radius);
+}
+
+/*** FORMS ***/
+
+.form-alone {
+  min-width: var(--form-alone-min-width);
+  max-width: var(--form-alone-max-width);
+  margin: var(--form-alone-margin);
+  padding: var(--form-alone-padding);
 }
 
 /*** SUBFORMS ***/

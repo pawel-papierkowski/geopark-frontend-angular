@@ -22,6 +22,7 @@ import { NavUtils } from '@/core/utils/NavUtils';
  * - label - For `aria-labelledby`.
  * - options - Array of options. String, number (so also enum) and null allowed.
  * - langPrefix - Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation.
+ * - required - If true, component is required. Optional, default is false.
  * - disabled - If true, acts as disabled component. Optional, default is false.
  * - invalid - If true, acts as invalid component. Visual only. Optional, default is false.
  *
@@ -48,6 +49,8 @@ export class RadioBox implements FormValueControl<number | string | null> {
   options = input<(number | string | null)[]>([]);
   /** Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation. */
   langPrefix = input<string>('');
+  /** Is component required? */
+  readonly required = input<boolean>(false);
   /** Is component disabled? */
   readonly disabled = input<boolean>(false);
   /** Is component invalid? */

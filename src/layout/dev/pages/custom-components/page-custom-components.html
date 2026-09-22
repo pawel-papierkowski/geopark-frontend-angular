@@ -1,8 +1,8 @@
 <main class="app-main">
   <article class="app-article">
-    <div class="form-semiwide">
+    <div class="panel-semiwide">
       <h1>{{ 'customComponents.title' | translate }}</h1>
-      <form (submit)="handleSubmit($event)">
+      <form class="form-alone" (submit)="handleSubmit($event)">
         <div class="form-subform-double">
           <label id="cc-mode-label" for="cc-mode">{{ 'customComponents.form.mode.label' | translate }}</label>
           <radio-box ident="cc-mode" label="cc-mode-label" [formField]="compForm.mode" [options]="enModeOptions"
@@ -13,7 +13,7 @@
 
         <div class="form-subform-triple">
           <label id="cc-textBox-label" for="cc-textBox">{{ 'customComponents.form.textBox.label' | translate }}</label>
-          <check-box ident="cc-textBox" label="cc-textBox-label" /> <!-- Placeholder, ignore for now -->
+          <text-box ident="cc-textBox" label="cc-textBox-label" [formField]="compForm.textBox" />
           <div data-testid="cc-textBox-value">{{ show(compForm.textBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">

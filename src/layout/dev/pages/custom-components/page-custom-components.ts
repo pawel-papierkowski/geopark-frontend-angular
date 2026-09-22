@@ -3,6 +3,7 @@ import { disabled, validate, form, FormField, submit, SchemaPath } from '@angula
 
 import {TranslatePipe} from '@ngx-translate/core';
 
+import { TextBox } from '@/shared/ui/components/form/text-box/text-box';
 import { CheckBox } from '@/shared/ui/components/form/check-box/check-box';
 import { RadioBox } from '@/shared/ui/components/form/radio-box/radio-box';
 import { TimeUtils } from '@/core/utils/TimeUtils';
@@ -41,7 +42,7 @@ export type CustomComponentsForm = {
  */
 @Component({
   selector: 'page-custom-components',
-  imports: [ TranslatePipe, FormField, CheckBox, RadioBox ],
+  imports: [ TranslatePipe, FormField, TextBox, CheckBox, RadioBox ],
   styleUrl: './page-custom-components.css',
   templateUrl: './page-custom-components.html',
 })
