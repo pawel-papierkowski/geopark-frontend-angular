@@ -33,7 +33,7 @@
   background-color: var(--radiobox-hover-background);
 }
 
-.radiobox.err .radiobox-circle {
+.radiobox.invalid .radiobox-circle {
   color: var(--radiobox-err-color);
   background: var(--radiobox-err-background);
   border: var(--radiobox-err-border);
@@ -58,7 +58,7 @@
   border-radius: var(--radiobox-inside-border-radius);
 }
 
-.radiobox-wrapper.err .radiobox-inside.mark {
+.radiobox-wrapper.invalid .radiobox-inside.mark {
   background: var(--radiobox-inside-err-background);
 }
 

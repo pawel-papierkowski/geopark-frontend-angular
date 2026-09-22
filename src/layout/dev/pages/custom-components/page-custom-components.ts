@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { form, FormField, submit } from '@angular/forms/signals';
+import { disabled, validate, form, FormField, submit, SchemaPath } from '@angular/forms/signals';
 
 import {TranslatePipe} from '@ngx-translate/core';
 
@@ -15,10 +15,12 @@ export enum EnInputMode {
   Disabled,
   /** Show inputs in error state. */
   Error,
+  /** Show inputs in both disabled and error state. */
+  DisabledError,
 }
 
 /** List of values for mode radiobox. */
-export const enModeOptions: (number)[] = [EnInputMode.Standard, EnInputMode.Disabled, EnInputMode.Error];
+export const enModeOptions: (number)[] = [EnInputMode.Standard, EnInputMode.Disabled, EnInputMode.Error, EnInputMode.DisabledError];
 /** List of values for form radiobox. */
 export const enRadioBoxOptions: (string | null)[] = [null, 'a', 'b'];
 
@@ -55,12 +57,29 @@ export class PageCustomComponents {
     datePicker: null,
     timePicker: null,
   });
+
   /** Custom components form. */
-  compForm = form(this.compModel);
+  compForm = form(this.compModel, (schema) => {
+    this.modeDisabled(schema.textBox, schema.mode);
+    this.modeDisabled(schema.checkBox, schema.mode);
+    this.modeDisabled(schema.radioBox, schema.mode);
+    this.modeDisabled(schema.dateTimePicker, schema.mode);
+    this.modeDisabled(schema.datePicker, schema.mode);
+    this.modeDisabled(schema.timePicker, schema.mode);
+    this.modeInvalid(schema.textBox, schema.mode);
+    this.modeInvalid(schema.checkBox, schema.mode);
+    this.modeInvalid(schema.radioBox, schema.mode);
+    this.modeInvalid(schema.dateTimePicker, schema.mode);
+    this.modeInvalid(schema.datePicker, schema.mode);
+    this.modeInvalid(schema.timePicker, schema.mode);
+  });
+
   /** Mode. */
   enModeOptions = enModeOptions;
   /** Options for radio box. */
   enRadioBoxOptions = enRadioBoxOptions;
+
+  //
 
   /**
    * Show value as text or emoji.
@@ -80,8 +99,34 @@ export class PageCustomComponents {
   async handleSubmit(event: Event) {
     event.preventDefault();
     await submit(this.compForm, async (formData) => {
-      // in future we will show actual feedback for user visible in browser
-      console.log('Derp: ' + formData.checkBox().value());
+      // in future we will show actual feedback from entire form for user visible in browser
+      console.log('Derp: ' + formData.radioBox().value());
+    });
+  }
+
+  //
+
+  /**
+   * Determine if given field should be disabled.
+   * @param field Schema for current field.
+   * @param mode Schema for mode.
+   */
+  modeDisabled(field: SchemaPath<unknown>, mode: SchemaPath<EnInputMode | null>) {
+    disabled(field, {
+      when: ({valueOf}) => valueOf(mode) === EnInputMode.Disabled || valueOf(mode) === EnInputMode.DisabledError
+    });
+  }
+
+  /**
+   * Determine if given field should be invalid.
+   * @param field Schema for current field.
+   * @param mode Schema for mode.
+   */
+  modeInvalid(field: SchemaPath<unknown>, mode: SchemaPath<EnInputMode | null>) {
+    validate(field, ({valueOf}) => {
+      if (valueOf(mode) === EnInputMode.Error || valueOf(mode) === EnInputMode.DisabledError)
+        return {kind: 'alwaysInvalid', message: 'Deliberately invalid.'};
+      return null;
     });
   }
 }

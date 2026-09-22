@@ -22,7 +22,7 @@ import { NavUtils } from '@/core/utils/NavUtils';
  * - label - For `aria-labelledby`.
  * - options - Array of options. String, number (so also enum) and null allowed.
  * - langPrefix - Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation.
- * - disable - If true, acts as disabled component. Optional, default is false.
+ * - disabled - If true, acts as disabled component. Optional, default is false.
  * - invalid - If true, acts as invalid component. Visual only. Optional, default is false.
  *
  * Outputs:
@@ -48,7 +48,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
   /** Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation. */
   langPrefix = input<string>('');
   /** Is component disabled? */
-  disable = input<boolean>(false);
+  disabled = input<boolean>(false);
   /** Is component invalid? */
   invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
@@ -77,7 +77,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
    * @param index Index of the option for focus management.
    */
   selectOption(option: number | string | null, index: number) {
-    if (this.disable()) return;
+    if (this.disabled()) return;
     this.value.update(() => option);
 
     if (index !== undefined) {
@@ -94,7 +94,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
    * @param e Keyboard event.
    */
   handleKeydown(e: KeyboardEvent): void {
-    if (this.disable()) return;
+    if (this.disabled()) return;
 
     const currentIndex = this.options().findIndex((o) => o === this.value());
     let nextIndex = currentIndex;

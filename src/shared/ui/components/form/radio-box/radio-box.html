@@ -5,12 +5,12 @@
   <div
     [attr.data-testid]="ident()"
     class="radiobox"
-    [class.disabled]="disable()"
+    [class.disabled]="disabled()"
     [class.invalid]="invalid()"
     role="radiogroup"
     [attr.aria-labelledby]="label() || null"
-    [attr.aria-disabled]="disable()"
-    [tabindex]="disable() ? -1 : 0"
+    [attr.aria-disabled]="disabled()"
+    tabindex="-1"
     (blur)="touch.emit()">
     @for (option of options(); track $index) {
     <div
@@ -19,9 +19,9 @@
       class="radiobox-option"
       role="radio"
       [attr.aria-checked]="option === value()"
-      [tabindex]="option === value() && !disable() ? 0 : -1"
+      [tabindex]="option === value() && !disabled() ? 0 : -1"
       (click)="selectOption(option, $index)"
-      (keydown)="handleKeydown($event); $event.preventDefault()">
+      (keydown)="handleKeydown($event);">
       <div class="radiobox-circle">
         <div class="radiobox-inside" [class.mark]="option === value()"></div>
       </div>

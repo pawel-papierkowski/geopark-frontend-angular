@@ -1,7 +1,7 @@
 /** Navigation-related utility functions. */
 export class NavUtils {
   static readonly focusable =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
 
   /**
    * Starting from the current element, focus on the next focusable element on the page. Does nothing in case of failure.
