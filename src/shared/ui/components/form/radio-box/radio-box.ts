@@ -1,4 +1,4 @@
-import { Component, inject, model, input, output } from '@angular/core';
+import { Component, inject, model, input, output, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 import {TranslateService } from '@ngx-translate/core';
 
@@ -35,6 +35,7 @@ import { NavUtils } from '@/core/utils/NavUtils';
   templateUrl: './radio-box.html',
 })
 export class RadioBox implements FormValueControl<number | string | null> {
+  private readonly hostEl: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly translateService = inject(TranslateService);
 
   /** Value held by component. */
@@ -48,9 +49,9 @@ export class RadioBox implements FormValueControl<number | string | null> {
   /** Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation. */
   langPrefix = input<string>('');
   /** Is component disabled? */
-  disabled = input<boolean>(false);
+  readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  invalid = input<boolean>(false);
+  readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
   touch = output<void>();
 
@@ -80,10 +81,8 @@ export class RadioBox implements FormValueControl<number | string | null> {
     if (this.disabled()) return;
     this.value.update(() => option);
 
-    if (index !== undefined) {
-      const optionEl = document.getElementById(this.optionId(index));
-      if (optionEl) optionEl.focus();
-    }
+    const optionEl = this.hostEl.nativeElement.querySelector<HTMLElement>(`#${this.optionId(index)}`);
+    optionEl?.focus();
   }
 
   //
@@ -135,19 +134,13 @@ export class RadioBox implements FormValueControl<number | string | null> {
   findActiveElement = (): HTMLElement | null => {
     const selectedIndex = this.options().findIndex((o) => o === this.value());
     const targetIndex = selectedIndex >= 0 ? selectedIndex : 0;
-    return document.getElementById(this.optionId(targetIndex));
+    return this.hostEl.nativeElement.querySelector<HTMLElement>(`#${this.optionId(targetIndex)}`);
   };
 
   /** Move focus to the next focusable element on the page. */
   focusNext() {
     const el = this.findActiveElement();
     NavUtils.FocusNext(el);
-  }
-
-  /** Focus on chosen option inside. */
-  onGroupFocus = () => {
-    // Immediately change focus to actually selected option (or first option if nothing is selected).
-    const el = this.findActiveElement();
-    el?.focus();
+    this.touch.emit();
   }
 }

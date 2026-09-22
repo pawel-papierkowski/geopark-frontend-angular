@@ -4,24 +4,36 @@ import userEvent from '@testing-library/user-event';
 import { CheckBox } from './check-box';
 
 describe('CheckBox', () => {
+  interface CheckBoxTestOptions {
+    /** Initial value for the checkbox. */
+    value?: boolean | null;
+    /** Whether null values are allowed. */
+    canNull?: boolean;
+    /** Whether the checkbox is disabled. */
+    disabled?: boolean;
+    /** Whether the checkbox is in invalid state. */
+    invalid?: boolean;
+    /** Identifier for the checkbox. */
+    ident?: string;
+    /** Label reference for aria-labelledby. */
+    label?: string;
+  }
+
   /**
    * Create the component with given inputs.
-   * @param value Initial value for the checkbox.
-   * @param canNull Whether null values are allowed.
-   * @param disabled Whether the checkbox is disabled.
-   * @param invalid Whether the checkbox is in invalid state.
-   * @param ident Identifier for the checkbox.
-   * @param label Label reference for aria-labelledby.
+   * @param opts Configuration options for the component.
    * @returns Fixture of the created component.
    */
-  async function arrangeCheckBox(
-    value: boolean | null = null,
-    canNull = false,
-    disabled = false,
-    invalid = false,
-    ident = 'test-checkbox',
-    label = '',
-  ) {
+  async function arrangeCheckBox(opts: CheckBoxTestOptions = {}) {
+    const {
+      value = null,
+      canNull = false,
+      disabled = false,
+      invalid = false,
+      ident = 'test-checkbox',
+      label = '',
+    } = opts;
+
     await TestBed.configureTestingModule({
       imports: [CheckBox],
     }).compileComponents();
@@ -53,7 +65,7 @@ describe('CheckBox', () => {
 
     it('should render checked symbol when value is true', async () => {
       // Arrange: Create component with true value.
-      const fixture = await arrangeCheckBox(true);
+      const fixture = await arrangeCheckBox({ value: true });
 
       // Assert: Shows checkmark symbol for true.
       expect(fixture.componentInstance.value(), 'value should be true').toBe(true);
@@ -62,7 +74,7 @@ describe('CheckBox', () => {
 
     it('should render unchecked symbol when value is false', async () => {
       // Arrange: Create component with false value.
-      const fixture = await arrangeCheckBox(false);
+      const fixture = await arrangeCheckBox({ value: false });
 
       // Assert: Shows non-breaking space for false.
       expect(fixture.componentInstance.value(), 'value should be false').toBe(false);
@@ -71,7 +83,7 @@ describe('CheckBox', () => {
 
     it('should render mixed symbol when value is null with canNull', async () => {
       // Arrange: Create component with null value and canNull enabled.
-      const fixture = await arrangeCheckBox(null, true);
+      const fixture = await arrangeCheckBox({ canNull: true });
 
       // Assert: Shows indeterminate symbol.
       expect(fixture.componentInstance.value(), 'value should be null').toBeNull();
@@ -80,7 +92,7 @@ describe('CheckBox', () => {
 
     it('should cycle null → true → false → null when canNull is true', async () => {
       // Arrange: Create component with null value and canNull enabled.
-      const fixture = await arrangeCheckBox(null, true);
+      const fixture = await arrangeCheckBox({ canNull: true });
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
 
       // Assert: Starting value should be null.
@@ -108,7 +120,7 @@ describe('CheckBox', () => {
 
     it('should cycle null → true → false → true when canNull is false', async () => {
       // Arrange: Create component with null value and canNull disabled.
-      const fixture = await arrangeCheckBox(null, false);
+      const fixture = await arrangeCheckBox();
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
 
       // Assert: Starting value should be null.
@@ -132,8 +144,8 @@ describe('CheckBox', () => {
     });
 
     it('should update display when value changes programmatically', async () => {
-      // Arrange: Create component with null value.
-      const fixture = await arrangeCheckBox(null, true);
+      // Arrange: Create component with null value and canNull enabled.
+      const fixture = await arrangeCheckBox({ canNull: true });
 
       // Act: Change value programmatically.
       fixture.componentRef.setInput('value', true);
@@ -161,7 +173,7 @@ describe('CheckBox', () => {
     it('should act as disabled when disabled is true', async () => {
       // Arrange: Create component with disabled state and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeCheckBox(false, false, true);
+      const fixture = await arrangeCheckBox({ value: false, disabled: true });
 
       // Assert: Disabled class is present.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -185,7 +197,7 @@ describe('CheckBox', () => {
       // Invalid state is purely visual, checkbox should function normally.
       // Arrange: Create component with invalid state and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeCheckBox(null, false, false, true);
+      const fixture = await arrangeCheckBox({ invalid: true });
 
       // Assert: Invalid class is present.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -207,7 +219,7 @@ describe('CheckBox', () => {
 
     it('should have both disabled and invalid classes when both inputs are true', async () => {
       // Arrange: Create component with both disabled and invalid.
-      const fixture = await arrangeCheckBox(null, false, true, true);
+      const fixture = await arrangeCheckBox({ disabled: true, invalid: true });
 
       // Assert: Both classes present.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -228,7 +240,7 @@ describe('CheckBox', () => {
 
     it('should set aria-checked to true when value is true', async () => {
       // Arrange: Create component with true value.
-      const fixture = await arrangeCheckBox(true);
+      const fixture = await arrangeCheckBox({ value: true });
 
       // Assert: aria-checked is true.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -237,7 +249,7 @@ describe('CheckBox', () => {
 
     it('should set aria-checked to false when value is false', async () => {
       // Arrange: Create component with false value.
-      const fixture = await arrangeCheckBox(false);
+      const fixture = await arrangeCheckBox({ value: false });
 
       // Assert: aria-checked is false.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -245,8 +257,8 @@ describe('CheckBox', () => {
     });
 
     it('should set aria-checked to mixed when value is null', async () => {
-      // Arrange: Create component with null value.
-      const fixture = await arrangeCheckBox(null, true);
+      // Arrange: Create component with null value and canNull enabled.
+      const fixture = await arrangeCheckBox({ canNull: true });
 
       // Assert: aria-checked is mixed.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -255,7 +267,7 @@ describe('CheckBox', () => {
 
     it('should set aria-disabled when disabled', async () => {
       // Arrange: Create component with disabled state.
-      const fixture = await arrangeCheckBox(null, false, true);
+      const fixture = await arrangeCheckBox({ disabled: true });
 
       // Assert: aria-disabled is true.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -265,7 +277,7 @@ describe('CheckBox', () => {
     it('should toggle value on Enter key press', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeCheckBox(false);
+      const fixture = await arrangeCheckBox({ value: false });
 
       // Act: Tab to checkbox and press Enter.
       await user.tab();
@@ -279,7 +291,7 @@ describe('CheckBox', () => {
     it('should toggle value on Space key press', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeCheckBox(false);
+      const fixture = await arrangeCheckBox({ value: false });
 
       // Act: Tab to checkbox and press Space.
       await user.tab();
@@ -293,7 +305,7 @@ describe('CheckBox', () => {
     it('should not toggle on Enter when disabled', async () => {
       // Arrange: Create disabled component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeCheckBox(false, false, true);
+      const fixture = await arrangeCheckBox({ value: false, disabled: true });
 
       // Act: Tab to checkbox and press Enter.
       await user.tab();
@@ -307,7 +319,7 @@ describe('CheckBox', () => {
     it('should not toggle on Space when disabled', async () => {
       // Arrange: Create disabled component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeCheckBox(false, false, true);
+      const fixture = await arrangeCheckBox({ value: false, disabled: true });
 
       // Act: Tab to checkbox and press Space.
       await user.tab();
@@ -329,7 +341,7 @@ describe('CheckBox', () => {
 
     it('should have tabindex -1 when disabled', async () => {
       // Arrange: Create disabled component.
-      const fixture = await arrangeCheckBox(null, false, true);
+      const fixture = await arrangeCheckBox({ disabled: true });
 
       // Assert: Tabindex is -1.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');
@@ -338,7 +350,7 @@ describe('CheckBox', () => {
 
     it('should have hidden button with id for label association', async () => {
       // Arrange: Create component with custom id.
-      const fixture = await arrangeCheckBox(null, false, false, false, 'my-checkbox');
+      const fixture = await arrangeCheckBox({ ident: 'my-checkbox' });
 
       // Assert: Hidden button with matching id exists.
       const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
@@ -350,7 +362,7 @@ describe('CheckBox', () => {
 
     it('should set aria-labelledby when label is provided', async () => {
       // Arrange: Create component with label input.
-      const fixture = await arrangeCheckBox(null, false, false, false, 'test-checkbox', 'my-label');
+      const fixture = await arrangeCheckBox({ label: 'my-label' });
 
       // Assert: aria-labelledby matches the label input.
       const checkbox = fixture.nativeElement.querySelector('.checkbox');

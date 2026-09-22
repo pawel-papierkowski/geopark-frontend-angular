@@ -5,26 +5,39 @@ import { TranslateService } from '@ngx-translate/core';
 import { RadioBox } from './radio-box';
 
 describe('RadioBox', () => {
+  interface RadioBoxTestOptions {
+    /** Initial value. */
+    value?: number | string | null;
+    /** Array of options. */
+    options?: (number | string | null)[];
+    /** Prefix for translating option labels. */
+    langPrefix?: string;
+    /** Whether the component is disabled. */
+    disabled?: boolean;
+    /** Whether the component is in invalid state. */
+    invalid?: boolean;
+    /** Identifier for the component. */
+    ident?: string;
+    /** Label reference for aria-labelledby. */
+    label?: string;
+  }
+
   /**
    * Create the component with given inputs.
-   * @param value Initial value.
-   * @param options Array of options.
-   * @param langPrefix Prefix for translating option labels.
-   * @param disabled Whether the component is disabled.
-   * @param invalid Whether the component is in invalid state.
-   * @param ident Identifier for the component.
-   * @param label Label reference for aria-labelledby.
+   * @param opts Configuration options for the component.
    * @returns Fixture of the created component.
    */
-  async function arrangeRadioBox(
-    value: number | string | null = null,
-    options: (number | string | null)[] = ['a', 'b', 'c'],
-    langPrefix = '',
-    disabled = false,
-    invalid = false,
-    ident = 'test-radio',
-    label = '',
-  ) {
+  async function arrangeRadioBox(opts: RadioBoxTestOptions = {}) {
+    const {
+      value = null,
+      options = ['a', 'b', 'c'],
+      langPrefix = '',
+      disabled = false,
+      invalid = false,
+      ident = 'test-radio',
+      label = '',
+    } = opts;
+
     await TestBed.configureTestingModule({
       imports: [RadioBox],
     }).compileComponents();
@@ -55,7 +68,7 @@ describe('RadioBox', () => {
 
     it('should render all options', async () => {
       // Arrange: Create component with three options.
-      const fixture = await arrangeRadioBox(null, ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ options: ['a', 'b', 'c'] });
 
       // Assert: Three option elements rendered.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -64,7 +77,7 @@ describe('RadioBox', () => {
 
     it('should render option labels as text', async () => {
       // Arrange: Create component with string options.
-      const fixture = await arrangeRadioBox(null, ['alpha', 'beta']);
+      const fixture = await arrangeRadioBox({ options: ['alpha', 'beta'] });
 
       // Assert: Option labels are visible.
       const labels = fixture.nativeElement.querySelectorAll('.radiobox-label');
@@ -74,7 +87,7 @@ describe('RadioBox', () => {
 
     it('should select option via click', async () => {
       // Arrange: Create component with options and no initial value.
-      const fixture = await arrangeRadioBox(null, ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ options: ['a', 'b', 'c'] });
 
       // Act: Click second option.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -87,7 +100,7 @@ describe('RadioBox', () => {
 
     it('should mark selected option with mark class', async () => {
       // Arrange: Create component with second option selected.
-      const fixture = await arrangeRadioBox('b', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
       // Assert: Second option has mark class, first and third do not.
       const insides = fixture.nativeElement.querySelectorAll('.radiobox-inside');
@@ -98,7 +111,7 @@ describe('RadioBox', () => {
 
     it('should change selection on click', async () => {
       // Arrange: Create component with first option selected.
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
       expect(fixture.componentInstance.value(), 'initial value should be a').toBe('a');
 
       // Act: Click third option.
@@ -114,7 +127,7 @@ describe('RadioBox', () => {
 
     it('should prevent selection when disabled', async () => {
       // Arrange: Create disabled component.
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c'], '', true);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
 
       // Act: Click second option.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -127,7 +140,7 @@ describe('RadioBox', () => {
 
     it('should have disabled class when disabled', async () => {
       // Arrange: Create disabled component.
-      const fixture = await arrangeRadioBox(null, ['a', 'b', 'c'], '', true);
+      const fixture = await arrangeRadioBox({ disabled: true });
 
       // Assert: Disabled class present.
       const radio = fixture.nativeElement.querySelector('.radiobox');
@@ -136,7 +149,7 @@ describe('RadioBox', () => {
 
     it('should have invalid class when invalid', async () => {
       // Arrange: Create invalid component.
-      const fixture = await arrangeRadioBox(null, ['a', 'b', 'c'], '', false, true);
+      const fixture = await arrangeRadioBox({ invalid: true });
 
       // Assert: Invalid class present.
       const radio = fixture.nativeElement.querySelector('.radiobox');
@@ -145,7 +158,7 @@ describe('RadioBox', () => {
 
     it('should still allow selection when invalid', async () => {
       // Arrange: Create invalid component.
-      const fixture = await arrangeRadioBox(null, ['a', 'b', 'c'], '', false, true);
+      const fixture = await arrangeRadioBox({ invalid: true });
 
       // Act: Click second option.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -172,7 +185,7 @@ describe('RadioBox', () => {
 
     it('should update display when value changes programmatically', async () => {
       // Arrange: Create component with null value.
-      const fixture = await arrangeRadioBox(null, ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox();
 
       // Act: Set value programmatically.
       fixture.componentRef.setInput('value', 'b');
@@ -186,7 +199,7 @@ describe('RadioBox', () => {
 
     it('should show translated option text with langPrefix', async () => {
       // Arrange: Create component with langPrefix and set translations.
-      const fixture = await arrangeRadioBox(null, ['opt1', 'opt2'], 'test.options');
+      const fixture = await arrangeRadioBox({ options: ['opt1', 'opt2'], langPrefix: 'test.options' });
       const translateService = TestBed.inject(TranslateService);
       translateService.setTranslation('en', {
         test: { options: { opt1: 'Option One', opt2: 'Option Two' } },
@@ -200,9 +213,25 @@ describe('RadioBox', () => {
       expect(labels[1].textContent, 'second option should show translated text').toContain('Option Two');
     });
 
+    it('should show translated option text with langPrefix for numeric options', async () => {
+      // Arrange: Create component with numeric options and langPrefix.
+      const fixture = await arrangeRadioBox({ options: [1, 2], langPrefix: 'test.options' });
+      const translateService = TestBed.inject(TranslateService);
+      translateService.setTranslation('en', {
+        test: { options: { 1: 'First', 2: 'Second' } },
+      });
+      translateService.use('en');
+      fixture.detectChanges();
+
+      // Assert: Numeric options are translated using key langPrefix.N.
+      const labels = fixture.nativeElement.querySelectorAll('.radiobox-label');
+      expect(labels[0].textContent, 'first numeric option should show translated text').toContain('First');
+      expect(labels[1].textContent, 'second numeric option should show translated text').toContain('Second');
+    });
+
     it('should show raw option text without langPrefix', async () => {
       // Arrange: Create component without langPrefix.
-      const fixture = await arrangeRadioBox(null, ['opt1', 'opt2'], '');
+      const fixture = await arrangeRadioBox({ options: ['opt1', 'opt2'] });
 
       // Assert: Options show raw text.
       const labels = fixture.nativeElement.querySelectorAll('.radiobox-label');
@@ -212,7 +241,7 @@ describe('RadioBox', () => {
 
     it('should handle null option in the list', async () => {
       // Arrange: Create component with null in options list.
-      const fixture = await arrangeRadioBox(null, [null, 'a', 'b']);
+      const fixture = await arrangeRadioBox({ options: [null, 'a', 'b'] });
 
       // Assert: Three options rendered.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -228,7 +257,7 @@ describe('RadioBox', () => {
 
     it('should handle numeric options', async () => {
       // Arrange: Create component with numeric options.
-      const fixture = await arrangeRadioBox(null, [1, 2, 3]);
+      const fixture = await arrangeRadioBox({ options: [1, 2, 3] });
 
       // Act: Click second option.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -252,7 +281,7 @@ describe('RadioBox', () => {
 
     it('should have role radio on each option', async () => {
       // Arrange: Create component with options.
-      const fixture = await arrangeRadioBox(null, ['a', 'b']);
+      const fixture = await arrangeRadioBox({ options: ['a', 'b'] });
 
       // Assert: Each option has role="radio".
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -262,7 +291,7 @@ describe('RadioBox', () => {
 
     it('should set aria-checked to true on selected option', async () => {
       // Arrange: Create component with second option selected.
-      const fixture = await arrangeRadioBox('b', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
       // Assert: Second option has aria-checked="true".
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -271,7 +300,7 @@ describe('RadioBox', () => {
 
     it('should set aria-checked to false on unselected options', async () => {
       // Arrange: Create component with second option selected.
-      const fixture = await arrangeRadioBox('b', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
       // Assert: Unselected options have aria-checked="false".
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -281,7 +310,7 @@ describe('RadioBox', () => {
 
     it('should set aria-disabled when disabled', async () => {
       // Arrange: Create disabled component.
-      const fixture = await arrangeRadioBox(null, ['a', 'b'], '', true);
+      const fixture = await arrangeRadioBox({ options: ['a', 'b'], disabled: true });
 
       // Assert: aria-disabled is true.
       const radio = fixture.nativeElement.querySelector('.radiobox');
@@ -290,7 +319,7 @@ describe('RadioBox', () => {
 
     it('should set aria-labelledby when label is provided', async () => {
       // Arrange: Create component with label input.
-      const fixture = await arrangeRadioBox(null, ['a'], '', false, false, 'test-radio', 'my-label');
+      const fixture = await arrangeRadioBox({ options: ['a'], label: 'my-label' });
 
       // Assert: aria-labelledby matches the label input.
       const radio = fixture.nativeElement.querySelector('.radiobox');
@@ -308,7 +337,7 @@ describe('RadioBox', () => {
 
     it('should have hidden button with id for label association', async () => {
       // Arrange: Create component with custom id.
-      const fixture = await arrangeRadioBox(null, ['a'], '', false, false, 'my-radio');
+      const fixture = await arrangeRadioBox({ options: ['a'], ident: 'my-radio' });
 
       // Assert: Hidden button with matching id exists.
       const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
@@ -318,9 +347,20 @@ describe('RadioBox', () => {
       expect(hiddenButton.getAttribute('aria-hidden'), 'hidden button should be hidden from assistive technology').toBe('true');
     });
 
+    it('should have correct option IDs following ident_opt_N pattern', async () => {
+      // Arrange: Create component with custom ident and three options.
+      const fixture = await arrangeRadioBox({ options: ['x', 'y', 'z'], ident: 'my-radio' });
+
+      // Assert: Each option has the expected ID.
+      const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+      expect(options[0].getAttribute('id'), 'first option ID should follow ident_opt_0 pattern').toBe('my-radio_opt_0');
+      expect(options[1].getAttribute('id'), 'second option ID should follow ident_opt_1 pattern').toBe('my-radio_opt_1');
+      expect(options[2].getAttribute('id'), 'third option ID should follow ident_opt_2 pattern').toBe('my-radio_opt_2');
+    });
+
     it('should have tabindex 0 on selected option', async () => {
       // Arrange: Create component with second option selected.
-      const fixture = await arrangeRadioBox('b', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
       // Assert: Selected option has tabindex 0.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -329,7 +369,7 @@ describe('RadioBox', () => {
 
     it('should have tabindex -1 on unselected options', async () => {
       // Arrange: Create component with second option selected.
-      const fixture = await arrangeRadioBox('b', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
       // Assert: Unselected options have tabindex -1.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -340,7 +380,7 @@ describe('RadioBox', () => {
     it('should select next option on ArrowDown', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
 
       // Act: Focus first option and press ArrowDown.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -355,7 +395,7 @@ describe('RadioBox', () => {
     it('should select next option on ArrowRight', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
 
       // Act: Focus first option and press ArrowRight.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -370,7 +410,7 @@ describe('RadioBox', () => {
     it('should select previous option on ArrowUp', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('b', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
       // Act: Focus second option and press ArrowUp.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -385,7 +425,7 @@ describe('RadioBox', () => {
     it('should select previous option on ArrowLeft', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('b', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
       // Act: Focus second option and press ArrowLeft.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -400,7 +440,7 @@ describe('RadioBox', () => {
     it('should wrap around to first option on ArrowDown from last', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('c', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'c', options: ['a', 'b', 'c'] });
 
       // Act: Focus last option and press ArrowDown.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -415,7 +455,7 @@ describe('RadioBox', () => {
     it('should wrap around to last option on ArrowUp from first', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
 
       // Act: Focus first option and press ArrowUp.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -430,7 +470,7 @@ describe('RadioBox', () => {
     it('should not respond to arrows when disabled', async () => {
       // Arrange: Create disabled component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c'], '', true);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
 
       // Act: Focus first option and press ArrowDown.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -445,7 +485,7 @@ describe('RadioBox', () => {
     it('should not respond to Enter when disabled', async () => {
       // Arrange: Create disabled component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c'], '', true);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
 
       // Act: Focus first option and press Enter.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -460,7 +500,7 @@ describe('RadioBox', () => {
     it('should not respond to Space when disabled', async () => {
       // Arrange: Create disabled component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c'], '', true);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
 
       // Act: Focus first option and press Space.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
@@ -472,10 +512,102 @@ describe('RadioBox', () => {
       expect(fixture.componentInstance.value(), 'disabled component should not respond to Space').toBe('a');
     });
 
+    it('should move focus to next focusable element on Enter', async () => {
+      // Arrange: Create component with selected option and a focusable element after it.
+      const user = userEvent.setup();
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
+      const nextButton = document.createElement('button');
+      nextButton.textContent = 'Next';
+      document.body.appendChild(nextButton);
+      fixture.detectChanges();
+
+      // Act: Focus first option and press Enter.
+      const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+      options[0].focus();
+      await user.keyboard('{Enter}');
+      await fixture.whenStable();
+
+      // Assert: Focus moved to the next button, touch event emitted.
+      expect(document.activeElement, 'focus should move to next focusable element').toBe(nextButton);
+
+      // Cleanup.
+      document.body.removeChild(nextButton);
+    });
+
+    it('should emit touch event on Enter', async () => {
+      // Arrange: Create component with selected option, next focusable element, and touch spy.
+      const user = userEvent.setup();
+      const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      const nextButton = document.createElement('button');
+      nextButton.textContent = 'Next';
+      document.body.appendChild(nextButton);
+      fixture.detectChanges();
+
+      // Act: Focus second option and press Enter.
+      const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+      options[1].focus();
+      await user.keyboard('{Enter}');
+      await fixture.whenStable();
+
+      // Assert: Touch event was emitted.
+      expect(touchSpy, 'touch event should be emitted on Enter').toHaveBeenCalledTimes(1);
+
+      // Cleanup.
+      document.body.removeChild(nextButton);
+    });
+
+    it('should move focus to next focusable element on Space', async () => {
+      // Arrange: Create component with selected option and a focusable element after it.
+      const user = userEvent.setup();
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
+      const nextButton = document.createElement('button');
+      nextButton.textContent = 'Next';
+      document.body.appendChild(nextButton);
+      fixture.detectChanges();
+
+      // Act: Focus first option and press Space.
+      const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+      options[0].focus();
+      await user.keyboard(' ');
+      await fixture.whenStable();
+
+      // Assert: Focus moved to the next button.
+      expect(document.activeElement, 'focus should move to next focusable element on Space').toBe(nextButton);
+
+      // Cleanup.
+      document.body.removeChild(nextButton);
+    });
+
+    it('should emit touch event on Space', async () => {
+      // Arrange: Create component with selected option, next focusable element, and touch spy.
+      const user = userEvent.setup();
+      const fixture = await arrangeRadioBox({ value: 'c', options: ['a', 'b', 'c'] });
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      const nextButton = document.createElement('button');
+      nextButton.textContent = 'Next';
+      document.body.appendChild(nextButton);
+      fixture.detectChanges();
+
+      // Act: Focus third option and press Space.
+      const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+      options[2].focus();
+      await user.keyboard(' ');
+      await fixture.whenStable();
+
+      // Assert: Touch event was emitted.
+      expect(touchSpy, 'touch event should be emitted on Space').toHaveBeenCalledTimes(1);
+
+      // Cleanup.
+      document.body.removeChild(nextButton);
+    });
+
     it('should set tabindex 0 on selected option after arrow navigation', async () => {
       // Arrange: Create component and user event setup.
       const user = userEvent.setup();
-      const fixture = await arrangeRadioBox('a', ['a', 'b', 'c']);
+      const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
 
       // Act: Focus first option and press ArrowDown.
       const options = fixture.nativeElement.querySelectorAll('.radiobox-option');

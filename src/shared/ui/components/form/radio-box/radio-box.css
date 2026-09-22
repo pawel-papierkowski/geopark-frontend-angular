@@ -58,7 +58,7 @@
   border-radius: var(--radiobox-inside-border-radius);
 }
 
-.radiobox-wrapper.invalid .radiobox-inside.mark {
+.radiobox.invalid .radiobox-inside.mark {
   background: var(--radiobox-inside-err-background);
 }
 
@@ -73,7 +73,7 @@
   cursor: pointer;
 }
 
-.radiobox-wrapper.err .radiobox-label {
+.radiobox.invalid .radiobox-label {
   color: var(--radiobox-err-color);
 }
 
