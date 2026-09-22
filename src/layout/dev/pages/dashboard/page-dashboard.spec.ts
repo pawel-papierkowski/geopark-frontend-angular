@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 
 import { PageDashboard } from './page-dashboard';
 
+/**
+ * Unit tests of dev dashboard page.
+ */
 describe('PageDashboard', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

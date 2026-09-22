@@ -4,6 +4,9 @@ import { TranslateService } from '@ngx-translate/core';
 
 import { RadioBox } from './radio-box';
 
+/**
+ * Unit tests of radio-box component.
+ */
 describe('RadioBox', () => {
   interface RadioBoxTestOptions {
     /** Initial value. */

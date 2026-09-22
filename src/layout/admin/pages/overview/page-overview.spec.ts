@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 
 import { PageOverview } from './page-overview';
 
+/**
+ * Unit tests of admin overview page.
+ */
 describe('PageOverview', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

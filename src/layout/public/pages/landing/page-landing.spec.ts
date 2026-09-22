@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 
 import { PageLanding } from './page-landing';
 
+/**
+ * Unit tests of public landing page.
+ */
 describe('PageLanding', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

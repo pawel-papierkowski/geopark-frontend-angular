@@ -10,6 +10,9 @@ interface GeneratedMetadata {
   translationManifest: Record<string, readonly string[]>;
 }
 
+/**
+ * Unit tests of translation manifest generation.
+ */
 describe('translation manifest generation', () => {
   let root: string;
   let outputFile: string;

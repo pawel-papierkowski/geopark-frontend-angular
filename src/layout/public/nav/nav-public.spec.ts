@@ -3,6 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 
 import { NavPublic } from './nav-public';
 
+/**
+ * Unit tests of public section navigation.
+ */
 describe('NavPublic', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

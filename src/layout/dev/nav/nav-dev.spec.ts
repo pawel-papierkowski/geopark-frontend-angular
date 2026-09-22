@@ -3,6 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 
 import { NavDev } from './nav-dev';
 
+/**
+ * Unit tests of dev section navigation.
+ */
 describe('NavDev', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

@@ -3,6 +3,9 @@ import { TestBed } from '@angular/core/testing';
 
 import { DocumentService } from './document-service';
 
+/**
+ * Unit tests of DocumentService utility.
+ */
 describe('DocumentLang', () => {
   it('should update the injected document language in both directions', () => {
     // Arrange: Prepare document.

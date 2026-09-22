@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 
 import { PageCustomComponents } from './page-custom-components';
 
+/**
+ * Unit tests of dev page demonstrating custom components.
+ */
 describe('PageCustomComponents', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

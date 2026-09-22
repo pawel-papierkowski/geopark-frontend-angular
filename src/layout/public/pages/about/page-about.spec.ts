@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 
 import { PageAbout } from './page-about';
 
+/**
+ * Unit tests of public about page.
+ */
 describe('PageAbout', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

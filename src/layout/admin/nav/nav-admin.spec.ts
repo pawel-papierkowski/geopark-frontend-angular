@@ -3,6 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 
 import { NavAdmin } from './nav-admin';
 
+/**
+ * Unit tests of admin section navigation.
+ */
 describe('NavAdmin', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

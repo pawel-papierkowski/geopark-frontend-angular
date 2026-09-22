@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 
 import { CheckBox } from './check-box';
 
+/**
+ * Unit tests of check-box component.
+ */
 describe('CheckBox', () => {
   interface CheckBoxTestOptions {
     /** Initial value for the checkbox. */
