@@ -14,38 +14,38 @@
         <div class="form-subform-triple">
           <label id="cc-textBox-label" for="cc-textBox">{{ 'customComponents.form.textBox.label' | translate }}</label>
           <check-box ident="cc-textBox" label="cc-textBox-label" /> <!-- Placeholder, ignore for now -->
-          <div>{{ show(compForm.textBox().value()) }}</div>
+          <div data-testid="cc-textBox-value">{{ show(compForm.textBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-checkBox-label" for="cc-checkBox">{{ 'customComponents.form.checkBox.label' | translate }}</label>
           <check-box ident="cc-checkBox" label="cc-checkBox-label" [formField]="compForm.checkBox" [canNull]="true" />
-          <div>{{ show(compForm.checkBox().value()) }}</div>
+          <div data-testid="cc-checkBox-value">{{ show(compForm.checkBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-comboBox-label" for="cc-comboBox">{{ 'customComponents.form.comboBox.label' | translate }}</label>
           <check-box ident="cc-comboBox" label="cc-comboBox-label" /> <!-- Placeholder, ignore for now -->
-          <div>{{ show(compForm.comboBox().value()) }}</div>
+          <div data-testid="cc-comboBox-value">{{ show(compForm.comboBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-radioBox-label" for="cc-radioBox">{{ 'customComponents.form.radioBox.label' | translate }}</label>
           <radio-box ident="cc-radioBox" label="cc-radioBox-label" [formField]="compForm.radioBox" [options]="enRadioBoxOptions"
             langPrefix="customComponents.form.radioBox" />
-          <div>{{ show(compForm.radioBox().value()) }}</div>
+          <div data-testid="cc-radioBox-value">{{ show(compForm.radioBox().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-dateTimePicker-label" for="cc-dateTimePicker">{{ 'customComponents.form.dateTimePicker.label' | translate }}</label>
           <check-box ident="cc-dateTimePicker" label="cc-dateTimePicker-label" /> <!-- Placeholder, ignore for now -->
-          <div>{{ show(compForm.dateTimePicker().value()) }}</div>
+          <div data-testid="cc-dateTimePicker-value">{{ show(compForm.dateTimePicker().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-datePicker-label" for="datePicker">{{ 'customComponents.form.datePicker.label' | translate }}</label>
           <check-box ident="datePicker" label="cc-datePicker-label" /> <!-- Placeholder, ignore for now -->
-          <div>{{ show(compForm.datePicker().value()) }}</div>
+          <div data-testid="cc-datePicker-value">{{ show(compForm.datePicker().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-timePicker-label" for="cc-timePicker">{{ 'customComponents.form.timePicker.label' | translate }}</label>
           <check-box ident="cc-timePicker" label="cc-timePicker-label" /> <!-- Placeholder, ignore for now -->
-          <div>{{ show(compForm.timePicker().value()) }}</div>
+          <div data-testid="cc-timePicker-value">{{ show(compForm.timePicker().value()) }}</div>
         </div>
         <button type="submit">Submit</button>
       </form>

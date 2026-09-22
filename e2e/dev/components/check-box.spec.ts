@@ -10,17 +10,22 @@ function getCheckBox(page: Page): Locator {
 }
 
 /**
- * Locate the value display div next to the checkBox.
- * The checkBox row is a `.form-subform-triple` containing a <label>, <check-box>, and a display <div>.
+ * Locate a specific option inside the mode radioBox by index.
+ * @param page Browser page.
+ * @param index Option index (0-based).
+ * @returns Locator for the option element.
+ */
+function getModeOption(page: Page, index: number): Locator {
+  return page.getByTestId(`cc-mode_${index}`);
+}
+
+/**
+ * Locate the value display div next to the checkBox using data-testid.
  * @param page Browser page.
  * @returns Locator for the value display div.
  */
 function getValueDisplay(page: Page): Locator {
-  return page
-    .locator('.form-subform-triple')
-    .filter({ hasText: 'CheckBox' })
-    .locator(':scope > div')
-    .last();
+  return page.getByTestId('cc-checkBox-value');
 }
 
 /**
@@ -125,6 +130,44 @@ test.describe('CheckBox', () => {
       // Assert: Checkbox toggled from null to true.
       await expect(checkBox).toHaveAttribute('aria-checked', 'true');
       await expect(getValueDisplay(page)).toContainText('✅');
+    });
+  });
+
+  test.describe('states', () => {
+    test('should render disabled visual state when mode is set to Disabled', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Disabled" mode (index 1) on the mode radioBox.
+      await getModeOption(page, 1).click();
+
+      // Assert: checkBox has disabled class and aria-disabled.
+      await expect(getCheckBox(page)).toHaveClass(/disabled/);
+      await expect(getCheckBox(page)).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    test('should render invalid visual state when mode is set to Error', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Error" mode (index 2) on the mode radioBox.
+      await getModeOption(page, 2).click();
+
+      // Assert: checkBox has invalid class.
+      await expect(getCheckBox(page)).toHaveClass(/invalid/);
+    });
+
+    test('should render disabled state when mode is Disabled & Error', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Disabled & Error" mode (index 3) on the mode radioBox.
+      await getModeOption(page, 3).click();
+
+      // Assert: checkBox has disabled class. Invalid class is not present because
+      // Angular Signal Forms skips validation on disabled fields.
+      await expect(getCheckBox(page)).toHaveClass(/disabled/);
+      await expect(getCheckBox(page)).toHaveAttribute('aria-disabled', 'true');
     });
   });
 });

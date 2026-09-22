@@ -20,17 +20,22 @@ function getOption(page: Page, index: number): Locator {
 }
 
 /**
- * Locate the value display div next to the radioBox.
- * The radioBox row is a `.form-subform-triple` containing a <label>, <radio-box>, and a display <div>.
+ * Locate a specific option inside the mode radioBox by index.
+ * @param page Browser page.
+ * @param index Option index (0-based).
+ * @returns Locator for the option element.
+ */
+function getModeOption(page: Page, index: number): Locator {
+  return page.getByTestId(`cc-mode_${index}`);
+}
+
+/**
+ * Locate the value display div next to the radioBox using data-testid.
  * @param page Browser page.
  * @returns Locator for the value display div.
  */
 function getValueDisplay(page: Page): Locator {
-  return page
-    .locator('.form-subform-triple')
-    .filter({ hasText: 'Radiobox' })
-    .locator(':scope > div')
-    .last();
+  return page.getByTestId('cc-radioBox-value');
 }
 
 /**
@@ -119,6 +124,16 @@ test.describe('RadioBox', () => {
       // Assert: aria-labelledby points to the label element's id.
       await expect(getRadioBox(page)).toHaveAttribute('aria-labelledby', 'cc-radioBox-label');
     });
+
+    test('should render translated option labels', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Assert: Option labels show translated text from langPrefix.
+      await expect(getOption(page, 0).locator('.radiobox-label')).toContainText('Null');
+      await expect(getOption(page, 1).locator('.radiobox-label')).toContainText('First option');
+      await expect(getOption(page, 2).locator('.radiobox-label')).toContainText('Second option');
+    });
   });
 
   test.describe('keyboard', () => {
@@ -188,6 +203,76 @@ test.describe('RadioBox', () => {
       // Assert: Wrapped to option 2.
       await expect(getOption(page, 2)).toHaveAttribute('aria-checked', 'true');
       await expect(getValueDisplay(page)).toContainText('b');
+    });
+
+    test('should move focus to next element on Enter', async ({ page }) => {
+      // Arrange: Navigate to the custom components page and focus an option.
+      await goToComponentsPage(page);
+      await getOption(page, 1).click();
+      await getOption(page, 1).focus();
+
+      // Act: Press Enter.
+      await getOption(page, 1).press('Enter');
+
+      // Assert: Focus moved out of the radioBox options.
+      const activeElement = page.locator(':focus');
+      await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_0');
+      await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_1');
+      await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_2');
+    });
+
+    test('should move focus to next element on Space', async ({ page }) => {
+      // Arrange: Navigate to the custom components page and focus an option.
+      await goToComponentsPage(page);
+      await getOption(page, 1).click();
+      await getOption(page, 1).focus();
+
+      // Act: Press Space.
+      await getOption(page, 1).press('Space');
+
+      // Assert: Focus moved out of the radioBox options.
+      const activeElement = page.locator(':focus');
+      await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_0');
+      await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_1');
+      await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_2');
+    });
+  });
+
+  test.describe('states', () => {
+    test('should render disabled visual state when mode is set to Disabled', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Disabled" mode (index 1) on the mode radioBox.
+      await getModeOption(page, 1).click();
+
+      // Assert: radioBox has disabled class and aria-disabled.
+      await expect(getRadioBox(page)).toHaveClass(/disabled/);
+      await expect(getRadioBox(page)).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    test('should render invalid visual state when mode is set to Error', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Error" mode (index 2) on the mode radioBox.
+      await getModeOption(page, 2).click();
+
+      // Assert: radioBox has invalid class.
+      await expect(getRadioBox(page)).toHaveClass(/invalid/);
+    });
+
+    test('should render disabled state when mode is Disabled & Error', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Disabled & Error" mode (index 3) on the mode radioBox.
+      await getModeOption(page, 3).click();
+
+      // Assert: radioBox has disabled class. Invalid class is not present because
+      // Angular Signal Forms skips validation on disabled fields.
+      await expect(getRadioBox(page)).toHaveClass(/disabled/);
+      await expect(getRadioBox(page)).toHaveAttribute('aria-disabled', 'true');
     });
   });
 });
