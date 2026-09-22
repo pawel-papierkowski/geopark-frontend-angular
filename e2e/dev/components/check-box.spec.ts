@@ -1,17 +1,17 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
 /**
- * Locate the checkbox role element on the custom components page.
+ * Locate the checkBox role element on the custom components page.
  * @param page Browser page.
- * @returns Locator for the checkbox.
+ * @returns Locator for the checkBox.
  */
-function getCheckbox(page: Page): Locator {
+function getCheckBox(page: Page): Locator {
   return page.getByTestId('cc-checkBox');
 }
 
 /**
- * Locate the value display div next to the checkbox.
- * The checkbox row is a `.form-subform-triple` containing a <label>, <check-box>, and a display <div>.
+ * Locate the value display div next to the checkBox.
+ * The checkBox row is a `.form-subform-triple` containing a <label>, <check-box>, and a display <div>.
  * @param page Browser page.
  * @returns Locator for the value display div.
  */
@@ -32,95 +32,98 @@ async function goToComponentsPage(page: Page): Promise<void> {
   await expect(page.locator('main')).toBeVisible();
 }
 
+/**
+ * E2e tests of check-box component in form present in page-custom-components.
+ */
 test.describe('CheckBox', () => {
   test.describe('clicking', () => {
     test('should cycle through null → true → false → null on click', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const checkbox = getCheckbox(page);
+      const checkBox = getCheckBox(page);
       const display = getValueDisplay(page);
 
       // Assert: Initial state is null (mixed).
-      await expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
       await expect(display).toContainText('❓');
 
       // Act & Assert: null → true.
-      await checkbox.click();
-      await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+      await checkBox.click();
+      await expect(checkBox).toHaveAttribute('aria-checked', 'true');
       await expect(display).toContainText('✅');
 
       // Act & Assert: true → false.
-      await checkbox.click();
-      await expect(checkbox).toHaveAttribute('aria-checked', 'false');
+      await checkBox.click();
+      await expect(checkBox).toHaveAttribute('aria-checked', 'false');
       await expect(display).toContainText('❌');
 
       // Act & Assert: false → null.
-      await checkbox.click();
-      await expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+      await checkBox.click();
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
       await expect(display).toContainText('❓');
     });
   });
 
   test.describe('label', () => {
-    test('should toggle checkbox when label is clicked', async ({ page }) => {
+    test('should toggle checkBox when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const checkbox = getCheckbox(page);
+      const checkBox = getCheckBox(page);
       const label = page.locator('label', { hasText: 'CheckBox' });
 
       // Assert: Initial state is null.
-      await expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
 
       // Act: Click the label.
       await label.click();
 
       // Assert: Checkbox toggled from null to true.
-      await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'true');
       await expect(getValueDisplay(page)).toContainText('✅');
     });
 
     test('should have accessible name from label', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const checkbox = getCheckbox(page);
+      const checkBox = getCheckBox(page);
 
       // Assert: aria-labelledby points to the label element's id.
-      await expect(checkbox).toHaveAttribute('aria-labelledby', 'cc-checkBox-label');
+      await expect(checkBox).toHaveAttribute('aria-labelledby', 'cc-checkBox-label');
     });
   });
 
   test.describe('keyboard', () => {
-    test('should toggle checkbox on Enter key', async ({ page }) => {
-      // Arrange: Navigate to the custom components page and focus the checkbox.
+    test('should toggle checkBox on Enter key', async ({ page }) => {
+      // Arrange: Navigate to the custom components page and focus the checkBox.
       await goToComponentsPage(page);
-      const checkbox = getCheckbox(page);
-      await checkbox.focus();
+      const checkBox = getCheckBox(page);
+      await checkBox.focus();
 
       // Assert: Initial state is null.
-      await expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
 
       // Act: Press Enter.
-      await checkbox.press('Enter');
+      await checkBox.press('Enter');
 
       // Assert: Checkbox toggled from null to true.
-      await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'true');
       await expect(getValueDisplay(page)).toContainText('✅');
     });
 
-    test('should toggle checkbox on Space key', async ({ page }) => {
-      // Arrange: Navigate to the custom components page and focus the checkbox.
+    test('should toggle checkBox on Space key', async ({ page }) => {
+      // Arrange: Navigate to the custom components page and focus the checkBox.
       await goToComponentsPage(page);
-      const checkbox = getCheckbox(page);
-      await checkbox.focus();
+      const checkBox = getCheckBox(page);
+      await checkBox.focus();
 
       // Assert: Initial state is null.
-      await expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
 
       // Act: Press Space.
-      await checkbox.press('Space');
+      await checkBox.press('Space');
 
       // Assert: Checkbox toggled from null to true.
-      await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'true');
       await expect(getValueDisplay(page)).toContainText('✅');
     });
   });

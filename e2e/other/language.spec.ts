@@ -27,7 +27,9 @@ async function expectLanguage(page: Page, language: 'en' | 'pl'): Promise<void> 
   });
 }
 
-/** Browser-level language switching, delayed loading, and persistence coverage. */
+/**
+ * Browser-level language switching, delayed loading, and persistence coverage.
+ */
 test.describe('Language', () => {
   test.use({ locale: 'en-GB' });
 
