@@ -71,240 +71,257 @@ describe('TextBox', () => {
   }
 
   describe('general', () => {
-    it('should render with default values', async () => {
-      // Arrange: Create component with defaults.
-      const fixture = await arrangeTextBox();
+    describe('rendering&display', () => {
+      it('should render with default values', async () => {
+        // Arrange: Create component with defaults.
+        const fixture = await arrangeTextBox();
 
-      // Assert: Component renders, value is null.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input, 'should render input element').not.toBeNull();
-      expect(fixture.componentInstance.value(), 'default value should be null').toBeNull();
+        // Assert: Component renders, value is null.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input, 'should render input element').not.toBeNull();
+        expect(fixture.componentInstance.value(), 'default value should be null').toBeNull();
+      });
+
+      it('should set input element value to empty string by default', async () => {
+        // Arrange: Create component with defaults.
+        const fixture = await arrangeTextBox();
+
+        // Assert: DOM input value is empty string when model is null.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.value, 'input element value should be empty string').toBe('');
+      });
+
+      it('should render input with correct default type', async () => {
+        // Arrange: Create component with defaults.
+        const fixture = await arrangeTextBox();
+
+        // Assert: Type is 'text' by default.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('type'), 'should have type text by default').toBe('text');
+      });
+
+      it('should render input with password type', async () => {
+        // Arrange: Create component with password type.
+        const fixture = await arrangeTextBox({ type: 'password' });
+
+        // Assert: Type attribute is password.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('type'), 'should have type password').toBe('password');
+      });
+
+      it('should render input with email type', async () => {
+        // Arrange: Create component with email type.
+        const fixture = await arrangeTextBox({ type: 'email' });
+
+        // Assert: Type attribute is email.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('type'), 'should have type email').toBe('email');
+      });
+
+      it('should render input with search type', async () => {
+        // Arrange: Create component with search type.
+        const fixture = await arrangeTextBox({ type: 'search' });
+
+        // Assert: Type attribute is search.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('type'), 'should have type search').toBe('search');
+      });
+
+      it('should render input with tel type', async () => {
+        // Arrange: Create component with tel type.
+        const fixture = await arrangeTextBox({ type: 'tel' });
+
+        // Assert: Type attribute is tel.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('type'), 'should have type tel').toBe('tel');
+      });
+
+      it('should render input with url type', async () => {
+        // Arrange: Create component with url type.
+        const fixture = await arrangeTextBox({ type: 'url' });
+
+        // Assert: Type attribute is url.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('type'), 'should have type url').toBe('url');
+      });
+
+      it('should set value programmatically via model', async () => {
+        // Arrange: Create component with null value.
+        const fixture = await arrangeTextBox();
+
+        // Act: Set value programmatically.
+        fixture.componentRef.setInput('value', 'test value');
+        fixture.detectChanges();
+
+        // Assert: Value updated and DOM reflects it.
+        expect(fixture.componentInstance.value(), 'value should update to test value').toBe('test value');
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.value, 'input element should reflect programmatic value').toBe('test value');
+      });
+
+      it('should show placeholder text', async () => {
+        // Arrange: Create component with placeholder.
+        const fixture = await arrangeTextBox({ placeholder: 'Enter text...' });
+
+        // Assert: Placeholder attribute is set.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('placeholder'), 'should have placeholder text').toBe('Enter text...');
+      });
+
+      it('should set autocomplete attribute', async () => {
+        // Arrange: Create component with custom autocomplete.
+        const fixture = await arrangeTextBox({ autocomplete: 'email' });
+
+        // Assert: Autocomplete attribute is set.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('autocomplete'), 'should have autocomplete attribute').toBe('email');
+      });
+
+      it('should have both disabled and invalid attributes when both inputs are true', async () => {
+        // Arrange: Create component with both disabled and invalid.
+        const fixture = await arrangeTextBox({ disabled: true, invalid: true });
+
+        // Assert: Input has both disabled and invalid class.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.disabled, 'should be disabled').toBe(true);
+        expect(input.classList.contains('invalid'), 'should have invalid class').toBe(true);
+      });
+
+      it('should set input id from ident', async () => {
+        // Arrange: Create component with custom ident.
+        const fixture = await arrangeTextBox({ ident: 'my-input' });
+
+        // Assert: Input has matching id.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('id'), 'input id should match ident').toBe('my-input');
+      });
+
+      it('should set required attribute when required is true', async () => {
+        // Arrange: Create component with required input.
+        const fixture = await arrangeTextBox({ required: true });
+
+        // Assert: Input has required attribute.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.required, 'input should be required').toBe(true);
+      });
+
+      it('should have disabled attribute when disabled', async () => {
+        // Arrange: Create disabled component.
+        const fixture = await arrangeTextBox({ disabled: true });
+
+        // Assert: Input is disabled.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.disabled, 'input should be disabled').toBe(true);
+      });
+
+      it('should have invalid class when invalid', async () => {
+        // Arrange: Create invalid component.
+        const fixture = await arrangeTextBox({ invalid: true });
+
+        // Assert: Invalid class present.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.classList.contains('invalid'), 'should have invalid class').toBe(true);
+      });
     });
 
-    it('should set input element value to empty string by default', async () => {
-      // Arrange: Create component with defaults.
-      const fixture = await arrangeTextBox();
+    describe('selection', () => {
+      it('should update value when user types into input', async () => {
+        // Arrange: Create component and user event setup.
+        const user = userEvent.setup();
+        const fixture = await arrangeTextBox();
 
-      // Assert: DOM input value is empty string when model is null.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.value, 'input element value should be empty string').toBe('');
-    });
+        // Act: Type into the input.
+        const input = fixture.nativeElement.querySelector('input');
+        await user.type(input, 'hello');
+        fixture.detectChanges();
 
-    it('should render input with correct default type', async () => {
-      // Arrange: Create component with defaults.
-      const fixture = await arrangeTextBox();
+        // Assert: Value updated to typed text.
+        expect(fixture.componentInstance.value(), 'value should be hello after typing').toBe('hello');
+      });
 
-      // Assert: Type is 'text' by default.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('type'), 'should have type text by default').toBe('text');
-    });
+      it('should emit touch event on blur', async () => {
+        // Arrange: Create component and spy on touch output.
+        const fixture = await arrangeTextBox();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
 
-    it('should render input with password type', async () => {
-      // Arrange: Create component with password type.
-      const fixture = await arrangeTextBox({ type: 'password' });
+        // Act: Simulate blur on the input.
+        const input = fixture.nativeElement.querySelector('input');
+        input.dispatchEvent(new Event('blur'));
 
-      // Assert: Type attribute is password.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('type'), 'should have type password').toBe('password');
-    });
+        // Assert: Touch event was emitted.
+        expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
+      });
 
-    it('should render input with email type', async () => {
-      // Arrange: Create component with email type.
-      const fixture = await arrangeTextBox({ type: 'email' });
+      it('should prevent paste when allowPaste is false', async () => {
+        // Arrange: Create component with paste disabled.
+        const fixture = await arrangeTextBox({ allowPaste: false });
+        const input = fixture.nativeElement.querySelector('input');
+        const preventDefaultSpy = vi.fn();
+        const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+        pasteEvent.preventDefault = preventDefaultSpy;
 
-      // Assert: Type attribute is email.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('type'), 'should have type email').toBe('email');
-    });
+        // Act: Dispatch paste event on the input.
+        input.dispatchEvent(pasteEvent);
 
-    it('should render input with search type', async () => {
-      // Arrange: Create component with search type.
-      const fixture = await arrangeTextBox({ type: 'search' });
+        // Assert: Paste event was prevented.
+        expect(preventDefaultSpy, 'paste event should call preventDefault').toHaveBeenCalledTimes(1);
+      });
 
-      // Assert: Type attribute is search.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('type'), 'should have type search').toBe('search');
-    });
+      it('should allow paste when allowPaste is true', async () => {
+        // Arrange: Create component with paste enabled (default).
+        const fixture = await arrangeTextBox({ allowPaste: true });
+        const input = fixture.nativeElement.querySelector('input');
+        const preventDefaultSpy = vi.fn();
+        const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+        pasteEvent.preventDefault = preventDefaultSpy;
 
-    it('should render input with tel type', async () => {
-      // Arrange: Create component with tel type.
-      const fixture = await arrangeTextBox({ type: 'tel' });
+        // Act: Dispatch paste event on the input.
+        input.dispatchEvent(pasteEvent);
 
-      // Assert: Type attribute is tel.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('type'), 'should have type tel').toBe('tel');
-    });
+        // Assert: Paste event was not prevented.
+        expect(preventDefaultSpy, 'paste event should not call preventDefault').not.toHaveBeenCalled();
+      });
 
-    it('should render input with url type', async () => {
-      // Arrange: Create component with url type.
-      const fixture = await arrangeTextBox({ type: 'url' });
+      it('should not receive focus or accept typing when disabled', async () => {
+        // Arrange: Create disabled component and user event setup.
+        const user = userEvent.setup();
+        const fixture = await arrangeTextBox({ disabled: true });
+        const input = fixture.nativeElement.querySelector('input');
 
-      // Assert: Type attribute is url.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('type'), 'should have type url').toBe('url');
-    });
+        // Act: Tab through the document.
+        await user.tab();
 
-    it('should update value when user types into input', async () => {
-      // Arrange: Create component and user event setup.
-      const user = userEvent.setup();
-      const fixture = await arrangeTextBox();
+        // Assert: Focus should not be on the input.
+        expect(document.activeElement, 'disabled input should not receive focus').not.toBe(input);
 
-      // Act: Type into the input.
-      const input = fixture.nativeElement.querySelector('input');
-      await user.type(input, 'hello');
-      fixture.detectChanges();
+        // Act: Type into the input.
+        await user.type(input, 'test');
 
-      // Assert: Value updated to typed text.
-      expect(fixture.componentInstance.value(), 'value should be hello after typing').toBe('hello');
-    });
+        // Assert: Value remains unchanged.
+        expect(fixture.componentInstance.value(), 'disabled input should not accept typing').toBeNull();
+      });
 
-    it('should set value programmatically via model', async () => {
-      // Arrange: Create component with null value.
-      const fixture = await arrangeTextBox();
+      it('should still receive focus and accept typing when invalid', async () => {
+        // Invalid state is purely visual, input should function normally.
+        // Arrange: Create invalid component and user event setup.
+        const user = userEvent.setup();
+        const fixture = await arrangeTextBox({ invalid: true });
+        const input = fixture.nativeElement.querySelector('input');
 
-      // Act: Set value programmatically.
-      fixture.componentRef.setInput('value', 'test value');
-      fixture.detectChanges();
+        // Act: Tab through the document.
+        await user.tab();
 
-      // Assert: Value updated and DOM reflects it.
-      expect(fixture.componentInstance.value(), 'value should update to test value').toBe('test value');
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.value, 'input element should reflect programmatic value').toBe('test value');
-    });
+        // Assert: Focus should be on the input (invalid is visual only).
+        expect(document.activeElement, 'invalid input should receive focus').toBe(input);
 
-    it('should show placeholder text', async () => {
-      // Arrange: Create component with placeholder.
-      const fixture = await arrangeTextBox({ placeholder: 'Enter text...' });
+        // Act: Type into the input.
+        await user.type(input, 'test');
+        fixture.detectChanges();
 
-      // Assert: Placeholder attribute is set.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('placeholder'), 'should have placeholder text').toBe('Enter text...');
-    });
-
-    it('should set autocomplete attribute', async () => {
-      // Arrange: Create component with custom autocomplete.
-      const fixture = await arrangeTextBox({ autocomplete: 'email' });
-
-      // Assert: Autocomplete attribute is set.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('autocomplete'), 'should have autocomplete attribute').toBe('email');
-    });
-
-    it('should emit touch event on blur', async () => {
-      // Arrange: Create component and spy on touch output.
-      const fixture = await arrangeTextBox();
-      const touchSpy = vi.fn();
-      fixture.componentInstance.touch.subscribe(touchSpy);
-
-      // Act: Simulate blur on the input.
-      const input = fixture.nativeElement.querySelector('input');
-      input.dispatchEvent(new Event('blur'));
-
-      // Assert: Touch event was emitted.
-      expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
-    });
-
-    it('should act as disabled when disabled is true', async () => {
-      // Arrange: Create disabled component and user event setup.
-      const user = userEvent.setup();
-      const fixture = await arrangeTextBox({ disabled: true });
-
-      // Assert: Input has disabled attribute.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.disabled, 'input should be disabled').toBe(true);
-
-      // Act: Tab through the document.
-      await user.tab();
-
-      // Assert: Focus should not be on the input.
-      expect(document.activeElement, 'disabled input should not receive focus').not.toBe(input);
-
-      // Act: Type into the input.
-      await user.type(input, 'test');
-
-      // Assert: Value remains unchanged.
-      expect(fixture.componentInstance.value(), 'disabled input should not accept typing').toBeNull();
-    });
-
-    it('should act as invalid when invalid is true', async () => {
-      // Arrange: Create invalid component and user event setup.
-      const user = userEvent.setup();
-      const fixture = await arrangeTextBox({ invalid: true });
-
-      // Assert: Input has invalid class.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.classList.contains('invalid'), 'should have invalid class').toBe(true);
-
-      // Act: Tab through the document.
-      await user.tab();
-
-      // Assert: Focus should be on the input (invalid is visual only).
-      expect(document.activeElement, 'invalid input should receive focus').toBe(input);
-
-      // Act: Type into the input.
-      await user.type(input, 'test');
-      fixture.detectChanges();
-
-      // Assert: Value updates normally.
-      expect(fixture.componentInstance.value(), 'invalid input should accept typing').toBe('test');
-    });
-
-    it('should have both disabled and invalid attributes when both inputs are true', async () => {
-      // Arrange: Create component with both disabled and invalid.
-      const fixture = await arrangeTextBox({ disabled: true, invalid: true });
-
-      // Assert: Input has both disabled and invalid class.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.disabled, 'should be disabled').toBe(true);
-      expect(input.classList.contains('invalid'), 'should have invalid class').toBe(true);
-    });
-
-    it('should prevent paste when allowPaste is false', async () => {
-      // Arrange: Create component with paste disabled.
-      const fixture = await arrangeTextBox({ allowPaste: false });
-      const input = fixture.nativeElement.querySelector('input');
-      const preventDefaultSpy = vi.fn();
-      const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
-      pasteEvent.preventDefault = preventDefaultSpy;
-
-      // Act: Dispatch paste event on the input.
-      input.dispatchEvent(pasteEvent);
-
-      // Assert: Paste event was prevented.
-      expect(preventDefaultSpy, 'paste event should call preventDefault').toHaveBeenCalledTimes(1);
-    });
-
-    it('should allow paste when allowPaste is true', async () => {
-      // Arrange: Create component with paste enabled (default).
-      const fixture = await arrangeTextBox({ allowPaste: true });
-      const input = fixture.nativeElement.querySelector('input');
-      const preventDefaultSpy = vi.fn();
-      const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
-      pasteEvent.preventDefault = preventDefaultSpy;
-
-      // Act: Dispatch paste event on the input.
-      input.dispatchEvent(pasteEvent);
-
-      // Assert: Paste event was not prevented.
-      expect(preventDefaultSpy, 'paste event should not call preventDefault').not.toHaveBeenCalled();
-    });
-
-    it('should set input id from ident', async () => {
-      // Arrange: Create component with custom ident.
-      const fixture = await arrangeTextBox({ ident: 'my-input' });
-
-      // Assert: Input has matching id.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('id'), 'input id should match ident').toBe('my-input');
-    });
-
-    it('should set required attribute when required is true', async () => {
-      // Arrange: Create component with required input.
-      const fixture = await arrangeTextBox({ required: true });
-
-      // Assert: Input has required attribute.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.required, 'input should be required').toBe(true);
+        // Assert: Value updates normally.
+        expect(fixture.componentInstance.value(), 'invalid input should accept typing').toBe('test');
+      });
     });
   });
 
@@ -313,7 +330,7 @@ describe('TextBox', () => {
       // Arrange: Create component with label input.
       const fixture = await arrangeTextBox({ label: 'my-label' });
 
-      // Assert: aria-labelledby matches the label input.
+      // Assert: aria-labelledby matches label input.
       const input = fixture.nativeElement.querySelector('input');
       expect(input.getAttribute('aria-labelledby'), 'aria-labelledby should match label input').toBe('my-label');
     });
@@ -328,7 +345,7 @@ describe('TextBox', () => {
     });
 
     it('should set aria-required when required is true', async () => {
-      // Arrange: Create component with required input.
+      // Arrange: Create required component.
       const fixture = await arrangeTextBox({ required: true });
 
       // Assert: aria-required is true.
@@ -337,7 +354,7 @@ describe('TextBox', () => {
     });
 
     it('should not set aria-required when required is false', async () => {
-      // Arrange: Create component without required input.
+      // Arrange: Create component without required.
       const fixture = await arrangeTextBox();
 
       // Assert: aria-required is not present.
@@ -346,7 +363,7 @@ describe('TextBox', () => {
     });
 
     it('should set aria-invalid when invalid is true', async () => {
-      // Arrange: Create component with invalid state.
+      // Arrange: Create invalid component.
       const fixture = await arrangeTextBox({ invalid: true });
 
       // Assert: aria-invalid is true.
@@ -355,7 +372,7 @@ describe('TextBox', () => {
     });
 
     it('should not set aria-invalid when invalid is false', async () => {
-      // Arrange: Create component without invalid state.
+      // Arrange: Create component without invalid.
       const fixture = await arrangeTextBox();
 
       // Assert: aria-invalid is not present.
@@ -364,7 +381,7 @@ describe('TextBox', () => {
     });
 
     it('should set aria-disabled when disabled is true', async () => {
-      // Arrange: Create component with disabled state.
+      // Arrange: Create disabled component.
       const fixture = await arrangeTextBox({ disabled: true });
 
       // Assert: aria-disabled is true.
@@ -373,7 +390,7 @@ describe('TextBox', () => {
     });
 
     it('should not set aria-disabled when disabled is false', async () => {
-      // Arrange: Create component without disabled state.
+      // Arrange: Create component without disabled.
       const fixture = await arrangeTextBox();
 
       // Assert: aria-disabled is not present.
