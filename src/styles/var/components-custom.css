@@ -36,4 +36,34 @@
   --radiobox-inside-background: var(--radiobox-color);
   --radiobox-inside-border-radius: 50%;
   --radiobox-inside-err-background: var(--radiobox-err-color);
+
+  /* ComboBox specific vars. */
+  --combobox-color: var(--input-color);
+  --combobox-background: var(--input-background);
+  --combobox-border: var(--input-border);
+  --combobox-border-radius: var(--input-border-radius);
+
+  --combobox-err-color: var(--input-err-color);
+  --combobox-err-background: var(--input-err-background);
+  --combobox-err-border: var(--input-err-border);
+
+  --combobox-disabled-color: var(--input-disabled-color);
+  --combobox-disabled-background: var(--input-disabled-background);
+
+  --combobox-hover-color: var(--input-hover-color);
+  --combobox-hover-background: var(--input-hover-background);
+
+  --combobox-option-border: 1px solid #444444;
+  --combobox-option-background: #f8f8f8;
+  --combobox-option-background-hover: #e8e8e8;
+  --combobox-option-color-hover: #111827;
+
+  --combobox-option-err-background: var(--input-err-background);
+  --combobox-option-err-color-hover: var(--combobox-err-color);
+  --combobox-option-err-background-hover: #ffc8c8;
+
+  --combobox-selected-padding: 0px 4px;
+
+  --combobox-selected-padding-small: 1px 1px;
+  --combobox-font-size-small: 0.8em;
 }

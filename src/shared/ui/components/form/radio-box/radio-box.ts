@@ -6,12 +6,14 @@ import { NavUtils } from '@/core/utils/NavUtils';
 
 /**
  * Custom form component that allows selecting between multiple choices. Equivalent of `<input type="radio">`.
+ * Designed to be used with signal-based forms.
  *
  * Features:
  * - Accept number (so also enums), string or null (not set) value.
  * - Can disable or mark as invalid.
  * - Component is integrated with i18n.
  * - Keyboard navigation supported via arrows (automatically selects an option). Enter/Space moves to next component.
+ * - Supports <label>.
  * - Supports WAI-ARIA.
  *
  * Template binding:
@@ -19,15 +21,17 @@ import { NavUtils } from '@/core/utils/NavUtils';
  *
  * Inputs:
  * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
- * - label - For `aria-labelledby`.
+ * - label - For `aria-labelledby`. Optional.
  * - options - Array of options. String, number (so also enum) and null allowed.
  * - langPrefix - Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation.
- * - required - If true, component is required. Optional, default is false.
- * - disabled - If true, acts as disabled component. Optional, default is false.
- * - invalid - If true, acts as invalid component. Visual only. Optional, default is false.
  *
  * Outputs:
  * - touch - Informs that user blurred out of component.
+ *
+ * Special (set indirectly):
+ * - required - If true, component is required. Default is false.
+ * - disabled - If true, acts as disabled component. Default is false.
+ * - invalid - If true, shows component as having invalid state. Visual only. Default is false.
  */
 @Component({
   selector: 'radio-box',

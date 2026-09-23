@@ -21,7 +21,11 @@
         "label":  "Wybór tak/nie"
       },
       "comboBox": {
-        "label":  "Lista rozwijana"
+        "label":  "Lista rozwijana",
+        "placeholder": "Wybierz opcję",
+        "null": "Null",
+        "OPT1": "Pierwsza opcja",
+        "OPT2": "Druga opcja"
       },
       "radioBox": {
         "label":  "Lista wyboru",

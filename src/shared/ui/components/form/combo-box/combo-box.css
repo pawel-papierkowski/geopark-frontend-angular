@@ -1,0 +1,117 @@
+.combobox {
+  position: relative;
+  display: inline-block;
+
+  margin: 0px;
+  padding: var(--spacing-xxs);
+  min-width: 125px;
+
+  color: var(--combobox-color);
+  background: var(--combobox-background);
+  border: var(--combobox-border);
+  border-radius: var(--combobox-border-radius);
+
+  user-select: none;
+}
+
+.combobox:hover {
+  color: var(--combobox-hover-color);
+  background-color: var(--combobox-hover-background);
+}
+
+.combobox.invalid {
+  color: var(--combobox-err-color);
+  background: var(--combobox-err-background);
+  border: var(--combobox-err-border);
+}
+
+.combobox.disabled {
+  color: var(--combobox-disabled-color);
+  background: var(--combobox-disabled-background);
+}
+
+/**/
+
+.combobox-selected {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: var(--combobox-selected-padding);
+  cursor: pointer;
+}
+
+.combobox.disabled .combobox-selected {
+  cursor: unset;
+}
+
+.combobox-selected-text {
+  flex: 1;
+}
+
+/* Down arrow. */
+.combobox-arrow {
+  width: 0;
+  height: 0;
+  margin-left: var(--spacing-xs);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--combobox-color);
+  transition: transform 0.2s;
+}
+
+.combobox-arrow.open {
+  transform: rotate(180deg);
+}
+
+.combobox.disabled .combobox-arrow {
+  border-top: 6px solid var(--combobox-disabled-color);
+}
+
+.combobox.invalid .combobox-arrow {
+  border-top: 6px solid var(--combobox-err-color);
+}
+
+/**/
+
+.combobox-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+
+  margin: 0px;
+  padding: 3px;
+
+  border: var(--combobox-option-border);
+  border-radius: 5px;
+  background: var(--combobox-option-background);
+
+  min-width: 150px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10010;
+}
+.combobox.invalid .combobox-options {
+  background: var(--combobox-option-err-background);
+}
+
+.combobox-option {
+  padding: 1px;
+  cursor: pointer;
+}
+
+.combobox-option:hover {
+  color: var(--combobox-option-color-hover);
+  background-color: var(--combobox-option-background-hover);
+}
+
+.combobox-option.highlighted {
+  color: var(--combobox-option-color-hover);
+  background-color: var(--combobox-option-background-hover);
+}
+.combobox.invalid .combobox-option:hover,
+.combobox.invalid .combobox-option.highlighted {
+  color: var(--combobox-option-err-color-hover);
+  background-color: var(--combobox-option-err-background-hover);
+}

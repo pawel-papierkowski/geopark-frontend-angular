@@ -6,6 +6,8 @@ import {TranslatePipe} from '@ngx-translate/core';
 import { TextBox } from '@/shared/ui/components/form/text-box/text-box';
 import { CheckBox } from '@/shared/ui/components/form/check-box/check-box';
 import { RadioBox } from '@/shared/ui/components/form/radio-box/radio-box';
+import { ComboBox } from '@/shared/ui/components/form/combo-box/combo-box';
+import { DateTimePicker } from '@/shared/ui/components/form/date-time-picker/date-time-picker';
 import { TimeUtils } from '@/core/utils/TimeUtils';
 
 /** Mode of inputs. */
@@ -20,10 +22,12 @@ export enum EnInputMode {
   DisabledError,
 }
 
-/** List of values for mode radiobox. */
+/** Array of values for mode radiobox. */
 export const enModeOptions: (number)[] = [EnInputMode.Standard, EnInputMode.Disabled, EnInputMode.Error, EnInputMode.DisabledError];
-/** List of values for form radiobox. */
+/** Array of values for form radiobox. */
 export const enRadioBoxOptions: (string | null)[] = [null, 'a', 'b'];
+/** Array of values for form combobox. */
+const enComboBoxOptions: (string|null)[] = [ null, 'OPT1', 'OPT2' ];
 
 /** Custom components type. */
 export type CustomComponentsForm = {
@@ -42,7 +46,7 @@ export type CustomComponentsForm = {
  */
 @Component({
   selector: 'page-custom-components',
-  imports: [ TranslatePipe, FormField, TextBox, CheckBox, RadioBox ],
+  imports: [ TranslatePipe, FormField, TextBox, CheckBox, RadioBox, ComboBox, DateTimePicker ],
   styleUrl: './page-custom-components.css',
   templateUrl: './page-custom-components.html',
 })
@@ -77,8 +81,10 @@ export class PageCustomComponents {
 
   /** Mode. */
   enModeOptions = enModeOptions;
-  /** Options for radio box. */
+  /** Options for radiobox. */
   enRadioBoxOptions = enRadioBoxOptions;
+  /** Options for combobox. */
+  enComboBoxOptions = enComboBoxOptions;
 
   //
 
@@ -100,7 +106,7 @@ export class PageCustomComponents {
   async handleSubmit(event: Event) {
     event.preventDefault();
     await submit(this.compForm, async (formData) => {
-      // in future we will show actual feedback from entire form for user visible in browser
+      // TODO: in future we will show formData values visible in browser as feedback for user
       console.log('Derp: ' + formData.radioBox().value());
     });
   }

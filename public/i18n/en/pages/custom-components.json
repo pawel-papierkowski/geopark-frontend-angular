@@ -21,7 +21,11 @@
         "label":  "Checkbox"
       },
       "comboBox": {
-        "label":  "Combobox"
+        "label":  "Combobox",
+        "placeholder": "Pick option",
+        "null": "Null",
+        "OPT1": "First option",
+        "OPT2": "Second option"
       },
       "radioBox": {
         "label":  "Radiobox",

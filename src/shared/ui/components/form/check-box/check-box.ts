@@ -3,11 +3,13 @@ import { FormValueControl } from '@angular/forms/signals';
 
 /**
  * Custom form component that allows choice between true, false and null (optional). Equivalent of `<input type="checkbox">`.
+ * Designed to be used with signal-based forms.
  *
  * Features:
  * - Accept true, false or null (not set) value.
  * - Can disable or mark as invalid.
  * - Mouse click and keyboard (enter or space) cycles between possible values.
+ * - Supports <label>.
  * - Supports WAI-ARIA.
  *
  * Template binding:
@@ -15,14 +17,16 @@ import { FormValueControl } from '@angular/forms/signals';
  *
  * Inputs:
  * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
- * - label - For `aria-labelledby`.
+ * - label - For `aria-labelledby`. Optional.
  * - canNull - If true, can use `null` value when cycling checkbox. Note `canNull` affects only user ability to set `null` value. Component still can have `null` set programmatically.
- * - required - If true, component is required. Optional, default is false.
- * - disabled - If true, acts as disabled component. Optional, default is false.
- * - invalid - If true, acts as invalid component. Visual only. Optional, default is false.
  *
  * Outputs:
  * - touch - Informs that user blurred out of component.
+ *
+ * Special (set indirectly):
+ * - required - If true, component is required. Default is false.
+ * - disabled - If true, acts as disabled component. Default is false.
+ * - invalid - If true, shows component as having invalid state. Visual only. Default is false.
  */
 @Component({
   selector: 'check-box',
