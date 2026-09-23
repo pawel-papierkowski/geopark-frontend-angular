@@ -131,6 +131,28 @@ test.describe('CheckBox', () => {
       await expect(checkBox).toHaveAttribute('aria-checked', 'true');
       await expect(getValueDisplay(page)).toContainText('✅');
     });
+
+    test('should navigate properly from prev component to check-box to next component on Tab presses', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality via textBox (prev component).
+      await goToComponentsPage(page);
+      await page.getByTestId('cc-textBox').focus();
+
+      // Act: Tab into checkBox.
+      await page.keyboard.press('Tab');
+
+      // Assert: Component checkBox focused with visible focus outline; Tab must not toggle it.
+      const checkBox = getCheckBox(page);
+      await expect(checkBox).toBeFocused();
+      await expect(checkBox).toHaveCSS('outline-style', 'solid');
+      await expect(checkBox).toHaveCSS('outline-color', 'rgb(37, 99, 235)');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
+
+      // Act: Tab out of checkBox.
+      await page.keyboard.press('Tab');
+
+      // Assert: Focus moved to next component (comboBox).
+      await expect(page.getByTestId('cc-comboBox')).toBeFocused();
+    });
   });
 
   test.describe('states', () => {
@@ -141,7 +163,7 @@ test.describe('CheckBox', () => {
       // Act: Select "Disabled" mode (index 1) on the mode radioBox.
       await getModeOption(page, 1).click();
 
-      // Assert: checkBox has disabled class and aria-disabled.
+      // Assert: Component checkBox has disabled class and aria-disabled.
       await expect(getCheckBox(page)).toHaveClass(/disabled/);
       await expect(getCheckBox(page)).toHaveAttribute('aria-disabled', 'true');
     });
@@ -153,7 +175,7 @@ test.describe('CheckBox', () => {
       // Act: Select "Error" mode (index 2) on the mode radioBox.
       await getModeOption(page, 2).click();
 
-      // Assert: checkBox has invalid class.
+      // Assert: Component checkBox has invalid class.
       await expect(getCheckBox(page)).toHaveClass(/invalid/);
     });
 
@@ -164,7 +186,7 @@ test.describe('CheckBox', () => {
       // Act: Select "Disabled & Error" mode (index 3) on the mode radioBox.
       await getModeOption(page, 3).click();
 
-      // Assert: checkBox has disabled class. Invalid class is not present because
+      // Assert: Component checkBox has disabled class. Invalid class is not present because
       // Angular Signal Forms skips validation on disabled fields.
       await expect(getCheckBox(page)).toHaveClass(/disabled/);
       await expect(getCheckBox(page)).toHaveAttribute('aria-disabled', 'true');

@@ -236,6 +236,33 @@ test.describe('RadioBox', () => {
       await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_1');
       await expect(activeElement).not.toHaveAttribute('data-testid', 'cc-radioBox_2');
     });
+
+    test('should navigate properly from prev component to radio-box to next component on Tab presses', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality on comboBox (prev component), whose list opens on focus.
+      await goToComponentsPage(page);
+      const comboBox = page.getByTestId('cc-comboBox');
+      await comboBox.focus();
+      await expect(comboBox).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Tab into radioBox — one press must close the comboBox list AND move focus out.
+      await page.keyboard.press('Tab');
+
+      // Assert: Focus landed on the selected option (the group's single tab stop) with visible
+      // focus outline; selection unchanged; comboBox list closed.
+      const option0 = getOption(page, 0);
+      await expect(option0).toBeFocused();
+      await expect(option0).toHaveCSS('outline-style', 'solid');
+      await expect(option0).toHaveCSS('outline-color', 'rgb(37, 99, 235)');
+      await expect(option0).toHaveAttribute('aria-checked', 'true');
+      await expect(comboBox).toHaveAttribute('aria-expanded', 'false');
+
+      // Act: Tab again — the whole roving-tabindex group must be skipped in one press.
+      await page.keyboard.press('Tab');
+
+      // Assert: Focus moved past the radioBox to the submit button; no option remains focused.
+      await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
+      await expect(option0).not.toBeFocused();
+    });
   });
 
   test.describe('states', () => {

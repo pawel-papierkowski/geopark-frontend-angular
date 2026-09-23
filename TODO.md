@@ -8,8 +8,7 @@ Finish designing app and determining what we need for required functionality.
 
 ## Pending
 - Add all needed custom components (all with unit/e2e tests, ARIA, keyboard handling etc):
-  - TextBox (ONGOING)
-  - ComboBox
+  - DateTimePicker (TODO), includes DatePicker and TimePicker.
 
 - Add temporary floating messages that allow user feedback on their actions. Apparently, they are called *toasts* or *snackbars*.
   We need separate dev page to test various notifications, including toasts.

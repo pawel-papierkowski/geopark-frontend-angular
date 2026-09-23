@@ -169,21 +169,19 @@ test.describe('ComboBox', () => {
     });
 
     test('should navigate properly from prev component to combo-box to next component on Tab presses', async ({ page }) => {
-      // Arrange: Navigate; start keyboard modality via textBox so focus-visible outline applies.
+      // Arrange: Navigate; start keyboard modality via textBox and tab to checkBox.
       await goToComponentsPage(page);
       await page.getByTestId('cc-textBox').focus();
       await page.keyboard.press('Tab');
 
-      // Assert: check-box focused with visible focus outline.
+      // Assert: Component checkBox is focused.
       const checkBox = page.getByTestId('cc-checkBox');
       await expect(checkBox).toBeFocused();
-      await expect(checkBox).toHaveCSS('outline-style', 'solid');
-      await expect(checkBox).toHaveCSS('outline-color', 'rgb(37, 99, 235)');
 
-      // Act: Tab into combo-box.
+      // Act: Tab into comboBox.
       await page.keyboard.press('Tab');
 
-      // Assert: combo-box focused, list opened.
+      // Assert: Component checkBox focused with visible focus outline, list opened.
       const comboBox = getComboBox(page);
       await expect(comboBox).toBeFocused();
       await expect(comboBox).toHaveAttribute('aria-expanded', 'true');
@@ -193,7 +191,7 @@ test.describe('ComboBox', () => {
       // Act: Tab again — one press must close list AND move focus out.
       await page.keyboard.press('Tab');
 
-      // Assert: focus moved to next component; list closed; combo blurred.
+      // Assert: Focus moved to next component; list closed; comboBox blurred.
       await expect(page.getByTestId('cc-radioBox_0')).toBeFocused();
       await expect(comboBox).toHaveAttribute('aria-expanded', 'false');
     });
@@ -227,7 +225,7 @@ test.describe('ComboBox', () => {
       // Act: Select "Disabled" mode (index 1) on the mode radioBox.
       await getModeOption(page, 1).click();
 
-      // Assert: comboBox has disabled class and aria-disabled.
+      // Assert: Component comboBox has disabled class and aria-disabled.
       await expect(getComboBox(page)).toHaveClass(/disabled/);
       await expect(getComboBox(page)).toHaveAttribute('aria-disabled', 'true');
 
@@ -247,7 +245,7 @@ test.describe('ComboBox', () => {
       // Act: Select "Error" mode (index 2) on the mode radioBox.
       await getModeOption(page, 2).click();
 
-      // Assert: comboBox has invalid class and aria-invalid.
+      // Assert: Component comboBox has invalid class and aria-invalid.
       await expect(getComboBox(page)).toHaveClass(/invalid/);
       await expect(getComboBox(page)).toHaveAttribute('aria-invalid', 'true');
     });
@@ -259,7 +257,7 @@ test.describe('ComboBox', () => {
       // Act: Select "Disabled & Error" mode (index 3) on the mode radioBox.
       await getModeOption(page, 3).click();
 
-      // Assert: comboBox has disabled class. Invalid class is not present because
+      // Assert: Component comboBox has disabled class. Invalid class is not present because
       // Angular Signal Forms skips validation on disabled fields.
       await expect(getComboBox(page)).toHaveClass(/disabled/);
       await expect(getComboBox(page)).toHaveAttribute('aria-disabled', 'true');

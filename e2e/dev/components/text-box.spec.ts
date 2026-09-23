@@ -98,6 +98,29 @@ test.describe('TextBox', () => {
     });
   });
 
+  test.describe('keyboard', () => {
+    test('should navigate properly from prev component to text-box to next component on Tab presses', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality on the mode radioBox (prev component).
+      await goToComponentsPage(page);
+      await getModeOption(page, 0).focus();
+
+      // Act: Tab into textBox.
+      await page.keyboard.press('Tab');
+
+      // Assert: Component textBox focused. Outline is intentionally hidden for standard inputs
+      // (caret acts as the focus indicator), so we assert outline-style none instead of solid.
+      const textBox = getTextBox(page);
+      await expect(textBox).toBeFocused();
+      await expect(textBox, 'textBox should not have focus outline').toHaveCSS('outline-style', 'none');
+
+      // Act: Tab out of textBox.
+      await page.keyboard.press('Tab');
+
+      // Assert: Focus moved to next component (checkBox).
+      await expect(page.getByTestId('cc-checkBox')).toBeFocused();
+    });
+  });
+
   test.describe('states', () => {
     test('should render disabled state when mode is set to Disabled', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
