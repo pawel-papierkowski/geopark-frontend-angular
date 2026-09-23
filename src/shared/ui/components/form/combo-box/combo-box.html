@@ -1,3 +1,60 @@
-<div class="combobox">
-  COMBO BOX PLACEHOLDER
+<div
+    [attr.data-testid]="ident()"
+    class="combobox"
+    [class.disabled]="disabled()"
+    [class.invalid]="invalid()"
+    role="combobox"
+    [tabindex]="disabled() ? -1 : 0"
+
+    [aria-expanded]="isOpen()"
+    aria-haspopup="listbox"
+    [aria-controls]="listboxId()"
+    [aria-activedescendant]="highlightedIndex() >= 0 ? optionId(highlightedIndex()) : undefined"
+    [attr.aria-labelledby]="label() || null"
+    [attr.aria-required]="required() || null"
+    [attr.aria-invalid]="invalid() || null"
+    [attr.aria-disabled]="disabled() || null"
+
+    (focus)="handleFocus()"
+    (click)="handleClick()"
+    (mousedown)="handleMousedown()"
+    (keydown)="handleKeydown($event)"
+    (blur)="hidePanel()">
+
+    <!-- Hidden button: labelable target for <label for="...">. -->
+    <!-- We do not need (click) here, as it will bubble up to div's (click) above. -->
+    <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true"></button>
+
+    <div class="combobox-selected">
+      <span class="combobox-selected-text">{{ showOption(value()) }}</span>
+      <span class="combobox-arrow" [class]="arrowClass()"></span>
+    </div>
+
+    <div
+      class="combobox-options"
+      [id]="listboxId()"
+      [style.display]="isOpen() ? '' : 'none'"
+      role="listbox">
+
+      @for (option of options(); track $index) {
+        <div
+          [attr.data-testid]="ident()+'_'+$index"
+          [id]="optionId($index)"
+          class="combobox-option"
+          [class.highlighted]="highlightedIndex() === $index"
+
+          role="option"
+          tabindex="0"
+
+          [aria-selected]="option === value()"
+
+          (click)="$event.stopImmediatePropagation(); selectOption(option)"
+          (mousedown)="$event.preventDefault()"
+          (keydown)="handleKeydown($event)"
+          (mouseenter)="highlightedIndex.set($index)"
+        >
+          {{ showOption(option) }}
+        </div>
+      }
+    </div>
 </div>

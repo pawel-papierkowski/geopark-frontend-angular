@@ -12,28 +12,29 @@
     tabindex="-1"
 
     [attr.aria-labelledby]="label() || null"
+    [attr.aria-required]="required() || null"
     [attr.aria-invalid]="invalid() || null"
     [attr.aria-disabled]="disabled() || null"
 
     (blur)="touch.emit()">
     @for (option of options(); track $index) {
-    <div
-      [attr.data-testid]="ident()+'_'+$index"
-      [id]="optionId($index)"
-      class="radiobox-option"
+      <div
+        [attr.data-testid]="ident()+'_'+$index"
+        [id]="optionId($index)"
+        class="radiobox-option"
 
-      role="radio"
-      [tabindex]="option === value() && !disabled() ? 0 : -1"
+        role="radio"
+        [tabindex]="option === value() && !disabled() ? 0 : -1"
 
-      [attr.aria-checked]="option === value()"
+        [attr.aria-checked]="option === value()"
 
-      (click)="selectOption(option, $index)"
-      (keydown)="handleKeydown($event);">
-      <div class="radiobox-circle">
-        <div class="radiobox-inside" [class.mark]="option === value()"></div>
+        (click)="selectOption(option, $index)"
+        (keydown)="handleKeydown($event)">
+        <div class="radiobox-circle">
+          <div class="radiobox-inside" [class.mark]="option === value()"></div>
+        </div>
+        <div class="radiobox-label">{{ showOption(option) }}</div>
       </div>
-      <div class="radiobox-label">{{ showOption(option) }}</div>
-    </div>
     }
   </div>
 </div>

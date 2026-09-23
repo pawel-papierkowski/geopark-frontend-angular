@@ -67,12 +67,14 @@ export class PageCustomComponents {
   compForm = form(this.compModel, (schema) => {
     this.modeDisabled(schema.textBox, schema.mode);
     this.modeDisabled(schema.checkBox, schema.mode);
+    this.modeDisabled(schema.comboBox, schema.mode);
     this.modeDisabled(schema.radioBox, schema.mode);
     this.modeDisabled(schema.dateTimePicker, schema.mode);
     this.modeDisabled(schema.datePicker, schema.mode);
     this.modeDisabled(schema.timePicker, schema.mode);
     this.modeInvalid(schema.textBox, schema.mode);
     this.modeInvalid(schema.checkBox, schema.mode);
+    this.modeInvalid(schema.comboBox, schema.mode);
     this.modeInvalid(schema.radioBox, schema.mode);
     this.modeInvalid(schema.dateTimePicker, schema.mode);
     this.modeInvalid(schema.datePicker, schema.mode);

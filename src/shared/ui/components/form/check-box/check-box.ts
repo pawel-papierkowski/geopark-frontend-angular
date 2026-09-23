@@ -52,6 +52,8 @@ export class CheckBox implements FormValueControl<boolean | null> {
   /** Informs that user blurred out of component. */
   touch = output<void>();
 
+  // COMPUTED
+
   /** Compute value needed for aria-checked. */
   ariaChecked = computed(() => {
     if (this.value() === null) return 'mixed';
@@ -67,6 +69,8 @@ export class CheckBox implements FormValueControl<boolean | null> {
     if (this.value()) return '✔';
     return '\u00A0'; // Non-breakable space used. Empty string or normal space would move checkbox visually when changing value.
   });
+
+  // FUNCTIONS
 
   /**
    * Toggle value of checkbox.
