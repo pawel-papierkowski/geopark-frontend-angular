@@ -37,6 +37,8 @@
       role="listbox">
 
       @for (option of options(); track $index) {
+        <!-- Options are not tab stops: highlight moves via aria-activedescendant on root,
+             so one Tab from root closes the list and exits straight to the next component. -->
         <div
           [attr.data-testid]="ident()+'_'+$index"
           [id]="optionId($index)"
@@ -44,7 +46,7 @@
           [class.highlighted]="highlightedIndex() === $index"
 
           role="option"
-          tabindex="0"
+          tabindex="-1"
 
           [aria-selected]="option === value()"
 

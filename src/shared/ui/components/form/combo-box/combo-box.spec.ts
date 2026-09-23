@@ -654,6 +654,18 @@ describe('ComboBox', () => {
         expect(root.getAttribute('tabindex'), 'disabled combobox should have tabindex -1').toBe('-1');
       });
 
+      it('should not be able to focus options with Tab (options have tabindex -1)', async () => {
+        // Arrange: Create component with options.
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+
+        // Assert: Options are not tab stops (highlight uses aria-activedescendant on root).
+        const options = fixture.nativeElement.querySelectorAll('.combobox-option');
+        expect(options.length, 'should render three options').toBe(3);
+        for (const option of options) {
+          expect(option.getAttribute('tabindex'), 'option should not be a tab stop').toBe('-1');
+        }
+      });
+
       it('should set data-testid from ident on root and options', async () => {
         // Arrange: Create component with custom ident.
         const fixture = await arrangeComboBox({ ident: 'my-combo' });
@@ -855,6 +867,30 @@ describe('ComboBox', () => {
         // Assert: Value unchanged, highlight unchanged.
         expect(fixture.componentInstance.value(), 'disabled component should not change value via keyboard').toBe('a');
         expect(fixture.componentInstance.highlightedIndex(), 'disabled component should not move highlight').toBe(-1);
+      });
+
+      it('should close list and move focus to next control on Tab when open', async () => {
+        // Arrange: Create component with open list and a focusable control after it (simulates next component).
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        const nextControl = document.createElement('button');
+        nextControl.setAttribute('data-testid', 'next-control');
+        document.body.appendChild(nextControl);
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'list should be open before Tab').toBe(true);
+
+        // Act: Press Tab.
+        await user.tab();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: List closed via blur, focus moved out of combobox.
+        expect(fixture.componentInstance.isOpen(), 'Tab should close the list via blur').toBe(false);
+        expect(document.activeElement, 'Tab should move focus to next control').toBe(nextControl);
+        nextControl.remove();
       });
     });
   });

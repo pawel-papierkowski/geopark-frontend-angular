@@ -13,6 +13,7 @@ import {TranslateService } from '@ngx-translate/core';
  * - Can disable or mark as invalid.
  * - Component is integrated with i18n.
  * - Keyboard navigation supported via arrows. Enter/space selects option and closes list.
+ *   Tab closes open list and moves focus to next component (options are not tab stops).
  * - Supports <label>.
  * - Supports WAI-ARIA.
  *
