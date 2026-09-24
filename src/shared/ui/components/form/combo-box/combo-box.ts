@@ -1,6 +1,5 @@
 import { Component, effect, inject, model, input, output, computed, signal } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
-
 import {TranslateService } from '@ngx-translate/core';
 
 /** Custom combobox implementation. Needed because <select> and <option> have very poor CSS support for dropdown lists
@@ -93,14 +92,21 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
   // GENERAL FUNCTIONS
 
-  /** Get option element ID for aria-activedescendant. */
-  optionId(index: number): string  {
-    return `${this.ident()}_option_${index}`;
+  /**
+   * Get option element ID for aria-activedescendant.
+   * @param index Index of option element.
+   */
+  optionId(index: number): string {
+    return `${this.ident() || 'default'}_option_${index}`;
   }
 
-  /** Open list. */
+  /**
+   * Open list.
+   * @param top If true, set highlight on top, false on bottom, null do not change highlight. Ignored if highlight already set.
+   */
   openList(top: boolean | null = null) {
     this.isOpen.set(true);
+    if (this.options().length === 0) return;
 
     // Set visually selected entry, if any. Works with null selection.
     this.highlightedIndex.set(this.options().findIndex((o) => o === this.value()));
@@ -124,12 +130,14 @@ export class ComboBox implements FormValueControl<number | string | null> {
   }
 
   /**
-   * Show text of option if selected. In case of no selection or value that is not in options,
-   * placeholder text will be shown.
+   * Show value of option if selected. Placeholder text will be shown under these conditions:
+   * - there is no selection (null value)
+   * - and that null is not on list of options
    * @param option Option to show.
+   * @returns Value of option.
    */
   showOption(option: number | string | null): number | string | null {
-    // When to show placeholder text?
+    // When to show placeholder text? Note that if null IS in list of options, placeholder text is never used.
     if (option === null && !this.options().includes(option)) {
       if (this.langPrefix()) return this.translateService.instant(this.placeholder());
       return this.placeholder();
@@ -153,6 +161,12 @@ export class ComboBox implements FormValueControl<number | string | null> {
       this.openList();
       this.focusOpened.set(true);
     }
+  }
+
+  /** Handle blur. */
+  handleBlur() {
+    this.hidePanel();
+    this.touch.emit();
   }
 
   /** Handle click: both from normal mouse click and label click. */
@@ -186,8 +200,12 @@ export class ComboBox implements FormValueControl<number | string | null> {
         if (!this.isOpen()) {
           this.openList(true);
         } else {
+          if (this.options().length === 0) break;
           // Wraparound to top.
-          this.highlightedIndex.update((currVal) => (currVal + 1) % this.options().length);
+          this.highlightedIndex.update((currVal) => {
+            if (currVal === -1) return 0;
+            return (currVal + 1) % this.options().length;
+          });
         }
         break;
       }
@@ -196,8 +214,34 @@ export class ComboBox implements FormValueControl<number | string | null> {
         if (!this.isOpen()) {
           this.openList(false);
         } else {
+          if (this.options().length === 0) break;
           // Wraparound to bottom.
-          this.highlightedIndex.update((currVal) => (currVal - 1 + this.options().length) % this.options().length);
+          this.highlightedIndex.update((currVal) => {
+            if (currVal === -1) return this.options().length - 1;
+            return (currVal - 1 + this.options().length) % this.options().length;
+          });
+        }
+        break;
+      }
+      case 'Home': {
+        e.preventDefault();
+        if (!this.isOpen()) {
+          this.openList(true);
+        } else {
+          if (this.options().length === 0) break;
+          // Select first option.
+          this.highlightedIndex.set(0);
+        }
+        break;
+      }
+      case 'End': {
+        e.preventDefault();
+        if (!this.isOpen()) {
+          this.openList(false);
+        } else {
+          if (this.options().length === 0) break;
+          // Select last option.
+          this.highlightedIndex.set(this.options().length - 1);
         }
         break;
       }
@@ -226,11 +270,14 @@ export class ComboBox implements FormValueControl<number | string | null> {
     this.focusOpened.set(false);
   }
 
-  /** Hide panel with list of options. */
+  /**
+   * Hide panel with list of options.
+   */
   hidePanel() {
+    if (!this.isOpen()) return; // already hidden
+
     this.isOpen.set(false);
     this.highlightedIndex.set(-1);
     this.resetInteractionState();
-    this.touch.emit();
   }
 }

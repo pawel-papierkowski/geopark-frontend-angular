@@ -19,7 +19,7 @@
     (click)="handleClick()"
     (mousedown)="handleMousedown()"
     (keydown)="handleKeydown($event)"
-    (blur)="hidePanel()">
+    (blur)="handleBlur()">
 
     <!-- Hidden button: labelable target for <label for="...">. -->
     <!-- We do not need (click) here, as it will bubble up to div's (click) above. -->

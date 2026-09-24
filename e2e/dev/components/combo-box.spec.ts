@@ -181,7 +181,7 @@ test.describe('ComboBox', () => {
       // Act: Tab into comboBox.
       await page.keyboard.press('Tab');
 
-      // Assert: Component checkBox focused with visible focus outline, list opened.
+      // Assert: Component comboBox focused with visible focus outline, list opened.
       const comboBox = getComboBox(page);
       await expect(comboBox).toBeFocused();
       await expect(comboBox).toHaveAttribute('aria-expanded', 'true');

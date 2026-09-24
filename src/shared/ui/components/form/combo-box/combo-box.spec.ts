@@ -438,20 +438,24 @@ describe('ComboBox', () => {
         const fixture = await arrangeComboBox();
         const touchSpy = vi.fn();
         fixture.componentInstance.touch.subscribe(touchSpy);
+
+        // Act: Open list in combobox.
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.click();
         fixture.detectChanges();
+
+        // Assert: List is actually open at this moment.
         expect(fixture.componentInstance.isOpen(), 'list should be open before disabling').toBe(true);
 
-        // Act: Disable component while list is open.
+        // Act: Disable component programmatically while list is open.
         fixture.componentRef.setInput('disabled', true);
         fixture.detectChanges();
         await fixture.whenStable();
 
-        // Assert: Effect closed the list via hidePanel (touch emitted).
+        // Assert: Effect closed the list via hidePanel.
         expect(fixture.componentInstance.isOpen(), 'list should close when component becomes disabled').toBe(false);
         expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset when disabled').toBe(-1);
-        expect(touchSpy, 'closing via hidePanel should emit touch').toHaveBeenCalledTimes(1);
+        expect(touchSpy, 'closing programmatically should not emit touch').toHaveBeenCalledTimes(0);
       });
     });
   });
@@ -828,17 +832,19 @@ describe('ComboBox', () => {
       });
 
       it('should close list and emit touch on Escape', async () => {
-        // Arrange: Create component with open list and spy on touch output.
+        // Arrange: Create component and spy on touch output.
         const user = userEvent.setup();
         const fixture = await arrangeComboBox();
         const touchSpy = vi.fn();
         fixture.componentInstance.touch.subscribe(touchSpy);
+
+        // Act: Set up component.
         fixture.componentInstance.isOpen.set(true);
         fixture.componentInstance.highlightedIndex.set(0);
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
 
-        // Act: Press Escape.
+        // Act: Press Escape. Note that it closes list, but we are still focused on combobox (no blur).
         await user.keyboard('{Escape}');
         await fixture.whenStable();
         fixture.detectChanges();
@@ -846,7 +852,7 @@ describe('ComboBox', () => {
         // Assert: List closed, highlight reset, touch emitted.
         expect(fixture.componentInstance.isOpen(), 'Escape should close the list').toBe(false);
         expect(fixture.componentInstance.highlightedIndex(), 'Escape should reset highlight').toBe(-1);
-        expect(touchSpy, 'touch event should be emitted on Escape').toHaveBeenCalledTimes(1);
+        expect(touchSpy, 'touch event should not be emitted on Escape').toHaveBeenCalledTimes(0);
       });
 
       it('should not respond to arrows, Enter or Space when disabled', async () => {
