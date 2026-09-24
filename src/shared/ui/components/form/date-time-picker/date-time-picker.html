@@ -1,3 +1,48 @@
-<div class="picker-general">
-  DATE TIME PICKER PLACEHOLDER
+<div
+  #pickerRoot
+  class="picker-general"
+  (focusin)="handleFocusIn($event)">
+
+  <!-- Hidden button: labelable target for <label for="...">. -->
+  <!-- Label activation focuses this button and bubbles its click here; both handlers redirect
+        focus to the root so aria-activedescendant stays valid and (blur) works on leaving. -->
+  <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
+    (focus)="focusRoot()" (click)="focusRoot()"></button>
+
+  @if (mode() === 'datetime' || mode() === 'date') {
+    <date-picker
+      #datePickerRoot
+      [id]="dateId"
+      [value]="value()"
+      (input)="value.set($any($event.target).value)"
+
+      [ident]="ident()"
+      [label]="label()"
+      [canNull]="canNull()"
+      [showWeeks]="showWeeks()"
+      [dateTimeMin]="dateTimeMin()"
+      [dateTimeMax]="dateTimeMax()"
+
+      [required]="required()"
+      [disabled]="disabled()"
+      [invalid]="invalid()"
+    />
+  }
+
+  @if (mode() === 'datetime' || mode() === 'time') {
+    <time-picker
+      #timePickerRoot
+      [id]="timeId"
+      [value]="value()"
+      (input)="value.set($any($event.target).value)"
+
+      [ident]="ident()"
+      [label]="label()"
+      [canNull]="canNull()"
+
+      [required]="required()"
+      [disabled]="disabled()"
+      [invalid]="invalid()"
+    />
+  }
 </div>

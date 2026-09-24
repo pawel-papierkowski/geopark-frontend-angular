@@ -1,0 +1,145 @@
+.picker-time {
+  display: inline-block;
+  position: relative;
+  width: var(--datetimepicker-time-width);
+  user-select: none;
+}
+
+/** Time input field. **/
+
+.picker-input-time {
+  width: var(--datetimepicker-time-width);
+  cursor: pointer;
+  caret-color: transparent;
+  user-select: none;
+}
+.picker-input-time:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.picker-input-time::selection {
+  background: transparent; /** Prevents highlight when you double-click. */
+}
+
+.picker-input-time.disabled {
+  cursor: default;
+}
+
+/** Clock panel to pick time. **/
+
+.clock-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+  margin: var(--datetimepicker-clock-offset);
+  padding: var(--spacing-sm);
+  min-width: 160px;
+
+  background: var(--datetimepicker-clock-background);
+  border: var(--datetimepicker-clock-border);
+  border-radius: var(--datetimepicker-clock-border-radius);
+  box-shadow: var(--datetimepicker-clock-shadow);
+
+  z-index: 1000;
+}
+
+.picker-time.invalid .clock-container {
+  background: var(--datetimepicker-clock-err-background);
+}
+
+.clock-columns {
+  display: flex;
+  height: 200px;
+}
+
+/* Define single clock column with time (hour or minute). Uses nice scrollbars. */
+
+.clock-column {
+  flex: 1;
+  overflow-y: auto;
+
+  /* Sleek scrollbar for Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+/* Sleek scrollbar for Chrome, Edge, and Safari */
+.clock-column::-webkit-scrollbar {
+  width: 6px;
+}
+
+.clock-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.clock-column::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.clock-column::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.clock-column::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.column-header {
+  position: sticky;
+  top: 0;
+  font-weight: bold;
+  font-size: 0.8em;
+
+  color: var(--color-text-primary);
+  background: var(--datetimepicker-clock-background);
+
+  padding: var(--spacing-xs) 0;
+  text-align: center;
+}
+
+.time-item {
+  padding: var(--spacing-xs) 0;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 2px;
+  color: var(--datetimepicker-time-color);
+}
+
+.time-item.curr {
+  color: var(--datetimepicker-time-curr-color);
+  background: var(--datetimepicker-time-curr-background);
+  box-shadow: var(--datetimepicker-time-curr-shadow);
+}
+
+.time-item.selected {
+  color: var(--datetimepicker-time-selected-color);
+  background: var(--datetimepicker-time-selected-background);
+}
+
+.time-item:hover {
+  color: var(--datetimepicker-time-hover-color);
+  background: var(--datetimepicker-time-hover-background);
+}
+
+.time-item.curr:hover {
+  color: var(--datetimepicker-time-hover-color);
+  background: var(--datetimepicker-time-hover-background);
+}
+
+/** Keyboard-focus ring on the active option. */
+.time-item.focused {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-outline-offset);
+}
+
+/** Suppress native focus ring on the listbox container itself. */
+.clock-column:focus-visible {
+  outline: none;
+}

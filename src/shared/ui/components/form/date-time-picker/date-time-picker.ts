@@ -1,8 +1,13 @@
-import { enDateTimePickerMode } from '@/shared/ui/other/types';
-import { Component, model, input, output } from '@angular/core';
+import { Component, model, input, output, viewChild, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
-/** This is a date and time picker. Uses `Date` class for both input and output.
+import { enDateTimePickerMode } from '@/shared/ui/other/types';
+
+import { DatePicker } from './date-picker';
+import { TimePicker } from './time-picker';
+
+/**
+ * This is a date and time picker. Uses `Date` class for both input and output.
  * It is wrapper for two subcomponents: `DatePicker` and `TimePicker`.
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
  * Designed to be used with signal-based forms.
@@ -39,7 +44,7 @@ import { FormValueControl } from '@angular/forms/signals';
  */
 @Component({
   selector: 'date-time-picker',
-  imports: [ ],
+  imports: [ DatePicker, TimePicker ],
   styleUrl: './date-time-picker.css',
   templateUrl: './date-time-picker.html',
 })
@@ -69,5 +74,42 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** Informs that user blurred out of component. */
   touch = output<void>();
 
-  // TODO
+  /** Root focusable element (role=combobox). */
+  pickerRoot = viewChild.required<ElementRef<HTMLDivElement>>('pickerRoot');
+  /** Reference to date-picker. */
+  datePickerRoot = viewChild.required<ElementRef<HTMLDivElement>>('datePickerRoot');
+  /** Reference to time-picker. */
+  timePickerRoot = viewChild.required<ElementRef<HTMLDivElement>>('timePickerRoot');
+
+  dateId = `datepicker_${this.ident()}`;
+  timeId = `timepicker_${this.ident()}`;
+
+  // INTERACTIONS
+
+  /**
+   * Move focus from hidden label target to the picker root. Label activation focuses the hidden
+   * button; redirecting keeps DOM focus on the element that owns aria-activedescendant and makes
+   * the root's (blur) fire when the user later leaves the component.
+   */
+  focusRoot() {
+    if (this.disabled()) return;
+    this.pickerRoot().nativeElement.focus();
+  }
+
+  /**
+   * Handle focus moving between the two pickers.
+   * When one input receives focus, the other picker's panel is closed.
+   */
+  handleFocusIn(e: FocusEvent) {
+    const target = e.target as HTMLElement;
+
+    // If time input received focus, close date panel.
+    if (target.id === this.timeId) {
+      //datePickerRef.value?.hidePanel(); TODO
+    }
+    // If date input received focus, close time panel.
+    if (target.id === this.dateId) {
+      //timePickerRef.value?.hidePanel(); // TODO
+    }
+  }
 }

@@ -1,0 +1,154 @@
+.picker-date {
+  display: inline-block;
+  position: relative;
+  width: var(--datetimepicker-date-width);
+  user-select: none;
+}
+
+/** Date input field. **/
+
+.picker-input-date {
+  width: var(--datetimepicker-date-width);
+  cursor: pointer;
+  caret-color: transparent;
+  user-select: none;
+}
+.picker-input-date:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.picker-input-date::selection {
+  background: transparent; /** Prevents highlight when you double-click. */
+}
+
+.picker-input-date.disabled {
+  cursor: default;
+}
+
+/** Calendar panel to pick date. **/
+
+.calendar-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+  margin: var(--datetimepicker-calendar-offset);
+  padding: var(--spacing-sm);
+  min-width: 280px;
+
+  background: var(--datetimepicker-calendar-background);
+  border: var(--datetimepicker-calendar-border);
+  border-radius: var(--datetimepicker-calendar-border-radius);
+  box-shadow: var(--datetimepicker-calendar-shadow);
+
+  z-index: 1000;
+}
+
+.picker-date.invalid .calendar-container {
+  background: var(--datetimepicker-calendar-err-background);
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.header-nav {
+  display: flex;
+}
+
+.header-title {
+  display: flex;
+  gap: var(--spacing-xs);
+  font-weight: bold;
+}
+
+.header-navbtn {
+  filter: var(--datetimepicker-navbtn-filter);
+
+  cursor: pointer;
+}
+
+.header-navbtn:hover {
+  filter: var(--datetimepicker-navbtn-hover-filter);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr); /* Will be overridden. */
+  text-align: center;
+}
+
+/** Suppress native focus ring on the grid container itself (we use aria-activedescendant). */
+.calendar-grid:focus-visible {
+  outline: none;
+}
+
+.weekday {
+  font-weight: bold;
+  font-size: 0.8em;
+  padding-bottom: var(--spacing-xs);
+  color: var(--color-text-primary);
+}
+
+.day {
+  margin: 1px;
+
+  border-radius: 5px;
+
+  color: var(--datetimepicker-day-color);
+  cursor: pointer;
+}
+
+.day.not-current {
+  color: var(--datetimepicker-day-notcurrent-color);
+}
+
+.day.today {
+  color: var(--datetimepicker-day-today-color);
+  background: var(--datetimepicker-day-today-background);
+  box-shadow: var(--datetimepicker-day-today-shadow);
+}
+
+.day.selected {
+  color: var(--datetimepicker-day-selected-color);
+  background: var(--datetimepicker-day-selected-background);
+}
+
+.day:hover {
+  color: var(--datetimepicker-day-hover-color);
+  background: var(--datetimepicker-day-hover-background);
+}
+
+.day.today:not(.disabled):hover {
+  color: var(--datetimepicker-day-hover-color);
+  background: var(--datetimepicker-day-hover-background);
+}
+
+.day.disabled {
+  border-radius: 0px;
+
+  color: var(--datetimepicker-day-disabled-color);
+  background: var(--datetimepicker-day-disabled-background);
+  box-shadow: var(--datetimepicker-day-disabled-shadow);
+
+  cursor: default;
+}
+
+/** Keyboard-focus ring on the active day cell. */
+.day.focused {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.weekNum {
+  margin: 1px;
+
+  border-radius: 5px;
+
+  color: var(--datetimepicker-week-color);
+  background: var(--datetimepicker-week-background);
+}
