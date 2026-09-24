@@ -312,6 +312,87 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.isOpen(), 'click on hidden button should open the list').toBe(true);
       });
 
+      it('should move focus to root when hidden button (label target) is clicked', async () => {
+        // Arrange: Create component with closed list.
+        const fixture = await arrangeComboBox();
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+
+        // Act: Click hidden button (label activation target).
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        hiddenButton.click();
+        fixture.detectChanges();
+
+        // Assert: Focus was redirected to the combobox root, list is open.
+        expect(document.activeElement, 'focus should move from hidden button to root').toBe(root);
+        expect(fixture.componentInstance.isOpen(), 'list should be open after label-target click').toBe(true);
+      });
+
+      it('should redirect focus to root when hidden button receives focus directly', async () => {
+        // Arrange: Create component with closed list.
+        const fixture = await arrangeComboBox();
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+
+        // Act: Focus hidden button programmatically (as label activation does).
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        hiddenButton.focus();
+        fixture.detectChanges();
+
+        // Assert: Focus was redirected to root and list opened via focus handler.
+        expect(document.activeElement, 'focus should be redirected to root').toBe(root);
+        expect(fixture.componentInstance.isOpen(), 'redirected focus should open the list').toBe(true);
+      });
+
+      it('should keep list open and not emit touch on internal focus move to hidden button', async () => {
+        // Arrange: Create component, open list via focus, spy on touch output.
+        const fixture = await arrangeComboBox();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'list should be open after focus').toBe(true);
+
+        // Act: Simulate root blur caused by label activation moving focus to hidden button inside root.
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        root.dispatchEvent(new FocusEvent('blur', { relatedTarget: hiddenButton }));
+        fixture.detectChanges();
+
+        // Assert: Internal focus move is not a real blur.
+        expect(fixture.componentInstance.isOpen(), 'internal focus move should keep list open').toBe(true);
+        expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
+      });
+
+      it('should toggle list closed on second hidden button click', async () => {
+        // Arrange: Create component and open list via first label-target click.
+        const fixture = await arrangeComboBox();
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        hiddenButton.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'first label-target click should open list').toBe(true);
+
+        // Act: Click hidden button again (second label activation).
+        hiddenButton.click();
+        fixture.detectChanges();
+
+        // Assert: List is closed (toggle behavior preserved).
+        expect(fixture.componentInstance.isOpen(), 'second label-target click should close list').toBe(false);
+      });
+
+      it('should not move focus or open list on hidden button click when disabled', async () => {
+        // Arrange: Create disabled component.
+        const fixture = await arrangeComboBox({ disabled: true });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+
+        // Act: Click hidden button.
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        hiddenButton.click();
+        fixture.detectChanges();
+
+        // Assert: Focus not moved, list stays closed.
+        expect(document.activeElement, 'disabled component should not take focus via label target').not.toBe(root);
+        expect(fixture.componentInstance.isOpen(), 'disabled component should not open via label target').toBe(false);
+      });
+
       it('should select option by click, close list and reset highlight', async () => {
         // Arrange: Create component and open the list.
         const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
@@ -754,6 +835,87 @@ describe('ComboBox', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="my-combo"]'), 'root should use ident as data-testid').not.toBeNull();
         expect(fixture.nativeElement.querySelector('[data-testid="my-combo_0"]'), 'first option should use ident_index data-testid').not.toBeNull();
         expect(fixture.nativeElement.querySelector('[data-testid="my-combo_2"]'), 'third option should use ident_index data-testid').not.toBeNull();
+      });
+    });
+
+    describe('label', () => {
+      /**
+       * Dispatch a real mousedown on given label so it bubbles to the document.
+       * @param label Label element to dispatch the event on.
+       * @returns The dispatched event, for defaultPrevented assertions.
+       */
+      function dispatchMousedown(label: HTMLElement): Event {
+        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        label.dispatchEvent(event);
+        return event;
+      }
+
+      it('should prevent default on mousedown of associated label', async () => {
+        // Arrange: Create component and a label targeting its hidden button.
+        await arrangeComboBox();
+        const label = document.createElement('label');
+        label.htmlFor = 'test-combo';
+        document.body.appendChild(label);
+
+        // Act: Dispatch mousedown as a real pointer interaction would.
+        const event = dispatchMousedown(label);
+
+        // Assert: Default canceled, so focus is not stolen from the combobox root.
+        expect(event.defaultPrevented, 'mousedown on associated label should be default-prevented').toBe(true);
+
+        // Cleanup: Remove label element.
+        label.remove();
+      });
+
+      it('should not prevent default on mousedown of foreign label', async () => {
+        // Arrange: Create component and a label targeting an unrelated control.
+        await arrangeComboBox();
+        const label = document.createElement('label');
+        label.htmlFor = 'other-control';
+        document.body.appendChild(label);
+
+        // Act: Dispatch mousedown on the foreign label.
+        const event = dispatchMousedown(label);
+
+        // Assert: Default untouched, unrelated labels keep native behavior.
+        expect(event.defaultPrevented, 'mousedown on foreign label should keep its default').toBe(false);
+
+        // Cleanup: Remove label element.
+        label.remove();
+      });
+
+      it('should not prevent default on label mousedown after component is destroyed', async () => {
+        // Arrange: Create component, then destroy it (removes the document listener).
+        const fixture = await arrangeComboBox();
+        const label = document.createElement('label');
+        label.htmlFor = 'test-combo';
+        document.body.appendChild(label);
+        fixture.destroy();
+
+        // Act: Dispatch mousedown after destroy.
+        const event = dispatchMousedown(label);
+
+        // Assert: Listener was cleaned up with the component.
+        expect(event.defaultPrevented, 'destroyed component should not prevent label mousedown').toBe(false);
+
+        // Cleanup: Remove label element.
+        label.remove();
+      });
+
+      it('should not prevent default on mousedown when ident is empty', async () => {
+        // Arrange: Create component without ident (empty htmlFor would false-match labels without for).
+        await arrangeComboBox({ ident: '' });
+        const label = document.createElement('label');
+        document.body.appendChild(label);
+
+        // Act: Dispatch mousedown on a label without for attribute.
+        const event = dispatchMousedown(label);
+
+        // Assert: Empty ident never matches, defaults preserved.
+        expect(event.defaultPrevented, 'empty ident should not match any label').toBe(false);
+
+        // Cleanup: Remove label element.
+        label.remove();
       });
     });
 

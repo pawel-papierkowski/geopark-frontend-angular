@@ -1,4 +1,4 @@
-import { Component, effect, inject, model, input, output, computed, signal } from '@angular/core';
+import { Component, effect, inject, model, input, output, computed, signal, viewChild, ElementRef, DestroyRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 import {TranslateService } from '@ngx-translate/core';
 
@@ -46,6 +46,8 @@ import {TranslateService } from '@ngx-translate/core';
 })
 export class ComboBox implements FormValueControl<number | string | null> {
   private readonly translateService = inject(TranslateService);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Value held by component. */
   value = model<number | string | null>(null);
@@ -74,12 +76,35 @@ export class ComboBox implements FormValueControl<number | string | null> {
   focusOpened = signal(false);
   /** Index of currently highlighted option. -1 means none highlighted. */
   highlightedIndex = signal(-1);
+  /** Root focusable element (role=combobox). */
+  comboRoot = viewChild.required<ElementRef<HTMLDivElement>>('comboRoot');
 
   constructor() {
     // Watch `disabled` field: close open list when component becomes disabled.
     effect(() => {
       if (this.disabled() && this.isOpen()) this.hidePanel();
     });
+
+    // A <label> is not focusable, so the browser's default mousedown action moves focus from the
+    // combobox root to <body>. That transient blur closes the list, then label activation refocuses
+    // the root (reopening the list and arming focusOpened), which swallows the toggle click and
+    // leaves the list stuck open on every second label click. Canceling the default keeps focus on
+    // the root; label activation runs on the subsequent click, so opening still works.
+    // Capture phase: must run before any handler could stop propagation. mousedown (not pointerdown):
+    // canceling pointerdown would also suppress the click and break label activation entirely.
+    /**
+     * Cancel focus steal when pointer down lands on this component's associated label.
+     * @param e Mousedown event.
+     */
+    const preventLabelMousedown = (e: Event) => {
+      const target = e.target;
+      const ident = this.ident();
+      if (ident && target instanceof HTMLLabelElement && target.htmlFor === ident) {
+        e.preventDefault();
+      }
+    };
+    this.document.addEventListener('mousedown', preventLabelMousedown, true);
+    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', preventLabelMousedown, true));
   }
 
   // COMPUTED
@@ -165,8 +190,24 @@ export class ComboBox implements FormValueControl<number | string | null> {
     }
   }
 
-  /** Handle blur. */
-  handleBlur() {
+  /**
+   * Move focus from hidden label target to the combobox root. Label activation focuses the hidden
+   * button; redirecting keeps DOM focus on the element that owns aria-activedescendant and makes
+   * the root's (blur) fire when the user later leaves the component.
+   */
+  focusRoot() {
+    if (this.disabled()) return;
+    this.comboRoot().nativeElement.focus();
+  }
+
+  /**
+   * Handle blur. Focus moves within the component (root to hidden label button and back) are not
+   * a real blur, so they must neither close the list nor emit touch.
+   * @param e Focus event carrying the element focus moved to.
+   */
+  handleBlur(e: FocusEvent) {
+    const next = e.relatedTarget;
+    if (next instanceof Node && this.comboRoot().nativeElement.contains(next)) return;
     this.hidePanel();
     this.touch.emit();
   }

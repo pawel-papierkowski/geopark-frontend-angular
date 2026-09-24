@@ -1,4 +1,5 @@
 <div
+    #comboRoot
     [attr.data-testid]="ident()"
     class="combobox"
     [class.disabled]="disabled()"
@@ -19,11 +20,13 @@
     (click)="handleClick()"
     (mousedown)="handleMousedown()"
     (keydown)="handleKeydown($event)"
-    (blur)="handleBlur()">
+    (blur)="handleBlur($event)">
 
     <!-- Hidden button: labelable target for <label for="...">. -->
-    <!-- We do not need (click) here, as it will bubble up to div's (click) above. -->
-    <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true"></button>
+    <!-- Label activation focuses this button and bubbles its click here; both handlers redirect
+         focus to the root so aria-activedescendant stays valid and (blur) works on leaving. -->
+    <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
+      (focus)="focusRoot()" (click)="focusRoot()"></button>
 
     <div class="combobox-selected">
       <span class="combobox-selected-text">{{ showOption(value()) }}</span>

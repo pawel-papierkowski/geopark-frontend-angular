@@ -128,6 +128,63 @@ test.describe('ComboBox', () => {
       // Assert: aria-labelledby points to the label element's id.
       await expect(getComboBox(page)).toHaveAttribute('aria-labelledby', 'cc-comboBox-label');
     });
+
+    test('should focus combobox root when label is clicked', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+      const label = page.locator('label', { hasText: 'Combobox' });
+
+      // Act: Click the label (activation focuses hidden button, which redirects focus to root).
+      await label.click();
+
+      // Assert: List is open and DOM focus sits on the combobox root (valid aria-activedescendant owner).
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
+      await expect(getComboBox(page)).toBeFocused();
+    });
+
+    test('should close list when clicking outside after label activation', async ({ page }) => {
+      // Arrange: Navigate and open the list via label click.
+      await goToComponentsPage(page);
+      const label = page.locator('label', { hasText: 'Combobox' });
+      await label.click();
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Click page heading (moves focus away from combobox root).
+      await page.locator('h1').click();
+
+      // Assert: List closed via real blur flow.
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'false');
+      await expect(getValueDisplay(page)).toContainText('❓');
+    });
+
+    test('should close list and leave component on Tab after label activation', async ({ page }) => {
+      // Arrange: Navigate and open the list via label click.
+      await goToComponentsPage(page);
+      const label = page.locator('label', { hasText: 'Combobox' });
+      await label.click();
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Tab out of the combobox.
+      await page.keyboard.press('Tab');
+
+      // Assert: Focus moved to next component; list closed.
+      await expect(page.getByTestId('cc-radioBox_0')).toBeFocused();
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('should toggle list closed on second label click', async ({ page }) => {
+      // Arrange: Navigate and open the list via first label click.
+      await goToComponentsPage(page);
+      const label = page.locator('label', { hasText: 'Combobox' });
+      await label.click();
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Click the label again.
+      await label.click();
+
+      // Assert: List is closed (toggle preserved).
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'false');
+    });
   });
 
   test.describe('keyboard', () => {
