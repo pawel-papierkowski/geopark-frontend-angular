@@ -118,6 +118,16 @@ describe('ComboBox', () => {
         expect(selected.textContent, 'placeholder should not be used when null is an option').not.toContain('pick one');
       });
 
+      it('should show raw value when value is not in options', async () => {
+        // Arrange: Create component with value not present among options and placeholder set.
+        const fixture = await arrangeComboBox({ options: ['a', 'b'], value: 'ghost', placeholder: 'pick one' });
+
+        // Assert: Raw value shown, placeholder not used.
+        const selected = fixture.nativeElement.querySelector('.combobox-selected-text');
+        expect(selected.textContent, 'should show raw value even when not in options').toContain('ghost');
+        expect(selected.textContent, 'placeholder is only for null value').not.toContain('pick one');
+      });
+
       it('should show translated selected text with langPrefix', async () => {
         // Arrange: Create component with langPrefix and set translations.
         const fixture = await arrangeComboBox({ value: 'a', options: ['a', 'b'], langPrefix: 'test.options' });
@@ -288,6 +298,20 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.isOpen(), 'list should close on real second click').toBe(false);
       });
 
+      it('should open list when hidden button (label target) is clicked', async () => {
+        // Arrange: Create component with closed list.
+        const fixture = await arrangeComboBox();
+        expect(fixture.componentInstance.isOpen(), 'list should start closed').toBe(false);
+
+        // Act: Click hidden button; label activation forwards click here, which bubbles to combobox.
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        hiddenButton.click();
+        fixture.detectChanges();
+
+        // Assert: List is open.
+        expect(fixture.componentInstance.isOpen(), 'click on hidden button should open the list').toBe(true);
+      });
+
       it('should select option by click, close list and reset highlight', async () => {
         // Arrange: Create component and open the list.
         const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
@@ -338,6 +362,23 @@ describe('ComboBox', () => {
         expect(root.getAttribute('aria-activedescendant'), 'aria-activedescendant should reference highlighted option').toBe('test-combo_option_1');
       });
 
+      it('should highlight option under mouse pointer', async () => {
+        // Arrange: Create component and open the list.
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.click();
+        fixture.detectChanges();
+
+        // Act: Hover third option.
+        const option = fixture.nativeElement.querySelector('[data-testid="test-combo_2"]');
+        option.dispatchEvent(new MouseEvent('mouseenter'));
+        fixture.detectChanges();
+
+        // Assert: Hovered option is highlighted and referenced by aria-activedescendant.
+        expect(fixture.componentInstance.highlightedIndex(), 'hover should highlight third option').toBe(2);
+        expect(root.getAttribute('aria-activedescendant'), 'aria-activedescendant should reference hovered option').toBe('test-combo_option_2');
+      });
+
       it('should not emit touch when selecting an option', async () => {
         // Arrange: Create component, open list, spy on touch output.
         const fixture = await arrangeComboBox();
@@ -374,6 +415,28 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.isOpen(), 'list should close on blur').toBe(false);
         expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset on blur').toBe(-1);
         expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
+      });
+
+      it('should emit touch on blur even when list is already closed by selection', async () => {
+        // Arrange: Create component, select an option (closes list without touch).
+        const fixture = await arrangeComboBox();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.click();
+        fixture.detectChanges();
+        const option = fixture.nativeElement.querySelector('[data-testid="test-combo_0"]');
+        option.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'selection should close the list').toBe(false);
+        expect(touchSpy, 'selection alone should not emit touch').not.toHaveBeenCalled();
+
+        // Act: Simulate blur after leaving the component.
+        root.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+
+        // Assert: Blur marks field touched even though list was already closed.
+        expect(touchSpy, 'blur after selection should emit touch').toHaveBeenCalledTimes(1);
       });
 
       it('should not open list on focus when disabled', async () => {
@@ -554,6 +617,19 @@ describe('ComboBox', () => {
         expect(options[0].getAttribute('id'), 'first option id should follow pattern').toBe('my-combo_option_0');
         expect(options[1].getAttribute('id'), 'second option id should follow pattern').toBe('my-combo_option_1');
         expect(options[2].getAttribute('id'), 'third option id should follow pattern').toBe('my-combo_option_2');
+      });
+
+      it('should fall back to default ids when ident is empty', async () => {
+        // Arrange: Create component with empty ident.
+        const fixture = await arrangeComboBox({ ident: '' });
+
+        // Assert: Listbox and option ids use default fallback consistently.
+        const root = fixture.nativeElement.querySelector('.combobox');
+        const list = fixture.nativeElement.querySelector('.combobox-options');
+        expect(list.getAttribute('id'), 'listbox id should fall back to default_listbox').toBe('default_listbox');
+        expect(root.getAttribute('aria-controls'), 'aria-controls should use default fallback').toBe('default_listbox');
+        const options = fixture.nativeElement.querySelectorAll('.combobox-option');
+        expect(options[0].getAttribute('id'), 'option id should fall back to default_option_0').toBe('default_option_0');
       });
 
       it('should have hidden button with id for label association', async () => {
@@ -738,6 +814,25 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.highlightedIndex(), 'ArrowDown from last should wrap to first').toBe(0);
       });
 
+      it('should move highlight to first option on ArrowDown when open and nothing highlighted', async () => {
+        // Arrange: Create component with value not in options and open list (nothing highlighted).
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'], value: 'ghost' });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'list should be open after focus').toBe(true);
+        expect(fixture.componentInstance.highlightedIndex(), 'value not in options leaves nothing highlighted').toBe(-1);
+
+        // Act: Press ArrowDown.
+        await user.keyboard('{ArrowDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Highlight points to first option.
+        expect(fixture.componentInstance.highlightedIndex(), 'ArrowDown from no highlight should point to first option').toBe(0);
+      });
+
       it('should open list highlighting last option on ArrowUp when closed', async () => {
         // Arrange: Create component with closed list.
         const user = userEvent.setup();
@@ -773,6 +868,99 @@ describe('ComboBox', () => {
 
         // Assert: Highlight wrapped to last option.
         expect(fixture.componentInstance.highlightedIndex(), 'ArrowUp from first should wrap to last').toBe(2);
+      });
+
+      it('should move highlight to last option on ArrowUp when open and nothing highlighted', async () => {
+        // Arrange: Create component with value not in options and open list (nothing highlighted).
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'], value: 'ghost' });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'list should be open after focus').toBe(true);
+        expect(fixture.componentInstance.highlightedIndex(), 'value not in options leaves nothing highlighted').toBe(-1);
+
+        // Act: Press ArrowUp.
+        await user.keyboard('{ArrowUp}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Highlight points to last option.
+        expect(fixture.componentInstance.highlightedIndex(), 'ArrowUp from no highlight should point to last option').toBe(2);
+      });
+
+      it('should open list and highlight first option on Home when closed', async () => {
+        // Arrange: Create component with closed list.
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.componentInstance.isOpen.set(false);
+        fixture.componentInstance.focusOpened.set(false);
+
+        // Act: Press Home.
+        await user.keyboard('{Home}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: List open, first option highlighted.
+        expect(fixture.componentInstance.isOpen(), 'Home should open closed list').toBe(true);
+        expect(fixture.componentInstance.highlightedIndex(), 'Home should highlight first option').toBe(0);
+      });
+
+      it('should move highlight to first option on Home when open', async () => {
+        // Arrange: Create component with open list, highlight on last option.
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        fixture.componentInstance.isOpen.set(true);
+        fixture.componentInstance.highlightedIndex.set(2);
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+
+        // Act: Press Home.
+        await user.keyboard('{Home}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Highlight points to first option.
+        expect(fixture.componentInstance.highlightedIndex(), 'Home should highlight first option').toBe(0);
+      });
+
+      it('should open list and highlight last option on End when closed', async () => {
+        // Arrange: Create component with closed list.
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.componentInstance.isOpen.set(false);
+        fixture.componentInstance.focusOpened.set(false);
+
+        // Act: Press End.
+        await user.keyboard('{End}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: List open, last option highlighted.
+        expect(fixture.componentInstance.isOpen(), 'End should open closed list').toBe(true);
+        expect(fixture.componentInstance.highlightedIndex(), 'End should highlight last option').toBe(2);
+      });
+
+      it('should move highlight to last option on End when open', async () => {
+        // Arrange: Create component with open list, highlight on first option.
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        fixture.componentInstance.isOpen.set(true);
+        fixture.componentInstance.highlightedIndex.set(0);
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+
+        // Act: Press End.
+        await user.keyboard('{End}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Highlight points to last option.
+        expect(fixture.componentInstance.highlightedIndex(), 'End should highlight last option').toBe(2);
       });
 
       it('should open list on Enter when closed', async () => {
@@ -831,8 +1019,8 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.isOpen(), 'list should close after Space selection').toBe(false);
       });
 
-      it('should close list and emit touch on Escape', async () => {
-        // Arrange: Create component and spy on touch output.
+      it('should close list on Escape without emitting touch', async () => {
+        // Arrange: Create component, open list, spy on touch output.
         const user = userEvent.setup();
         const fixture = await arrangeComboBox();
         const touchSpy = vi.fn();
@@ -849,10 +1037,92 @@ describe('ComboBox', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: List closed, highlight reset, touch emitted.
+        // Assert: List closed, highlight reset, no touch (focus stays in component; blur emits later).
         expect(fixture.componentInstance.isOpen(), 'Escape should close the list').toBe(false);
         expect(fixture.componentInstance.highlightedIndex(), 'Escape should reset highlight').toBe(-1);
-        expect(touchSpy, 'touch event should not be emitted on Escape').toHaveBeenCalledTimes(0);
+        expect(touchSpy, 'touch should not be emitted on Escape').toHaveBeenCalledTimes(0);
+      });
+
+      it('should do nothing on Escape when list is already closed', async () => {
+        // Arrange: Create component, open list via focus, close it with first Escape.
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+
+        // Act: Open list.
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.detectChanges();
+
+        // Assert: List is actually opened.
+        expect(fixture.componentInstance.isOpen(), 'list should be open after focus').toBe(true);
+
+        // Act: Press Escape for first time.
+        await user.keyboard('{Escape}');
+        fixture.detectChanges();
+
+        // Assert: List is actually closed.
+        expect(fixture.componentInstance.isOpen(), 'first Escape should close the list').toBe(false);
+
+        // Act: Press Escape again while already closed.
+        await user.keyboard('{Escape}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: State unchanged, no touch emitted.
+        expect(fixture.componentInstance.isOpen(), 'second Escape should keep list closed').toBe(false);
+        expect(fixture.componentInstance.highlightedIndex(), 'highlight should stay reset').toBe(-1);
+        expect(touchSpy, 'Escape should never emit touch').not.toHaveBeenCalled();
+      });
+
+      it('should ignore navigation keys when there are no options', async () => {
+        // Arrange: Create component without options and focus it (empty list opens, nothing highlighted).
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: [] });
+
+        // Act: Open list.
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.detectChanges();
+
+        // Assert: List is opened despite no options (deliberate behavior, as combobox doing nothing would be confusing).
+        expect(fixture.componentInstance.isOpen(), 'focus should open empty list so user sees missing options').toBe(true);
+        expect(fixture.componentInstance.highlightedIndex(), 'nothing to highlight without options').toBe(-1);
+
+        // Act: Press all navigation keys.
+        await user.keyboard('{ArrowDown}');
+        await user.keyboard('{ArrowUp}');
+        await user.keyboard('{Home}');
+        await user.keyboard('{End}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Highlight unchanged (still none, no NaN), list stays open.
+        expect(fixture.componentInstance.highlightedIndex(), 'navigation keys should not change highlight without options').toBe(-1);
+        expect(fixture.componentInstance.isOpen(), 'navigation keys should keep empty list open').toBe(true);
+      });
+
+      it('should close list on Escape when there are no options', async () => {
+        // Arrange: Create component without options and focus it (empty list opens).
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: [] });
+
+        // Act: Open list.
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.focus();
+        fixture.detectChanges();
+
+        // Assert: List is actually opened.
+        expect(fixture.componentInstance.isOpen(), 'focus should open empty list').toBe(true);
+
+        // Act: Press Escape.
+        await user.keyboard('{Escape}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Empty list closed.
+        expect(fixture.componentInstance.isOpen(), 'Escape should close empty list').toBe(false);
       });
 
       it('should not respond to arrows, Enter or Space when disabled', async () => {
@@ -876,27 +1146,36 @@ describe('ComboBox', () => {
       });
 
       it('should close list and move focus to next control on Tab when open', async () => {
-        // Arrange: Create component with open list and a focusable control after it (simulates next component).
+        // Arrange: Create component with open list.
         const user = userEvent.setup();
         const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+
+        // Arrange: Create focusable control after our combobox (simulates next component).
         const nextControl = document.createElement('button');
         nextControl.setAttribute('data-testid', 'next-control');
         document.body.appendChild(nextControl);
-        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
-        root.focus();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(fixture.componentInstance.isOpen(), 'list should be open before Tab').toBe(true);
 
-        // Act: Press Tab.
-        await user.tab();
-        await fixture.whenStable();
-        fixture.detectChanges();
+        try {
+          // Act: Open list.
+          const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+          root.focus();
+          await fixture.whenStable();
+          fixture.detectChanges();
 
-        // Assert: List closed via blur, focus moved out of combobox.
-        expect(fixture.componentInstance.isOpen(), 'Tab should close the list via blur').toBe(false);
-        expect(document.activeElement, 'Tab should move focus to next control').toBe(nextControl);
-        nextControl.remove();
+          // Assert: List is actually opened.
+          expect(fixture.componentInstance.isOpen(), 'list should be open before Tab').toBe(true);
+
+          // Act: Press Tab.
+          await user.tab();
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: List closed via blur, focus moved out of combobox.
+          expect(fixture.componentInstance.isOpen(), 'Tab should close the list via blur').toBe(false);
+          expect(document.activeElement, 'Tab should move focus to next control').toBe(nextControl);
+        } finally { // cleanup
+          nextControl.remove();
+        }
       });
     });
   });

@@ -36,6 +36,7 @@ import {TranslateService } from '@ngx-translate/core';
  *
  * Notes:
  * - Null value is supported as option. Example: const enUserStatus: (string|null)[] = [ null, 'PENDING', 'ACTIVE' ];
+ * - Popup is still shown via click/keys when there is zero options, so dev can see they forgot to add options to combobox.
  */
 @Component({
   selector: 'combo-box',
@@ -106,6 +107,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    */
   openList(top: boolean | null = null) {
     this.isOpen.set(true);
+    // Yes, popup window with list is opened even if no options exist.
     if (this.options().length === 0) return;
 
     // Set visually selected entry, if any. Works with null selection.
