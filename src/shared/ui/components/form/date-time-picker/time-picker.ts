@@ -1,10 +1,11 @@
-import { Component, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, afterNextRender } from '@angular/core';
+import { Component, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 
 import { TimeUtils } from '@/core/utils/TimeUtils';
 import { NavUtils } from '@/core/utils/NavUtils';
+import { afterRender } from '@/shared/utils/render/after-render';
 
 /**
  * This is a time picker. Uses `Date` class for both input and output. Do not use it directly.
@@ -13,6 +14,8 @@ import { NavUtils } from '@/core/utils/NavUtils';
  * Designed to be used with signal-based forms.
  *
  * CURRENTLY PLACEHOLDER.
+ * TODO
+ * - watch isClockVisible so it scrolls, same with disabling picker
  *
  * Features:
  * - Can select time.
@@ -70,9 +73,9 @@ export class TimePicker implements FormValueControl<Date | null> {
   pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
   /** Reference to clock panel. */
   clockPanelRef = viewChild.required<ElementRef<HTMLDivElement>>('clockPanelRef');
-  /** Reference to hour scroller. */
+  /** Reference to hour listbox. */
   hourRef = viewChild.required<ElementRef<HTMLDivElement>>('hourRef');
-  /** Reference to minute scroller. */
+  /** Reference to minute listbox. */
   minuteRef = viewChild.required<ElementRef<HTMLDivElement>>('minuteRef');
 
   /** Keyboard-focus hour index. Set when panel opens, updated via arrow navigation. */
@@ -127,6 +130,18 @@ export class TimePicker implements FormValueControl<Date | null> {
     return '🕜 ' + this.translateService.instant('dateTimePicker.placeholder.time');
   });
 
+  constructor() {
+    // Watch `disabled` field: close clock panel when component becomes disabled.
+    effect(() => {
+      if (this.disabled() && this.isClockVisible()) this.hidePanel();
+    });
+
+    // Watch `disabled` field: react on panel opening.
+    effect(() => {
+      if ( this.isClockVisible()) this.scrollToSelected();
+    });
+  }
+
   // GENERAL
 
   /** Toggle visibility of time picker panel. */
@@ -150,7 +165,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       }
       this.activeColumn.set('hour');
 
-      //await nextTick(); we likely need angular's equivalent of this
+      await afterRender(this.injector);
 
       // Adjust picker position if needed to prevent window overflow.
       if (this.clockPanelRef()) {
@@ -174,10 +189,111 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.viewMinute.set(date.getUTCMinutes());
   }
 
+  //
+
+  /** Select hour. */
+  selectHour(h: number | null) {
+    if (this.disabled() || h === null) return;
+
+    // Selecting same hour.
+    if (this.value() && this.value()?.getUTCHours() === h) {
+      if (this.canNull()) this.value.set(null); // Deselect time.
+      return;
+    }
+
+    const date = this.value() ? new Date(this.value() || '') : new Date();
+    if (!this.value()) date.setUTCSeconds(0, 0);
+    date.setUTCHours(h);
+    this.value.set(date);
+  }
+
+  /** Select minute. */
+  selectMinute(m: number | null, viaKeyboard: boolean) {
+    if (this.disabled() || m === null) return;
+
+    // Selecting same minute.
+    if (!viaKeyboard && this.value() && this.value()?.getUTCMinutes() === m) {
+      if (this.canNull()) this.value.set(null); // Deselect time.
+      return;
+    }
+
+    const date = this.value() ? new Date(this.value() || '') : new Date();
+    if (!this.value()) date.setUTCSeconds(0, 0);
+    date.setUTCMinutes(m);
+    this.value.set(date);
+  }
+
+  /** Scroll to selected hour and minute. */
+  async scrollToSelected() {
+    await afterRender(this.injector);
+
+    let selHourElement: Element | null = null;
+    let selMinuteElement: Element | null = null;
+
+    // If time is not selected, use current time as scroll target.
+    if (this.value() === null) {
+      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector('.curr');
+      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector('.curr');
+    } else {
+      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector('.selected');
+      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector('.selected');
+    }
+    if (selHourElement) selHourElement.scrollIntoView({ block: 'center' });
+    if (selMinuteElement) selMinuteElement.scrollIntoView({ block: 'center' });
+  }
+
+  /** Scroll hour listbox so given hour is visible. */
+  async scrollHourIntoView(h: number | null) {
+    if (h === null) return;
+    await afterRender(this.injector);
+
+    if (this.hourRef()) {
+      const el = this.hourRef().nativeElement.querySelector(`[data-testid="${this.ident()}_h${h}"]`);
+      el?.scrollIntoView({ block: 'center' });
+    }
+  }
+
+  /** Scroll minute listbox so given minute is visible. */
+  async scrollMinuteIntoView(m: number | null) {
+    if (m === null) return;
+    await afterRender(this.injector);
+
+    if (this.minuteRef()) {
+      const el = this.minuteRef().nativeElement.querySelector(`[data-testid="${this.ident()}_m${m}"]`);
+      el?.scrollIntoView({ block: 'center' });
+    }
+  }
+
   // EVENTS
+
+  /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). */
+  focusFromClick = false;
+
+  /** Handle mousedown on input: mark that focus is from a click so auto-open is skipped. */
+  handleMousedown() {
+    this.focusFromClick = true;
+  }
+
+  /** Handle focus arriving on the input (e.g. via Tab). */
+  async handleInputFocus() {
+    if (!this.focusFromClick && !this.isClockVisible() && !this.disabled()) {
+      await this.toggleTimePickerVisibility(false);
+    }
+    this.focusFromClick = false;
+  }
+
+  /**
+   * Handle click.
+   * @param viaKeyboard True if "click" was actually via keyboard.
+   */
+  async handleClick(viaKeyboard: boolean) {
+    if (this.disabled()) return;
+    await this.toggleTimePickerVisibility(viaKeyboard);
+  };
 
   /**
    * Handle focus leaving the picker entirely (e.g. Tab out of grid). It will close clock panel.
+   * @param e Focus event.
    */
   handleFocusOut(e: FocusEvent) {
     if (!this.isClockVisible()) return;
@@ -186,16 +302,195 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.hidePanel();
   }
 
+  // EVENTS: KEYBOARD HANDLERS
+
+  /**
+   * Handle keyboard on the input element.
+   * @param e Keyboard event.
+   */
+  async onInputKeydown(e: KeyboardEvent) {
+    if (this.disabled()) return;
+
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!this.isClockVisible()) await this.toggleTimePickerVisibility(true);
+    } else if (e.key === 'Escape' && this.isClockVisible()) {
+      e.preventDefault();
+      this.hidePanel();
+    }
+  }
+
+  /**
+   * Handle keyboard on the hour listbox.
+   * @param e Keyboard event.
+   */
+  async onHourKeydown(e: KeyboardEvent) {
+    if (this.disabled()) return;
+
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault();
+        this.focusedHour.update((currVal) => {
+          if (currVal !== null) return currVal > 0 ? currVal - 1 : 23;
+          return this.selectedHour() ?? this.viewHour() ?? 0;
+        });
+        this.scrollHourIntoView(this.focusedHour());
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        this.focusedHour.update((currVal) => {
+          if (currVal !== null) return currVal < 23 ? currVal + 1 : 0;
+          return this.selectedHour() ?? this.viewHour() ?? 0;
+        });
+        this.scrollHourIntoView(this.focusedHour());
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        this.keyPressSwitchColumn();
+        break;
+      case 'Home': // Jump to start of list.
+        e.preventDefault();
+        this.focusedHour.set(0);
+        this.scrollHourIntoView(0);
+        break;
+      case 'End': // Jump to end of list.
+        e.preventDefault();
+        this.focusedHour.set(23);
+        this.scrollHourIntoView(23);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        this.keyPressSelectHour();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        this.hidePanelAndRefocus();
+        break;
+    }
+  }
+
+  /**
+   * Handle keyboard on the minute listbox.
+   * @param e Keyboard event.
+   */
+  async onMinuteKeydown(e: KeyboardEvent) {
+    if (this.disabled()) return;
+
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault();
+        this.focusedMinute.update((currVal) => {
+          if (currVal !== null) return currVal > 0 ? currVal - 1 : 59;
+          return this.selectedMinute() ?? this.viewMinute() ?? 0;
+        });
+        this.scrollMinuteIntoView(this.focusedMinute());
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        this.focusedMinute.update((currVal) => {
+          if (currVal !== null) return currVal < 59 ? currVal + 1 : 0;
+          return this.selectedMinute() ?? this.viewMinute() ?? 0;
+        });
+        this.scrollMinuteIntoView(this.focusedMinute());
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        this.keyPressSwitchColumn();
+        break;
+      case 'Home': // Jump to start of list.
+        e.preventDefault();
+        this.focusedMinute.set(0);
+        this.scrollMinuteIntoView(0);
+        break;
+      case 'End': // Jump to end of list.
+        e.preventDefault();
+        this.focusedMinute.set(59);
+        this.scrollMinuteIntoView(59);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        this.keyPressSelectMinute();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        this.hidePanelAndRefocus();
+        break;
+    }
+  }
+
+  //
+
+  /** React to column change via key press. */
+  async keyPressSwitchColumn() {
+    if (this.focusedHour() === null || this.focusedMinute() === null) {
+      // Just show focus without switching column.
+      this.setupFocus(false);
+      return;
+    }
+
+    if (this.activeColumn() === 'minute') {
+      // Switch focus to hour column.
+      this.activeColumn.set('hour');
+      await afterRender(this.injector);
+      this.hourRef().nativeElement.focus();
+    } else {
+      // Switch focus to minute column.
+      this.activeColumn.set('minute');
+      await afterRender(this.injector);
+      this.minuteRef().nativeElement.focus();
+    }
+  }
+
+  /** React to selecting hour via key press. */
+  async keyPressSelectHour() {
+    if (this.focusedHour() === null) {
+      // Just show focus without selecting anything.
+      this.setupFocus(false);
+      return;
+    }
+
+    this.selectHour(this.focusedHour());
+    await afterRender(this.injector);
+
+    // If time was deselected (canNull same-hour toggle), close panel.
+    // Otherwise move focus to minute column.
+    if (this.value() === null) {
+      this.hidePanelAndRefocus();
+    } else {
+      this.activeColumn.set('minute');
+      if (this.focusedMinute() === null) {
+        const val = this.value()?.getUTCMinutes() ?? this.viewMinute();
+        this.focusedMinute.set(val ?? null);
+      }
+      await afterRender(this.injector);
+      this.minuteRef().nativeElement.focus();
+    }
+  }
+
+  /** React to selecting minute via key press. */
+  keyPressSelectMinute() {
+    if (this.focusedMinute() === null) {
+      // Just show focus without selecting anything.
+      this.setupFocus(false);
+      return;
+    }
+
+    this.selectMinute(this.focusedMinute(), true);
+    this.hidePanelAndFocusNext();
+  }
+
   // UTILITIES
 
   /** Flip panel. */
-  flipPanel() {
-    this.toggleTimePickerVisibility(false);
+  async flipPanel() {
+    await this.toggleTimePickerVisibility(false);
   }
 
   /** Show panel (if not already visible). */
-  showPanel() {
-    if (!this.isClockVisible()) this.toggleTimePickerVisibility(false);
+  async showPanel() {
+    if (!this.isClockVisible()) await this.toggleTimePickerVisibility(false);
   }
 
   /**
@@ -210,21 +505,23 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /** Hide panel and return focus to the input. */
-  hidePanelAndRefocus() {
+  async hidePanelAndRefocus() {
     this.hidePanel();
-    afterNextRender(() => {
-      const inputEl = document.getElementById(this.ident());
-      inputEl?.focus();
-     }, { injector: this.injector });
+
+    await afterRender(this.injector);
+
+    const inputEl = document.getElementById(this.ident());
+    inputEl?.focus();
   }
 
   /** Hide panel and move focus to the next focusable element on page. */
-  hidePanelAndFocusNext() {
+  async hidePanelAndFocusNext() {
     this.hidePanel();
-    afterNextRender(() => {
-      const inputEl = document.getElementById(this.ident());
-      NavUtils.FocusNext(inputEl);
-     }, { injector: this.injector });
+
+    await afterRender(this.injector);
+
+    const inputEl = document.getElementById(this.ident());
+    NavUtils.FocusNext(inputEl);
   }
 
   /**

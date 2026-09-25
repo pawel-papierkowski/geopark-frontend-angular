@@ -7,7 +7,7 @@
   <input
     [id]="`${ident()}`"
     type="text"
-    [data-testid]="`${ident()}`"
+    [attr.data-testid]="`${ident()}`"
     class="picker-input-time"
     [class.disabled]="disabled()"
     [class.invalid]="invalid()"
@@ -20,23 +20,86 @@
     role="combobox"
     [tabindex]="disabled() ? -1 : 0"
 
-    [aria-haspopup]="listbox"
-    [aria-expanded]="isClockVisible()"
-    [aria-controls]="`${ident}_panel`"
-    [aria-label]="'dateTimePicker.placeholder.time' | translate"
+    aria-haspopup="listbox"
+    [attr.aria-expanded]="isClockVisible()"
+    [attr.aria-controls]="`${ident}_panel`"
+    [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
     [attr.aria-invalid]="invalid() || null"
-    [aria-disabled]="disabled() || null"
+    [attr.aria-disabled]="disabled() || null"
 
-    (mousedown)="handleMousedown($event)"
-    (focus)="handleInputFocus($event)"
+    (mousedown)="handleMousedown()"
+    (focus)="handleInputFocus()"
     (click)="handleClick(false)"
     (keydown)="onInputKeydown($event)" />
 
     <!-- Time picker: clock panel. -->
     @if (isClockVisible()) {
       <div
-        #clockPanelRef>
-TODO CLOCK PANEL
+        #clockPanelRef
+        [id]="`${ident()}_panel`"
+        class="clock-container"
+        [style]="containerStyle()"
+        role="dialog"
+        [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
+        aria-modal="true">
+
+        <div class="clock-columns">
+
+          <!-- Hours scroller. -->
+          <div
+            #hourRef
+            class="clock-column"
+            role="listbox"
+            tabindex="-1"
+            [attr.aria-label]="'dateTimePicker.hour' | translate"
+            [attr.aria-activedescendant]="hourActiveDesc()"
+            (keydown)="onHourKeydown($event)"
+            (focus)="activeColumn.set('hour')">
+            <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.hour' | translate }}</div>
+            @for (h of hours; track $index) {
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- options are focus-managed by the parent listbox via aria-activedescendant, not individually focusable -->
+              <div
+                [id]="`${ident()}_opt_h${h}`"
+                [attr.data-testid]="`${ident()}_h${h}`"
+                class="time-item time-hour"
+                [class]="resolveHourClass(h)"
+                role="option"
+                [attr.aria-selected]="selectedHour() === h"
+                [attr.aria-label]="`${h} ${'dateTimePicker.hour' | translate}`"
+                (click)="selectHour(h)">
+                {{ h.toString().padStart(2, '0') }}
+              </div>
+            }
+          </div>
+
+          <!-- Minutes scroller. -->
+          <div
+            #minuteRef
+            class="clock-column"
+            role="listbox"
+            tabindex="-1"
+            [attr.aria-label]="'dateTimePicker.minute' | translate"
+            [attr.aria-activedescendant]="minuteActiveDesc()"
+            (keydown)="onMinuteKeydown($event)"
+            (focus)="activeColumn.set('minute')">
+            <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.minute' | translate }}</div>
+            @for (m of minutes; track $index) {
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- options are focus-managed by the parent listbox via aria-activedescendant, not individually focusable -->
+              <div
+                [id]="`${ident()}_opt_m${m}`"
+                [attr.data-testid]="`${ident()}_m${m}`"
+                class="time-item time-minute"
+                [class]="resolveMinuteClass(m)"
+                role="option"
+                [attr.aria-selected]="selectedMinute() === m"
+                [attr.aria-label]="`${m} ${'dateTimePicker.minute' | translate}`"
+                (click)="selectMinute(m, false)">
+                {{ m.toString().padStart(2, '0') }}
+              </div>
+            }
+          </div>
+
+        </div>
       </div>
     }
 </div>

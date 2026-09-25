@@ -83,6 +83,13 @@ To run lint:
 npm run lint
 ```
 
+To run eslint:
+
+```bash
+npx eslint
+```
+
+
 ### Testing
 
 To execute all unit tests with the Vitest test runner, use the following command:

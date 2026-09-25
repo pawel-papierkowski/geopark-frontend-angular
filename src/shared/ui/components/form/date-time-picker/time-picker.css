@@ -135,8 +135,8 @@
 
 /** Keyboard-focus ring on the active option. */
 .time-item.focused {
-  outline: var(--focus-outline);
-  outline-offset: var(--focus-outline-offset);
+  outline: var(--datetimepicker-time-focus-outline);
+  outline-offset: var(--datetimepicker-time-focus-outline-offset);
 }
 
 /** Suppress native focus ring on the listbox container itself. */

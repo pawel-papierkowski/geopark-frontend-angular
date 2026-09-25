@@ -120,4 +120,7 @@
   --datetimepicker-time-curr-color: #111111;
   --datetimepicker-time-curr-background: unset;
   --datetimepicker-time-curr-shadow: inset 0 0 0 2px #d4a017;
+
+  --datetimepicker-time-focus-outline: 2px solid var(--focus-color);
+  --datetimepicker-time-focus-outline-offset: 0px;
 }
