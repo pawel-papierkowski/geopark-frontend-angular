@@ -12,16 +12,14 @@
   @if (mode() === 'datetime' || mode() === 'date') {
     <date-picker
       #datePickerRef
-      [id]="dateId"
-      [value]="value()"
-      (input)="value.set($any($event.target).value)"
+      [(value)]="value"
 
-      [ident]="ident()"
+      [attr.ident]="`dateId_${ident()}`"
       [label]="label()"
       [canNull]="canNull()"
       [showWeeks]="showWeeks()"
-      [dateTimeMin]="dateTimeMin()"
-      [dateTimeMax]="dateTimeMax()"
+      [dateMin]="dateMin()"
+      [dateMax]="dateMax()"
 
       [required]="required()"
       [disabled]="disabled()"
@@ -32,11 +30,9 @@
   @if (mode() === 'datetime' || mode() === 'time') {
     <time-picker
       #timePickerRef
-      [id]="timeId"
-      [value]="value()"
-      (input)="value.set($any($event.target).value)"
+      [(value)]="value"
 
-      [ident]="ident()"
+      [attr.ident]="`timeId_${ident()}`"
       [label]="label()"
       [canNull]="canNull()"
 

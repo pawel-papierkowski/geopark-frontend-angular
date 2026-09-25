@@ -31,8 +31,8 @@ import { TimePicker } from './time-picker';
  * - mode - Mode of operation (both date and time, only date, only time). Optional, default is 'datetime'.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.
- * - dateTimeMin - If not null, defines earliest allowed date. Optional, default is null.
- * - dateTimeMax - If not null, defines latest allowed date. Optional, default is null.
+ * - dateMin - If not null, defines earliest allowed date. Optional, default is null.
+ * - dateMax - If not null, defines latest allowed date. Optional, default is null.
  *
  * Outputs:
  * - touch - Informs that user blurred out of component.
@@ -62,9 +62,9 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** If true, show weeks. */
   showWeeks = input<boolean>(false);
   /** If not null, defines earliest allowed date. */
-  dateTimeMin = input<Date | null>(null);
+  dateMin = input<Date | null>(null);
   /** If not null, defines latest allowed date. */
-  dateTimeMax = input<Date | null>(null);
+  dateMax = input<Date | null>(null);
   /** Is component required? */
   readonly required = input<boolean>(false);
   /** Is component disabled? */

@@ -13,14 +13,14 @@ import { afterRender } from '@/shared/utils/render/after-render';
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
  * Designed to be used with signal-based forms.
  *
- * CURRENTLY PLACEHOLDER.
- * TODO
- * - watch isClockVisible so it scrolls, same with disabling picker
- *
  * Features:
  * - Can select time.
  * - Can disable or mark as invalid.
- * - Keyboard navigation supported via arrows (open panel or change hour/minute), enter/space (pick hour/minute) and esc (close panel).
+ * - Keyboard navigation supported:
+ *   - if clock panel closed, open it with enter, space or down arrow
+ *   - change hour/minute
+ *   - enter/space (pick hour/minute)
+ *   - esc (close panel).
  * - Supports <label>.
  * - Supports WAI-ARIA.
  *
@@ -111,12 +111,12 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** aria-activedescendant value for the hour listbox. */
   hourActiveDesc = computed(() => {
     if (this.focusedHour() === null) return undefined;
-    return `${this.ident}_opt_h${this.focusedHour()}`;
+    return `${this.ident()}_opt_h${this.focusedHour()}`;
   });
   /** aria-activedescendant value for the minute listbox. */
   minuteActiveDesc = computed(() => {
     if (this.focusedMinute() === null) return undefined;
-    return `${this.ident}_opt_m${this.focusedMinute()}`;
+    return `${this.ident()}_opt_m${this.focusedMinute()}`;
   });
 
   /** Compute currently displayed time value in time input. */
@@ -136,7 +136,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       if (this.disabled() && this.isClockVisible()) this.hidePanel();
     });
 
-    // Watch `disabled` field: react on panel opening.
+    // Watch `isClockVisible` field: react on panel opening.
     effect(() => {
       if ( this.isClockVisible()) this.scrollToSelected();
     });
@@ -154,7 +154,6 @@ export class TimePicker implements FormValueControl<Date | null> {
 
       // Initialize keyboard focus state.
       if (viaKeyboard) {
-        this.setupFocus(true);
         if (this.value()) {
           this.focusedHour.set(this.value()?.getUTCHours() ?? null);
           this.focusedMinute.set(this.value()?.getUTCMinutes() ?? null);
@@ -300,6 +299,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     const next = e.relatedTarget;
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
     this.hidePanel();
+    this.touch.emit();
   }
 
   // EVENTS: KEYBOARD HANDLERS
@@ -510,7 +510,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     await afterRender(this.injector);
 
-    const inputEl = document.getElementById(this.ident());
+    const inputEl = document.getElementById(`${this.ident()}_input`);
     inputEl?.focus();
   }
 
@@ -520,7 +520,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     await afterRender(this.injector);
 
-    const inputEl = document.getElementById(this.ident());
+    const inputEl = document.getElementById(`${this.ident()}_input`);
     NavUtils.FocusNext(inputEl);
   }
 

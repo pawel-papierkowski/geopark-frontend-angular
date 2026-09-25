@@ -1,3 +1,7 @@
-<div class="picker-date">
+<div
+  #pickerRef
+  class="picker-date"
+  [class.invalid]="invalid()"
+  (focusout)="handleFocusOut($event)">
   DATE PICKER
 </div>
