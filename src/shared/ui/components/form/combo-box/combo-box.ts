@@ -77,7 +77,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /** Index of currently highlighted option. -1 means none highlighted. */
   highlightedIndex = signal(-1);
   /** Root focusable element (role=combobox). */
-  comboRoot = viewChild.required<ElementRef<HTMLDivElement>>('comboRoot');
+  comboRef = viewChild.required<ElementRef<HTMLDivElement>>('comboRef');
 
   constructor() {
     // Watch `disabled` field: close open list when component becomes disabled.
@@ -92,6 +92,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     // the root; label activation runs on the subsequent click, so opening still works.
     // Capture phase: must run before any handler could stop propagation. mousedown (not pointerdown):
     // canceling pointerdown would also suppress the click and break label activation entirely.
+
     /**
      * Cancel focus steal when pointer down lands on this component's associated label.
      * @param e Mousedown event.
@@ -174,7 +175,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     return option;
   }
 
-  // INTERACTIONS
+  // EVENTS
 
   /** Track new pointer interaction: cancel any pending focus-open so click can toggle. */
   handleMousedown() {
@@ -197,7 +198,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    */
   focusRoot() {
     if (this.disabled()) return;
-    this.comboRoot().nativeElement.focus();
+    this.comboRef().nativeElement.focus();
   }
 
   /**
@@ -207,7 +208,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    */
   handleBlur(e: FocusEvent) {
     const next = e.relatedTarget;
-    if (next instanceof Node && this.comboRoot().nativeElement.contains(next)) return;
+    if (next instanceof Node && this.comboRef().nativeElement.contains(next)) return;
     this.hidePanel();
     this.touch.emit();
   }

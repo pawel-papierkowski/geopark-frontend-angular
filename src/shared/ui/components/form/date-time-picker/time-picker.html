@@ -1,3 +1,42 @@
-<div class="picker-time">
-  TIME PICKER
+<div
+  #pickerRef
+  class="picker-time"
+  [class.invalid]="invalid()"
+  (focusout)="handleFocusOut($event)">
+
+  <input
+    [id]="`${ident()}`"
+    type="text"
+    [data-testid]="`${ident()}`"
+    class="picker-input-time"
+    [class.disabled]="disabled()"
+    [class.invalid]="invalid()"
+
+    [value]="displayTimeValue()"
+    [placeholder]="placeholderTimeValue()"
+    [disabled]="disabled()"
+    readonly
+    autocomplete="off"
+    role="combobox"
+    [tabindex]="disabled() ? -1 : 0"
+
+    [aria-haspopup]="listbox"
+    [aria-expanded]="isClockVisible()"
+    [aria-controls]="`${ident}_panel`"
+    [aria-label]="'dateTimePicker.placeholder.time' | translate"
+    [attr.aria-invalid]="invalid() || null"
+    [aria-disabled]="disabled() || null"
+
+    (mousedown)="handleMousedown($event)"
+    (focus)="handleInputFocus($event)"
+    (click)="handleClick(false)"
+    (keydown)="onInputKeydown($event)" />
+
+    <!-- Time picker: clock panel. -->
+    @if (isClockVisible()) {
+      <div
+        #clockPanelRef>
+TODO CLOCK PANEL
+      </div>
+    }
 </div>

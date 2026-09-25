@@ -1,5 +1,5 @@
 <div
-    #comboRoot
+    #comboRef
     [attr.data-testid]="ident()"
     class="combobox"
     [class.disabled]="disabled()"
@@ -56,8 +56,7 @@
           (click)="$event.stopImmediatePropagation(); selectOption(option)"
           (mousedown)="$event.preventDefault()"
           (keydown)="handleKeydown($event)"
-          (mouseenter)="highlightedIndex.set($index)"
-        >
+          (mouseenter)="highlightedIndex.set($index)">
           {{ showOption(option) }}
         </div>
       }

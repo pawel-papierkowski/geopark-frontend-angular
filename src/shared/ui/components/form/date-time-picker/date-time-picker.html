@@ -1,5 +1,5 @@
 <div
-  #pickerRoot
+  #pickerRef
   class="picker-general"
   (focusin)="handleFocusIn($event)">
 
@@ -11,7 +11,7 @@
 
   @if (mode() === 'datetime' || mode() === 'date') {
     <date-picker
-      #datePickerRoot
+      #datePickerRef
       [id]="dateId"
       [value]="value()"
       (input)="value.set($any($event.target).value)"
@@ -31,7 +31,7 @@
 
   @if (mode() === 'datetime' || mode() === 'time') {
     <time-picker
-      #timePickerRoot
+      #timePickerRef
       [id]="timeId"
       [value]="value()"
       (input)="value.set($any($event.target).value)"

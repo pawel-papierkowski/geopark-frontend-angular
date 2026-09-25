@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { disabled, validate, form, FormField, submit, SchemaPath } from '@angular/forms/signals';
 
-import {TranslatePipe} from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { TextBox } from '@/shared/ui/components/form/text-box/text-box';
 import { CheckBox } from '@/shared/ui/components/form/check-box/check-box';

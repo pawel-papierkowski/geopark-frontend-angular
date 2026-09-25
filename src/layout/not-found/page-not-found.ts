@@ -1,6 +1,6 @@
 import { Component, inject, type OnDestroy, type OnInit } from '@angular/core';
 import { Meta } from '@angular/platform-browser';
-import {TranslatePipe} from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /**
  * Default 404 page.

@@ -75,11 +75,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   touch = output<void>();
 
   /** Root focusable element (role=combobox). */
-  pickerRoot = viewChild.required<ElementRef<HTMLDivElement>>('pickerRoot');
+  pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
   /** Reference to date-picker. */
-  datePickerRoot = viewChild.required<ElementRef<HTMLDivElement>>('datePickerRoot');
+  datePickerRef = viewChild.required<ElementRef<HTMLDivElement>>('datePickerRef');
   /** Reference to time-picker. */
-  timePickerRoot = viewChild.required<ElementRef<HTMLDivElement>>('timePickerRoot');
+  timePickerRef = viewChild.required<ElementRef<HTMLDivElement>>('timePickerRef');
 
   dateId = `datepicker_${this.ident()}`;
   timeId = `timepicker_${this.ident()}`;
@@ -93,7 +93,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    */
   focusRoot() {
     if (this.disabled()) return;
-    this.pickerRoot().nativeElement.focus();
+    this.pickerRef().nativeElement.focus();
   }
 
   /**
@@ -105,11 +105,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
 
     // If time input received focus, close date panel.
     if (target.id === this.timeId) {
-      //datePickerRef.value?.hidePanel(); TODO
+      //this.datePickerRef()?.hidePanel(); TODO
     }
     // If date input received focus, close time panel.
     if (target.id === this.dateId) {
-      //timePickerRef.value?.hidePanel(); // TODO
+      //this.timePickerRef()?.hidePanel(); // TODO
     }
   }
 }
