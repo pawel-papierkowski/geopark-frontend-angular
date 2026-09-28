@@ -29,7 +29,7 @@
     [attr.aria-invalid]="invalid() || null"
     [attr.aria-disabled]="disabled() || null"
 
-    (mousedown)="handleMousedown()"
+    (mousedown)="handleMousedown($event)"
     (focus)="handleInputFocus()"
     (click)="handleClick(false)"
     (keydown)="onInputKeydown($event)" />

@@ -265,15 +265,21 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   // EVENTS
 
-  /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). */
+  /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). Set only when a click-caused focus event is actually coming. */
   focusFromClick = false;
 
   /** True while a programmatic refocus (e.g. after closing the panel) must not auto-open the panel. */
   private suppressFocusOpen = false;
 
-  /** Handle mousedown on input: mark that focus is from a click so auto-open is skipped. */
-  handleMousedown() {
-    this.focusFromClick = true;
+  /**
+   * Handle mousedown on input: if focus is about to arrive (input not focused yet), mark it as
+   * click-caused so auto-open is skipped. An already-focused input produces no focus event,
+   * so nothing is marked - that is what keeps the flag from leaking (a stale flag would swallow
+   * the auto-open of the next Tab into the input).
+   * @param e Mouse event.
+   */
+  handleMousedown(e: MouseEvent) {
+    this.focusFromClick = document.activeElement !== e.currentTarget;
   }
 
   /** Handle focus arriving on the input (e.g. via Tab). */
@@ -290,6 +296,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    */
   async handleClick(viaKeyboard: boolean) {
     if (this.disabled()) return;
+    this.focusFromClick = false; // Any click-caused focus already happened (focus precedes click) - never leave a stale flag behind.
     await this.toggleTimePickerVisibility(viaKeyboard);
   };
 

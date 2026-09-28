@@ -72,6 +72,7 @@ We use **Vitest** for unit tests and **Playwright** for e2e tests.
   - Every test must have marked sections: Arrange, Act, Assert. In some cases it is allowed to skip section (usually Act when Arrange also acts).
   - Assertions should use context messages (as second argument for `expect()`), unless it is obvious what failure means.
   - Use `data-testid` attribute to uniquely identify elements for testing.
+  - When bug is known, write test first, run it to ensure it catches bug, and only then fix bug.
 - Vitest:
   - For user events (keyboard) use userEvent from `@testing-library/user-event`.
   - Usually there is no need to set up translation service. Just assert presence of translation keys.

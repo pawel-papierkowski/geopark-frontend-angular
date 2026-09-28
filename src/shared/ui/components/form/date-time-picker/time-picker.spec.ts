@@ -317,6 +317,29 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusFromClick, 'click suppression flag should be reset after focus').toBe(false);
       });
 
+      it('should keep auto-open on focus after mousedown on already-focused input', async () => {
+        // Arrange: Create component with input focused (focus-open suppressed) and panel closed.
+        const fixture = await arrangeTimePicker();
+        const input = focusInputWithoutOpening(fixture);
+        expect(fixture.componentInstance.focusFromClick, 'suppression flag should start consumed').toBe(false);
+
+        // Act: Mousedown lands on the already-focused input, so no focus event follows to consume the flag.
+        input.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+        // Assert: Nothing was marked (marking here would leak and swallow the next auto-open).
+        expect(fixture.componentInstance.focusFromClick, 'mousedown on focused input should not mark the flag').toBe(false);
+
+        // Act: Leave the input and focus it again (Tab-like flow).
+        input.blur();
+        input.focus();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Focus auto-opens the panel (a leaked flag would keep it closed).
+        expect(fixture.componentInstance.isClockVisible(), 'auto-open should work after mousedown on focused input').toBe(true);
+      });
+
       it('should close panel and reset keyboard focus on Escape from input', async () => {
         // Arrange: Create component and open the panel (focus sits in the hour listbox).
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
