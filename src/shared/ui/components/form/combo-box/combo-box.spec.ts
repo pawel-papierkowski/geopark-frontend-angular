@@ -1365,6 +1365,39 @@ describe('ComboBox', () => {
           nextControl.remove();
         }
       });
+
+      it('should close list and move focus to previous control on Shift+Tab when open', async () => {
+        // Arrange: Create component with open list.
+        const user = userEvent.setup();
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+
+        // Arrange: Create focusable control before our combobox (simulates previous component).
+        const prevControl = document.createElement('button');
+        prevControl.setAttribute('data-testid', 'prev-control');
+        document.body.insertBefore(prevControl, fixture.nativeElement);
+
+        try {
+          // Act: Open list.
+          const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+          root.focus();
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: List is actually opened.
+          expect(fixture.componentInstance.isOpen(), 'list should be open before Shift+Tab').toBe(true);
+
+          // Act: Press Shift+Tab.
+          await user.keyboard('{Shift>}{Tab}{/Shift}');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: List closed via blur, focus moved out of combobox backwards.
+          expect(fixture.componentInstance.isOpen(), 'Shift+Tab should close the list via blur').toBe(false);
+          expect(document.activeElement, 'Shift+Tab should move focus to previous control').toBe(prevControl);
+        } finally { // cleanup
+          prevControl.remove();
+        }
+      });
     });
   });
 });

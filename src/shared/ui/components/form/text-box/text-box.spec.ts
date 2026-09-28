@@ -322,6 +322,52 @@ describe('TextBox', () => {
         // Assert: Value updates normally.
         expect(fixture.componentInstance.value(), 'invalid input should accept typing').toBe('test');
       });
+
+      it('should skip disabled input on Shift+Tab', async () => {
+        // Arrange: Create disabled component with a focusable control after it (source of the
+        // backwards keystroke) and user event setup.
+        const user = userEvent.setup();
+        const fixture = await arrangeTextBox({ disabled: true });
+        const input = fixture.nativeElement.querySelector('input');
+        const nextControl = document.createElement('button');
+        nextControl.setAttribute('data-testid', 'next-control');
+        document.body.appendChild(nextControl);
+
+        try {
+          nextControl.focus();
+
+          // Act: Press Shift+Tab to move focus backwards.
+          await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+          // Assert: Disabled input (tabindex -1) must be skipped.
+          expect(document.activeElement, 'disabled input should be skipped on Shift+Tab').not.toBe(input);
+        } finally { // cleanup
+          nextControl.remove();
+        }
+      });
+
+      it('should receive focus on Shift+Tab when invalid', async () => {
+        // Arrange: Create invalid component with a focusable control after it (source of the
+        // backwards keystroke) and user event setup.
+        const user = userEvent.setup();
+        const fixture = await arrangeTextBox({ invalid: true });
+        const input = fixture.nativeElement.querySelector('input');
+        const nextControl = document.createElement('button');
+        nextControl.setAttribute('data-testid', 'next-control');
+        document.body.appendChild(nextControl);
+
+        try {
+          nextControl.focus();
+
+          // Act: Press Shift+Tab to move focus backwards.
+          await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+          // Assert: Invalid state is visual only, input still receives focus.
+          expect(document.activeElement, 'invalid input should receive focus on Shift+Tab').toBe(input);
+        } finally { // cleanup
+          nextControl.remove();
+        }
+      });
     });
   });
 

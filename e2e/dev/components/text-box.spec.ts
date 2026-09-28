@@ -119,6 +119,28 @@ test.describe('TextBox', () => {
       // Assert: Focus moved to next component (checkBox).
       await expect(page.getByTestId('cc-checkBox')).toBeFocused();
     });
+
+    test('should navigate backwards from checkBox to textBox to mode radioBox on Shift+Tab presses', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality on the checkBox (next component).
+      await goToComponentsPage(page);
+      await page.getByTestId('cc-checkBox').focus();
+
+      // Act: Shift+Tab backwards into textBox.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Component textBox focused. Outline is intentionally hidden for standard inputs
+      // (caret acts as the focus indicator), so we assert outline-style none instead of solid.
+      const textBox = getTextBox(page);
+      await expect(textBox).toBeFocused();
+      await expect(textBox, 'textBox should not have focus outline').toHaveCSS('outline-style', 'none');
+
+      // Act: Shift+Tab out of textBox.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Focus moved to previous component (mode radioBox, its selected option is the
+      // group's single tab stop).
+      await expect(getModeOption(page, 0)).toBeFocused();
+    });
   });
 
   test.describe('states', () => {

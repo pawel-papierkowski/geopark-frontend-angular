@@ -153,6 +153,28 @@ test.describe('CheckBox', () => {
       // Assert: Focus moved to next component (comboBox).
       await expect(page.getByTestId('cc-comboBox')).toBeFocused();
     });
+
+    test('should navigate backwards from comboBox to checkBox to textBox on Shift+Tab presses', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality on comboBox (next component).
+      await goToComponentsPage(page);
+      await page.getByTestId('cc-comboBox').focus();
+
+      // Act: Shift+Tab backwards into checkBox.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Component checkBox focused with visible focus outline; Shift+Tab must not toggle it.
+      const checkBox = getCheckBox(page);
+      await expect(checkBox).toBeFocused();
+      await expect(checkBox).toHaveCSS('outline-style', 'solid');
+      await expect(checkBox).toHaveCSS('outline-color', 'rgb(37, 99, 235)');
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
+
+      // Act: Shift+Tab out of checkBox.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Focus moved to previous component (textBox).
+      await expect(page.getByTestId('cc-textBox')).toBeFocused();
+    });
   });
 
   test.describe('states', () => {

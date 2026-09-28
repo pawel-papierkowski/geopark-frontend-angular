@@ -110,6 +110,36 @@ describe('SectionSwitcher', () => {
       expect(links[1].getAttribute('data-testid')).toBe('section-switcher.admin');
     });
 
+    it('should support backwards Shift+Tab navigation between section links', async () => {
+      // Arrange: Create component.
+      const user = userEvent.setup();
+      const fixture = TestBed.createComponent(SectionSwitcher);
+      fixture.componentRef.setInput('currSection', 'public');
+      await fixture.whenStable();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const links = compiled.querySelectorAll<HTMLAnchorElement>('.section-link');
+
+      // Act: Tab twice to reach the second link.
+      await user.tab();
+      await user.tab();
+
+      // Assert: Second link receives focus.
+      expect(document.activeElement, 'second link should receive focus after Tab').toBe(links[1]);
+
+      // Act: Shift+Tab back to the first link.
+      await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+      // Assert: First link receives focus.
+      expect(document.activeElement, 'first link should receive focus after Shift+Tab').toBe(links[0]);
+
+      // Act: Shift+Tab again to leave the component backwards.
+      await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+      // Assert: Focus moved out of the component (backwards traversal starts from document body).
+      expect(document.activeElement, 'focus should leave the component on Shift+Tab').toBe(document.body);
+    });
+
     it('should navigate when Enter is pressed on a section link', async () => {
       // Arrange: Create component and spy on router navigation.
       const user = userEvent.setup();

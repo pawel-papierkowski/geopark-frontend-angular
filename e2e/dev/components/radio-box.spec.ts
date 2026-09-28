@@ -268,6 +268,40 @@ test.describe('RadioBox', () => {
       await expect(page.locator('#timeId_cc-dateTimePicker_panel .clock-column').first()).toBeFocused();
       await expect(option0).not.toBeFocused();
     });
+
+    test('should navigate backwards from time-picker to radio-box to combo-box on Shift+Tab presses', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality on the datetime row's time input (next
+      // component), which auto-opens its panel and moves focus into its hour listbox.
+      // TODO: after finishing date-time-picker, we start on date-picker in date-time-picker. Adjust test accordingly.
+      await goToComponentsPage(page);
+      const dateTimeInput = page.getByTestId('timeId_cc-dateTimePicker_input');
+      await dateTimeInput.focus();
+      await expect(dateTimeInput).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('#timeId_cc-dateTimePicker_panel .clock-column').first()).toBeFocused();
+
+      // Act: Shift+Tab backwards out of the time-picker — one press must close the panel and
+      // hand focus back to the radioBox.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Focus landed on the selected option (the group's single tab stop) with visible
+      // focus outline; selection unchanged; time-picker panel closed.
+      const option0 = getOption(page, 0);
+      await expect(option0).toBeFocused();
+      await expect(option0).toHaveCSS('outline-style', 'solid');
+      await expect(option0).toHaveCSS('outline-color', 'rgb(37, 99, 235)');
+      await expect(option0).toHaveAttribute('aria-checked', 'true');
+      await expect(dateTimeInput).toHaveAttribute('aria-expanded', 'false');
+
+      // Act: Shift+Tab again — the whole roving-tabindex group must be skipped backwards in one press.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Focus moved past the radioBox to the previous focusable component (comboBox),
+      // which opens its list on focus. No radio option remains focused.
+      const comboBox = page.getByTestId('cc-comboBox');
+      await expect(comboBox).toBeFocused();
+      await expect(comboBox).toHaveAttribute('aria-expanded', 'true');
+      await expect(option0).not.toBeFocused();
+    });
   });
 
   test.describe('states', () => {

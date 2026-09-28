@@ -247,6 +247,35 @@ describe('LangSwitcher', () => {
       expect(flags[1].getAttribute('data-testid')).toBe('lang-switcher.pl');
     });
 
+    it('should support backwards Shift+Tab navigation between flag buttons', async () => {
+      // Arrange: Create component.
+      const user = userEvent.setup();
+      const fixture = TestBed.createComponent(LangSwitcher);
+      await fixture.whenStable();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const flags = compiled.querySelectorAll<HTMLButtonElement>('.flag-item');
+
+      // Act: Tab twice to reach the second flag button.
+      await user.tab();
+      await user.tab();
+
+      // Assert: Second flag receives focus.
+      expect(document.activeElement, 'second flag should receive focus after Tab').toBe(flags[1]);
+
+      // Act: Shift+Tab back to the first flag button.
+      await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+      // Assert: First flag receives focus.
+      expect(document.activeElement, 'first flag should receive focus after Shift+Tab').toBe(flags[0]);
+
+      // Act: Shift+Tab again to leave the component backwards.
+      await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+      // Assert: Focus moved out of the component (backwards traversal starts from document body).
+      expect(document.activeElement, 'focus should leave the component on Shift+Tab').toBe(document.body);
+    });
+
     it('should switch language when Enter is pressed on a flag button', async () => {
       // Arrange: Create component.
       const user = userEvent.setup();

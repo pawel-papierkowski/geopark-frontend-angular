@@ -244,6 +244,52 @@ describe('CheckBox', () => {
         // Assert: Value toggled from null to true.
         expect(fixture.componentInstance.value(), 'invalid checkbox should toggle on click').toBe(true);
       });
+
+      it('should skip disabled checkbox on Shift+Tab', async () => {
+        // Arrange: Create disabled component with a focusable control after it (source of the
+        // backwards keystroke) and user event setup.
+        const user = userEvent.setup();
+        const fixture = await arrangeCheckBox({ value: false, disabled: true });
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        const nextControl = document.createElement('button');
+        nextControl.setAttribute('data-testid', 'next-control');
+        document.body.appendChild(nextControl);
+
+        try {
+          nextControl.focus();
+
+          // Act: Press Shift+Tab to move focus backwards.
+          await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+          // Assert: Disabled checkbox (tabindex -1) must be skipped.
+          expect(document.activeElement, 'disabled checkbox should be skipped on Shift+Tab').not.toBe(checkbox);
+        } finally { // cleanup
+          nextControl.remove();
+        }
+      });
+
+      it('should receive focus on Shift+Tab when invalid', async () => {
+        // Arrange: Create invalid component with a focusable control after it (source of the
+        // backwards keystroke) and user event setup.
+        const user = userEvent.setup();
+        const fixture = await arrangeCheckBox({ invalid: true });
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        const nextControl = document.createElement('button');
+        nextControl.setAttribute('data-testid', 'next-control');
+        document.body.appendChild(nextControl);
+
+        try {
+          nextControl.focus();
+
+          // Act: Press Shift+Tab to move focus backwards.
+          await user.keyboard('{Shift>}{Tab}{/Shift}');
+
+          // Assert: Invalid state is visual only, checkbox still receives focus.
+          expect(document.activeElement, 'invalid checkbox should receive focus on Shift+Tab').toBe(checkbox);
+        } finally { // cleanup
+          nextControl.remove();
+        }
+      });
     });
   });
 

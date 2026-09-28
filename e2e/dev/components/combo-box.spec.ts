@@ -172,6 +172,21 @@ test.describe('ComboBox', () => {
       await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'false');
     });
 
+    test('should close list and leave component on Shift+Tab after label activation', async ({ page }) => {
+      // Arrange: Navigate and open the list via label click.
+      await goToComponentsPage(page);
+      const label = page.locator('label', { hasText: 'Combobox' });
+      await label.click();
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Shift+Tab out of the combobox.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Focus moved to previous component; list closed.
+      await expect(page.getByTestId('cc-checkBox')).toBeFocused();
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'false');
+    });
+
     test('should toggle list closed on second label click', async ({ page }) => {
       // Arrange: Navigate and open the list via first label click.
       await goToComponentsPage(page);
@@ -251,6 +266,22 @@ test.describe('ComboBox', () => {
       // Assert: Focus moved to next component; list closed; comboBox blurred.
       await expect(page.getByTestId('cc-radioBox_0')).toBeFocused();
       await expect(comboBox).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('should navigate backwards into combo-box opening the list on Shift+Tab', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality on radioBox option 0 (next component).
+      await goToComponentsPage(page);
+      await page.getByTestId('cc-radioBox_0').focus();
+
+      // Act: Shift+Tab backwards into comboBox.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Component comboBox focused with visible focus outline; focus must open the list.
+      const comboBox = getComboBox(page);
+      await expect(comboBox).toBeFocused();
+      await expect(comboBox).toHaveAttribute('aria-expanded', 'true');
+      await expect(comboBox).toHaveCSS('outline-style', 'solid');
+      await expect(comboBox).toHaveCSS('outline-color', 'rgb(37, 99, 235)');
     });
   });
 
