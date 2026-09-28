@@ -591,6 +591,49 @@ describe('TimePicker', () => {
         expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
       });
 
+      it('should prevent default on mousedown on the clock panel chrome', async () => {
+        // Arrange: Create component and open the panel (chrome = padding/border of the panel).
+        const fixture = await arrangeTimePicker();
+        await openPanel(fixture);
+        const panel = fixture.componentInstance.clockPanelRef().nativeElement;
+
+        // Act: Dispatch a real cancelable mousedown on the panel itself.
+        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        panel.dispatchEvent(event);
+
+        // Assert: Default focus change is cancelled, so focus cannot jump to <body> (which the
+        // focusout handler would read as leaving the component - closing panel and emitting touch).
+        expect(event.defaultPrevented, 'mousedown on panel chrome should be default-prevented').toBe(true);
+      });
+
+      it('should keep default on mousedown inside a clock column', async () => {
+        // Arrange: Create component and open the panel.
+        const fixture = await arrangeTimePicker();
+        await openPanel(fixture);
+        const column = fixture.componentInstance.hourRef().nativeElement;
+
+        // Act: Dispatch a real cancelable mousedown on the hour listbox.
+        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        column.dispatchEvent(event);
+
+        // Assert: Column presses keep native behaviour (focus lands on the column, scrollbars work).
+        expect(event.defaultPrevented, 'mousedown inside clock column should keep its default').toBe(false);
+      });
+
+      it('should keep default on mousedown on a time item', async () => {
+        // Arrange: Create component and open the panel.
+        const fixture = await arrangeTimePicker();
+        await openPanel(fixture);
+        const item = fixture.nativeElement.querySelector('[data-testid="test-time_h14"]');
+
+        // Act: Dispatch a real cancelable mousedown on an hour option.
+        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        item.dispatchEvent(event);
+
+        // Assert: Option presses keep native behaviour, only panel chrome is guarded.
+        expect(event.defaultPrevented, 'mousedown on time item should keep its default').toBe(false);
+      });
+
       it('should emit touch when focus leaves while panel is already closed', async () => {
         // Arrange: Create component with closed panel (state reached after Escape or keyboard
         // commit moved focus back to the input) and spy on touch output.

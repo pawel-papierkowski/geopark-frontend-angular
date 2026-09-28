@@ -45,7 +45,9 @@
       role="dialog"
 
       [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
-      aria-modal="true">
+      aria-modal="true"
+
+      (mousedown)="handlePanelMousedown($event)">
 
       <div class="clock-columns">
 

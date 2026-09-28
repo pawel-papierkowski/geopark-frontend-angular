@@ -88,6 +88,31 @@ async function goToComponentsPage(page: Page): Promise<void> {
 }
 
 /**
+ * Install a page-level focusout counter, so tests can prove the component never blurred.
+ * A blur is what makes the picker close itself and emit `touch`, so a zero count also proves
+ * no spurious touch was reported.
+ * @param page Browser page.
+ */
+async function installFocusoutCounter(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { focusoutCount?: number };
+    w.focusoutCount = 0;
+    document.addEventListener('focusout', () => {
+      w.focusoutCount = (w.focusoutCount ?? 0) + 1;
+    }, true);
+  });
+}
+
+/**
+ * Read the focusout counter installed by {@link installFocusoutCounter}.
+ * @param page Browser page.
+ * @returns Number of focusout events recorded since installation.
+ */
+async function readFocusoutCount(page: Page): Promise<number> {
+  return page.evaluate(() => (window as unknown as { focusoutCount?: number }).focusoutCount ?? 0);
+}
+
+/**
  * Select a deterministic time (14:30) through mouse interaction.
  * Uses fixed values so assertions do not depend on the current time.
  * @param page Browser page.
@@ -156,6 +181,39 @@ test.describe('TimePicker', () => {
       // Assert: Panel closed via real focusout flow, selected value retained.
       await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'false');
       await expect(getValueDisplay(page)).toContainText('T14:30:00');
+    });
+
+    test('should keep panel open and focus inside when clicking its padding or border', async ({ page }) => {
+      // Arrange: Navigate and open the panel (focus lands in the hour column after opening).
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+      await timePicker.click();
+      await expect(getHourColumn(page)).toBeFocused();
+      await installFocusoutCounter(page);
+
+      // Act: Click the top-left chrome of the panel (1px border + 8px padding).
+      await getPanel(page).click({ position: { x: 5, y: 5 } });
+
+      // Assert: Panel stays open and focus stays in the column. No focusout at all means the
+      // component never blurred, so no spurious touch was emitted either.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getHourColumn(page)).toBeFocused();
+      expect(await readFocusoutCount(page), 'clicking panel padding must not blur the component').toBe(0);
+
+      // Act: Click the left border in the middle of the panel height.
+      const panelHeight = await getPanel(page).evaluate((el) => el.getBoundingClientRect().height);
+      await getPanel(page).click({ position: { x: 0.5, y: panelHeight / 2 } });
+
+      // Assert: Border behaves like padding - still open, still focused, still no blur.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getHourColumn(page)).toBeFocused();
+      expect(await readFocusoutCount(page), 'clicking panel border must not blur the component').toBe(0);
+
+      // Act: Keyboard navigation after the chrome clicks.
+      await getHourColumn(page).press('ArrowDown');
+
+      // Assert: Focus is still tracked on the column, so arrow keys keep working.
+      await expect(getHourColumn(page)).toHaveAttribute('aria-activedescendant', /timeId_cc-timePicker_opt_h\d+/);
     });
   });
 

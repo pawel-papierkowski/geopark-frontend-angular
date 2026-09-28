@@ -282,6 +282,21 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.focusFromClick = document.activeElement !== e.currentTarget;
   }
 
+  /**
+   * Guard mousedown on the clock panel. Its chrome (padding, border, gaps around the columns) is
+   * not focusable, so the browser's focus fixup would move focus to <body>; the panel's focusout
+   * handler would read that as "focus left the component" and close the panel while emitting a
+   * spurious touch. Cancelling the default keeps focus where it was (inside a .clock-column).
+   * Presses inside a .clock-column are left alone: they focus that column (already inside the
+   * component) and must keep native scrollbar/text-drag behaviour.
+   * @param e Mouse event.
+   */
+  handlePanelMousedown(e: MouseEvent) {
+    const target = e.target;
+    if (target instanceof Element && target.closest('.clock-column') !== null) return;
+    e.preventDefault();
+  }
+
   /** Handle focus arriving on the input (e.g. via Tab). */
   async handleInputFocus() {
     if (!this.focusFromClick && !this.suppressFocusOpen && !this.isClockVisible() && !this.disabled()) {
