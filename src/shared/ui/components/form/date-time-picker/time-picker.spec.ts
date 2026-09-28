@@ -121,7 +121,8 @@ describe('TimePicker', () => {
   }
 
   beforeAll(() => {
-    // jsdom does not implement scrollIntoView; component calls it when the clock panel opens.
+    // jsdom does not implement scrollIntoView; stubbed so a stray call cannot throw.
+    // Doubles as a spy: the scrolling suite asserts the component never calls it.
     Element.prototype.scrollIntoView = vi.fn();
   });
 
@@ -1650,6 +1651,52 @@ describe('TimePicker', () => {
           prevControl.remove();
         }
       });
+    });
+  });
+
+  describe('scrolling', () => {
+    it('should not use scrollIntoView when opening panel or navigating with keyboard', async () => {
+      // Arrange: Clear the shared scrollIntoView spy (stub installed in beforeAll).
+      const scrollSpy = vi.mocked(Element.prototype.scrollIntoView);
+      scrollSpy.mockClear();
+      const user = userEvent.setup();
+      const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+
+      // Act: Open the panel (centers the selected time) and navigate hours and minutes.
+      await openPanel(fixture);
+      await user.keyboard('{ArrowDown}');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await user.keyboard('{ArrowRight}');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await user.keyboard('{End}');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: Only the clock column itself may be scrolled. scrollIntoView aligns against
+      // the viewport, so it would also scroll every scrollable ancestor - including the page,
+      // animated by html:focus-within smooth scrolling - whenever the option is off-center.
+      expect(scrollSpy, 'scrollIntoView must not be used because it scrolls page ancestors').not.toHaveBeenCalled();
+    });
+
+    it('should center target option inside its own clock column via scrollTop', async () => {
+      // Arrange: Component with selected time 14:30 and stubbed geometry (jsdom performs no
+      // layout, so every rect and size defaults to zero without stubbing).
+      const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+      const hourColumn = fixture.componentInstance.hourRef().nativeElement;
+      const selectedHourOption = fixture.nativeElement.querySelector('[data-testid="test-time_h14"]');
+      vi.spyOn(hourColumn, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+      vi.spyOn(selectedHourOption, 'getBoundingClientRect').mockReturnValue({ top: 250 } as DOMRect);
+      Object.defineProperty(hourColumn, 'clientHeight', { value: 200, configurable: true });
+      Object.defineProperty(selectedHourOption, 'offsetHeight', { value: 20, configurable: true });
+
+      // Act: Open the panel, which centers the selected hour in its column.
+      await openPanel(fixture);
+
+      // Assert: scrollTop centers the option: current scroll 0 + option offset (250-100)
+      // + half option height (10) - half column height (100) = 60.
+      expect(hourColumn.scrollTop, 'selected hour should be vertically centered in its clock column').toBe(60);
     });
   });
 });

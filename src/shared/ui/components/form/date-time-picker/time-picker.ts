@@ -240,23 +240,44 @@ export class TimePicker implements FormValueControl<Date | null> {
     return copy;
   }
 
+  /**
+   * Scroll the given option to the vertical center of its own `.clock-column` container.
+   * Deliberately avoids `Element.scrollIntoView()`: it aligns the option against the viewport and
+   * therefore scrolls EVERY scrollable ancestor, including the page - opening the panel near a
+   * viewport edge would jump the whole document (animated, because `html:focus-within` enables
+   * smooth scrolling - see styles/general/reset.css). Writing `scrollTop` touches only the column.
+   * @param column The scrollable clock column containing the option.
+   * @param option The option element to center.
+   */
+  private centerOptionInColumn(column: HTMLElement, option: HTMLElement): void {
+    const columnRect = column.getBoundingClientRect();
+    const optionRect = option.getBoundingClientRect();
+
+    // Option's offset within the column's content; adding the current scroll keeps it valid
+    // regardless of where the column is currently scrolled to.
+    const optionTop = column.scrollTop + (optionRect.top - columnRect.top);
+    const centeredTop = optionTop + option.offsetHeight / 2 - column.clientHeight / 2;
+
+    column.scrollTop = Math.max(0, centeredTop); // Upper bound is clamped natively by the browser.
+  }
+
   /** Scroll to selected hour and minute. */
   async scrollToSelected() {
     await afterRender(this.injector);
 
-    let selHourElement: Element | null = null;
-    let selMinuteElement: Element | null = null;
+    let selHourElement: HTMLElement | null = null;
+    let selMinuteElement: HTMLElement | null = null;
 
     // If time is not selected, use current time as scroll target.
     if (this.value() === null) {
-      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector('.curr');
-      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector('.curr');
+      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector<HTMLElement>('.curr');
+      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector<HTMLElement>('.curr');
     } else {
-      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector('.selected');
-      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector('.selected');
+      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector<HTMLElement>('.selected');
+      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector<HTMLElement>('.selected');
     }
-    if (selHourElement) selHourElement.scrollIntoView({ block: 'center' });
-    if (selMinuteElement) selMinuteElement.scrollIntoView({ block: 'center' });
+    if (selHourElement) this.centerOptionInColumn(this.hourRef().nativeElement, selHourElement);
+    if (selMinuteElement) this.centerOptionInColumn(this.minuteRef().nativeElement, selMinuteElement);
   }
 
   /** Scroll hour listbox so given hour is visible. */
@@ -265,8 +286,9 @@ export class TimePicker implements FormValueControl<Date | null> {
     await afterRender(this.injector);
 
     if (this.hourRef()) {
-      const el = this.hourRef().nativeElement.querySelector(`[data-testid="${this.ident()}_h${h}"]`);
-      el?.scrollIntoView({ block: 'center' });
+      const column = this.hourRef().nativeElement;
+      const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_h${h}"]`);
+      if (el) this.centerOptionInColumn(column, el);
     }
   }
 
@@ -276,8 +298,9 @@ export class TimePicker implements FormValueControl<Date | null> {
     await afterRender(this.injector);
 
     if (this.minuteRef()) {
-      const el = this.minuteRef().nativeElement.querySelector(`[data-testid="${this.ident()}_m${m}"]`);
-      el?.scrollIntoView({ block: 'center' });
+      const column = this.minuteRef().nativeElement;
+      const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_m${m}"]`);
+      if (el) this.centerOptionInColumn(column, el);
     }
   }
 
