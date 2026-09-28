@@ -259,8 +259,13 @@ test.describe('RadioBox', () => {
       // Act: Tab again — the whole roving-tabindex group must be skipped in one press.
       await page.keyboard.press('Tab');
 
-      // Assert: Focus moved past the radioBox to the submit button; no option remains focused.
-      await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
+      // Assert: Focus moved past the radioBox to the next focusable component on the page
+      // (the datetime row's time input), which auto-opens its panel and moves focus into its
+      // hour listbox. No radio option remains focused.
+      // TODO: after we finish date-time-picker, focus will land on date-picker calendar panel, adjust test accordingly.
+      const dateTimeInput = page.getByTestId('timeId_cc-dateTimePicker_input');
+      await expect(dateTimeInput).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('#timeId_cc-dateTimePicker_panel .clock-column').first()).toBeFocused();
       await expect(option0).not.toBeFocused();
     });
   });

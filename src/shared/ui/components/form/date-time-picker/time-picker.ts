@@ -268,6 +268,9 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). */
   focusFromClick = false;
 
+  /** True while a programmatic refocus (e.g. after closing the panel) must not auto-open the panel. */
+  private suppressFocusOpen = false;
+
   /** Handle mousedown on input: mark that focus is from a click so auto-open is skipped. */
   handleMousedown() {
     this.focusFromClick = true;
@@ -275,7 +278,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /** Handle focus arriving on the input (e.g. via Tab). */
   async handleInputFocus() {
-    if (!this.focusFromClick && !this.isClockVisible() && !this.disabled()) {
+    if (!this.focusFromClick && !this.suppressFocusOpen && !this.isClockVisible() && !this.disabled()) {
       await this.toggleTimePickerVisibility(false);
     }
     this.focusFromClick = false;
@@ -504,14 +507,19 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.focusedMinute.set(null);
   }
 
-  /** Hide panel and return focus to the input. */
+  /**
+   * Hide panel and return focus to the input.
+   * The refocus is programmatic, so auto-open on focus is suppressed for its duration.
+   */
   async hidePanelAndRefocus() {
     this.hidePanel();
 
     await afterRender(this.injector);
 
     const inputEl = document.getElementById(`${this.ident()}_input`);
-    inputEl?.focus();
+    this.suppressFocusOpen = true;
+    inputEl?.focus(); // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
+    this.suppressFocusOpen = false;
   }
 
   /** Hide panel and move focus to the next focusable element on page. */

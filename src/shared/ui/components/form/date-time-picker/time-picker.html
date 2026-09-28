@@ -24,6 +24,8 @@
     [attr.aria-expanded]="isClockVisible()"
     [attr.aria-controls]="`${ident()}_panel`"
     [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
+    [attr.aria-labelledby]="label() || null"
+    [attr.aria-required]="required() || null"
     [attr.aria-invalid]="invalid() || null"
     [attr.aria-disabled]="disabled() || null"
 

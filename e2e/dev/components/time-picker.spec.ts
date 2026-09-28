@@ -1,0 +1,367 @@
+import { test, expect, type Page, type Locator } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+/**
+ * Locate the time-picker input on the custom components page.
+ * The page hosts two time-picker instances (datetime row and time row), so the ident prefix
+ * `timeId_cc-timePicker` is what distinguishes this instance.
+ * @param page Browser page.
+ * @returns Locator for the time-picker input.
+ */
+function getTimePicker(page: Page): Locator {
+  return page.getByTestId('timeId_cc-timePicker_input');
+}
+
+/**
+ * Locate the clock panel of the time-picker.
+ * @param page Browser page.
+ * @returns Locator for the clock panel.
+ */
+function getPanel(page: Page): Locator {
+  return page.getByTestId('timeId_cc-timePicker_panel');
+}
+
+/**
+ * Locate the hour listbox column inside the clock panel (first of the two columns).
+ * @param page Browser page.
+ * @returns Locator for the hour listbox.
+ */
+function getHourColumn(page: Page): Locator {
+  return getPanel(page).locator('.clock-column').nth(0);
+}
+
+/**
+ * Locate the minute listbox column inside the clock panel (second of the two columns).
+ * @param page Browser page.
+ * @returns Locator for the minute listbox.
+ */
+function getMinuteColumn(page: Page): Locator {
+  return getPanel(page).locator('.clock-column').nth(1);
+}
+
+/**
+ * Locate a specific hour option inside the time-picker.
+ * @param page Browser page.
+ * @param hour Hour value (0-23).
+ * @returns Locator for the hour option.
+ */
+function getHour(page: Page, hour: number): Locator {
+  return page.getByTestId(`timeId_cc-timePicker_h${hour}`);
+}
+
+/**
+ * Locate a specific minute option inside the time-picker.
+ * @param page Browser page.
+ * @param minute Minute value (0-59).
+ * @returns Locator for the minute option.
+ */
+function getMinute(page: Page, minute: number): Locator {
+  return page.getByTestId(`timeId_cc-timePicker_m${minute}`);
+}
+
+/**
+ * Locate a specific option inside the mode radioBox by index.
+ * @param page Browser page.
+ * @param index Option index (0-based).
+ * @returns Locator for the option element.
+ */
+function getModeOption(page: Page, index: number): Locator {
+  return page.getByTestId(`cc-mode_${index}`);
+}
+
+/**
+ * Locate the value display div next to the time-picker using data-testid.
+ * @param page Browser page.
+ * @returns Locator for the value display div.
+ */
+function getValueDisplay(page: Page): Locator {
+  return page.getByTestId('cc-timePicker-value');
+}
+
+/**
+ * Navigate to the custom components page and wait for it to stabilize.
+ * @param page Browser page.
+ */
+async function goToComponentsPage(page: Page): Promise<void> {
+  await page.goto('/dev/components');
+  await expect(page.locator('main')).toBeVisible();
+}
+
+/**
+ * Select a deterministic time (14:30) through mouse interaction.
+ * Uses fixed values so assertions do not depend on the current time.
+ * @param page Browser page.
+ */
+async function selectTimeViaMouse(page: Page): Promise<void> {
+  await getTimePicker(page).click();
+  await getHour(page, 14).click();
+  await getMinute(page, 30).click();
+}
+
+/**
+ * E2e tests of time-picker component in form present in page-custom-components.
+ * Covers interactions that are hard to unit test: real focus flows, signal form propagation
+ * and real i18n assets.
+ */
+test.describe('TimePicker', () => {
+  test.describe('clicking', () => {
+    test('should open panel on click and select time', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+
+      // Assert: Initial state is null and panel closed.
+      await expect(getValueDisplay(page)).toContainText('❓');
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+
+      // Act: Open the panel.
+      await timePicker.click();
+
+      // Assert: Panel is visible and expanded.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getPanel(page)).toBeVisible();
+
+      // Act: Pick hour 14 and minute 30.
+      await getHour(page, 14).click();
+      await getMinute(page, 30).click();
+
+      // Assert: Input shows formatted time and raw value propagated to form display.
+      await expect(timePicker).toHaveValue('🕜 14:30');
+      await expect(getValueDisplay(page)).toContainText('T14:30:00');
+    });
+
+    test('should close panel on second click', async ({ page }) => {
+      // Arrange: Navigate to the custom components page and open the panel.
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+      await timePicker.click();
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Click the time input again.
+      await timePicker.click();
+
+      // Assert: Panel is closed.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('should close panel when clicking outside and keep selected value', async ({ page }) => {
+      // Arrange: Navigate and select a time so value retention can be verified.
+      await goToComponentsPage(page);
+      await selectTimeViaMouse(page);
+      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Click page heading (moves focus away from the picker).
+      await page.locator('h1').click();
+
+      // Assert: Panel closed via real focusout flow, selected value retained.
+      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'false');
+      await expect(getValueDisplay(page)).toContainText('T14:30:00');
+    });
+  });
+
+  test.describe('label', () => {
+    test('should have accessible name from label', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Assert: aria-labelledby points to the label element's id.
+      await expect(getTimePicker(page)).toHaveAttribute('aria-labelledby', 'cc-timePicker-label');
+    });
+
+    // KNOWN FAILING (desired behavior): label activation currently ends on the wrapper's hidden
+    // button, whose focusRoot() targets a non-focusable div, so focus never reaches the time
+    // input and the panel never opens. Will pass once DateTimePicker (currently placeholder)
+    // redirects focus into its sub-picker. Same precedent as the unit label/required tests.
+    test('should focus time input and open panel when label is clicked', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+      const label = page.locator('label#cc-timePicker-label');
+
+      // Act: Click the label.
+      await label.click();
+
+      // Assert: Time input receives focus and panel opens.
+      await expect(getTimePicker(page)).toBeFocused();
+      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'true');
+    });
+  });
+
+  test.describe('keyboard', () => {
+    test('should close panel and refocus input on Escape without reopening', async ({ page }) => {
+      // Arrange: Navigate and open the panel (focus lands in the hour column after opening).
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+      await timePicker.click();
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Press Escape while the hour listbox is focused.
+      await getHourColumn(page).press('Escape');
+
+      // Assert: Panel closed and focus returned to input. The programmatic refocus must not
+      // trigger the auto-open (regression for the suppressFocusOpen fix).
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker).toBeFocused();
+    });
+
+    test('should select time via keyboard and move focus to submit button', async ({ page }) => {
+      // Arrange: Select a deterministic time with the mouse, then Escape back to the input.
+      await goToComponentsPage(page);
+      await selectTimeViaMouse(page);
+      await getHourColumn(page).press('Escape');
+      const timePicker = getTimePicker(page);
+      await expect(timePicker).toBeFocused();
+
+      // Act: Open the panel via keyboard (seeds keyboard focus state from the selected value).
+      await timePicker.press('Enter');
+
+      // Assert: Hour listbox focused with activedescendant pointing at the selected hour.
+      await expect(getHourColumn(page)).toBeFocused();
+      await expect(getHourColumn(page)).toHaveAttribute('aria-activedescendant', 'timeId_cc-timePicker_opt_h14');
+
+      // Act: Move keyboard focus to hour 15.
+      await getHourColumn(page).press('ArrowDown');
+
+      // Assert: Activedescendant moved and option shows keyboard focus outline.
+      await expect(getHourColumn(page)).toHaveAttribute('aria-activedescendant', 'timeId_cc-timePicker_opt_h15');
+      await expect(getHour(page, 15)).toHaveClass(/focused/);
+      await expect(getHour(page, 15)).toHaveCSS('outline-style', 'solid');
+
+      // Act: Confirm hour 15 (moves focus to minute column, seeded with minute 30).
+      await getHourColumn(page).press('Enter');
+
+      // Assert: Focus switched to minute column with activedescendant at selected minute.
+      await expect(getMinuteColumn(page)).toBeFocused();
+      await expect(getMinuteColumn(page)).toHaveAttribute('aria-activedescendant', 'timeId_cc-timePicker_opt_m30');
+
+      // Act: Confirm minute 30 (closes panel and moves focus to next focusable element).
+      await getMinuteColumn(page).press('Enter');
+
+      // Assert: Panel closed, focus on submit button, value propagated through the form.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
+      await expect(timePicker).toHaveValue('🕜 15:30');
+      await expect(getValueDisplay(page)).toContainText('T15:30:00');
+    });
+
+    test('should navigate from previous picker to time-picker to submit on Tab presses', async ({ page }) => {
+      // Arrange: Start keyboard modality on the previous picker (datetime row's time input).
+      await goToComponentsPage(page);
+      await page.getByTestId('timeId_cc-dateTimePicker_input').focus();
+
+      // Act: Tab into the time-picker.
+      await page.keyboard.press('Tab');
+
+      // Assert: Panel opened and focus moved into the hour listbox.
+      const timePicker = getTimePicker(page);
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getPanel(page)).toBeVisible();
+      await expect(getHourColumn(page)).toBeFocused();
+
+      // Act: Tab again — one press must close panel AND move focus out.
+      await page.keyboard.press('Tab');
+
+      // Assert: Focus moved to submit button; panel closed.
+      await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
+
+  test.describe('display', () => {
+    test('should render translated placeholder and column headers from real i18n assets', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+
+      // Assert: Placeholder and aria-label come from the real translation files.
+      await expect(timePicker).toHaveAttribute('placeholder', '🕜 hh:mm');
+      await expect(timePicker).toHaveAttribute('aria-label', 'hh:mm');
+
+      // Act: Open the panel.
+      await timePicker.click();
+
+      // Assert: Column headers show translated labels.
+      await expect(getPanel(page).locator('.column-header').nth(0)).toHaveText('Hour');
+      await expect(getPanel(page).locator('.column-header').nth(1)).toHaveText('Minute');
+    });
+  });
+
+  test.describe('states', () => {
+    test('should render disabled state and not open when mode is set to Disabled', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Disabled" mode (index 1) on the mode radioBox.
+      await getModeOption(page, 1).click();
+
+      // Assert: Time input is natively disabled with matching ARIA/tabindex.
+      const timePicker = getTimePicker(page);
+      await expect(timePicker).toBeDisabled();
+      await expect(timePicker).toHaveAttribute('aria-disabled', 'true');
+      await expect(timePicker).toHaveAttribute('tabindex', '-1');
+
+      // Act: Force a click at the input. Native disabled inputs do not dispatch mouse events,
+      // so this only verifies the panel cannot open in disabled state.
+      await timePicker.click({ force: true });
+
+      // Assert: Panel does not open.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('should render invalid state but still open when mode is set to Error', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Error" mode (index 2) on the mode radioBox.
+      await getModeOption(page, 2).click();
+
+      // Assert: Time input has invalid class and aria-invalid.
+      const timePicker = getTimePicker(page);
+      await expect(timePicker).toHaveClass(/invalid/);
+      await expect(timePicker).toHaveAttribute('aria-invalid', 'true');
+
+      // Act: Invalid state is visual only — open the panel.
+      await timePicker.click();
+
+      // Assert: Panel opens normally.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getPanel(page)).toBeVisible();
+    });
+
+    test('should render disabled state when mode is Disabled & Error', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+
+      // Act: Select "Disabled & Error" mode (index 3) on the mode radioBox.
+      await getModeOption(page, 3).click();
+
+      // Assert: Time input is disabled. Invalid markers are not present because Angular Signal
+      // Forms skips validation on disabled fields.
+      const timePicker = getTimePicker(page);
+      await expect(timePicker).toBeDisabled();
+      await expect(timePicker).toHaveAttribute('aria-disabled', 'true');
+      await expect(timePicker).not.toHaveClass(/invalid/);
+      await expect(timePicker).not.toHaveAttribute('aria-invalid');
+    });
+  });
+
+  test.describe('accessibility', () => {
+    test('is correct axe-wise with panel open', async ({ page }) => {
+      // Arrange: Navigate and open the panel so its dialog/listbox markup is analyzed too.
+      await goToComponentsPage(page);
+      await getTimePicker(page).click();
+      await expect(getPanel(page)).toBeVisible();
+
+      // Act: Run axe against the page with the panel open. The scrollable-region-focusable
+      // rule is disabled: the clock columns use tabindex=-1 (standard combobox popup pattern —
+      // the input is the tab stop) and receive focus programmatically when the panel opens,
+      // so they are keyboard-operable via arrow keys even though not in the tab order.
+      // Making them tabindex=0 would insert them into tab order and break Tab-out behavior.
+      const results = await new AxeBuilder({ page })
+        .disableRules(['scrollable-region-focusable'])
+        .analyze();
+
+      // Assert: No accessibility violations.
+      expect(results.violations).toEqual([]);
+    });
+  });
+});
