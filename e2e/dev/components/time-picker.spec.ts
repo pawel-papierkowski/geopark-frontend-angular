@@ -198,6 +198,8 @@ test.describe('TimePicker', () => {
       const timePicker = getTimePicker(page);
       await timePicker.click();
       await expect(getHourColumn(page)).toBeFocused();
+      // Mouse open seeds focus state too, so the focused option is announced to AT.
+      await expect(getHourColumn(page)).toHaveAttribute('aria-activedescendant', /timeId_cc-timePicker_opt_h\d+/);
       await installFocusoutCounter(page);
 
       // Act: Click the top-left chrome of the panel (1px border + 8px padding).
@@ -324,6 +326,16 @@ test.describe('TimePicker', () => {
       await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
       await expect(getPanel(page)).toBeVisible();
       await expect(getHourColumn(page)).toBeFocused();
+
+      // Assert: Focus state is seeded on open, so the focused option is both announced
+      // (aria-activedescendant) and visibly marked - regression guard: seeding used to run only
+      // for keyboard-open, and with the listbox container's ring suppressed in CSS a user tabbing
+      // in had no focus indication at all until the first arrow press.
+      await expect(getHourColumn(page)).toHaveAttribute('aria-activedescendant', /timeId_cc-timePicker_opt_h\d+/);
+      const activeHourId = await getHourColumn(page).getAttribute('aria-activedescendant');
+      const focusedHourOption = page.locator(`[id="${activeHourId ?? ''}"]`);
+      await expect(focusedHourOption, 'focused hour option should carry the focused class').toHaveClass(/focused/);
+      await expect(focusedHourOption, 'focused hour option should show a solid focus ring').toHaveCSS('outline-style', 'solid');
 
       // Act: Tab again — one press must close panel AND move focus out.
       await page.keyboard.press('Tab');

@@ -285,9 +285,9 @@ describe('TimePicker', () => {
         expect(getInput(fixture).getAttribute('aria-expanded'), 'aria-expanded should be false when closed').toBe('false');
       });
 
-      it('should open panel on focus without seeding keyboard focus', async () => {
-        // Arrange: Create component with closed panel.
-        const fixture = await arrangeTimePicker();
+      it('should seed keyboard focus state when panel opens on focus', async () => {
+        // Arrange: Create component with value 14:30 and closed panel.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
 
         // Act: Focus the input (e.g. via Tab).
         getInput(fixture).focus();
@@ -295,10 +295,29 @@ describe('TimePicker', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Panel opened, but keyboard focus state stays unseeded (focus path is not keyboard).
+        // Assert: Focus state is seeded on every open - focus lands in the hour listbox, so the
+        // active option must be both announced (aria-activedescendant) and visually marked
+        // (.focused ring), otherwise a keyboard user has no focus indication at all.
         expect(fixture.componentInstance.isClockVisible(), 'panel should open on focus').toBe(true);
-        expect(fixture.componentInstance.focusedHour(), 'focus-open should not seed focused hour').toBeNull();
-        expect(fixture.componentInstance.focusedMinute(), 'focus-open should not seed focused minute').toBeNull();
+        expect(fixture.componentInstance.focusedHour(), 'focus-open should seed focused hour').toBe(14);
+        expect(fixture.componentInstance.focusedMinute(), 'focus-open should seed focused minute').toBe(30);
+        expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-activedescendant'), 'hour activedescendant should reference focused option').toBe('test-time_opt_h14');
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('focused'), 'hour 14 should have focused class').toBe(true);
+        expect(document.activeElement, 'focus should move into the hour listbox').toBe(fixture.componentInstance.hourRef().nativeElement);
+      });
+
+      it('should seed keyboard focus state when panel opens on click', async () => {
+        // Arrange: Create component with value 14:30 and closed panel.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+
+        // Act: Click the input.
+        await openPanel(fixture);
+
+        // Assert: Mouse open seeds focus too - DOM focus still moves into the hour listbox.
+        expect(fixture.componentInstance.isClockVisible(), 'panel should open on click').toBe(true);
+        expect(fixture.componentInstance.focusedHour(), 'click-open should seed focused hour').toBe(14);
+        expect(fixture.componentInstance.focusedMinute(), 'click-open should seed focused minute').toBe(30);
+        expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-activedescendant'), 'hour activedescendant should reference focused option').toBe('test-time_opt_h14');
         expect(document.activeElement, 'focus should move into the hour listbox').toBe(fixture.componentInstance.hourRef().nativeElement);
       });
 
@@ -568,7 +587,7 @@ describe('TimePicker', () => {
         getInput(fixture).click();
         fixture.detectChanges();
         await fixture.whenStable();
-        await fixture.componentInstance.handleClick(false);
+        await fixture.componentInstance.handleClick();
 
         // Assert: Panel stays closed.
         expect(fixture.componentInstance.isClockVisible(), 'disabled component should not open on click').toBe(false);
@@ -1188,26 +1207,26 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedHour(), 'End should jump to last hour').toBe(23);
       });
 
-      it('should fall back to selected hour on first ArrowDown when nothing is focused', async () => {
-        // Arrange: Create component with value 14:30 and open panel via mouse (no keyboard focus seeded).
+      it('should advance from seeded hour on first ArrowDown', async () => {
+        // Arrange: Create component with value 14:30 and open panel (open seeds focus from value).
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
         await openPanel(fixture);
-        expect(fixture.componentInstance.focusedHour(), 'mouse open should not seed focused hour').toBeNull();
+        expect(fixture.componentInstance.focusedHour(), 'open should seed focused hour from value').toBe(14);
 
         // Act: Press ArrowDown for the first time.
         await user.keyboard('{ArrowDown}');
         await fixture.whenStable();
         fixture.detectChanges();
-        expect(fixture.componentInstance.focusedHour(), 'first ArrowDown should point at selected hour').toBe(14);
+        expect(fixture.componentInstance.focusedHour(), 'first ArrowDown should advance past seeded hour').toBe(15);
 
         // Act: Press ArrowDown again.
         await user.keyboard('{ArrowDown}');
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Second press moves past the selected hour.
-        expect(fixture.componentInstance.focusedHour(), 'second ArrowDown should advance past selected hour').toBe(15);
+        // Assert: Second press moves one hour further down.
+        expect(fixture.componentInstance.focusedHour(), 'second ArrowDown should advance hour').toBe(16);
       });
 
       it('should switch to minute column on ArrowRight when both columns focused', async () => {
@@ -1227,25 +1246,6 @@ describe('TimePicker', () => {
         // Assert: Active column switched and DOM focus moved into minute listbox.
         expect(fixture.componentInstance.activeColumn(), 'ArrowRight should activate minute column').toBe('minute');
         expect(document.activeElement, 'ArrowRight should focus minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
-      });
-
-      it('should only seed focus values on ArrowRight when nothing is focused', async () => {
-        // Arrange: Create component with value 14:30 and open panel via mouse.
-        const user = userEvent.setup();
-        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
-        await openPanel(fixture);
-        expect(fixture.componentInstance.focusedHour(), 'mouse open should not seed focused hour').toBeNull();
-
-        // Act: Press ArrowRight with no focused values.
-        await user.keyboard('{ArrowRight}');
-        await fixture.whenStable();
-        fixture.detectChanges();
-
-        // Assert: Focus values seeded from value, but column and DOM focus unchanged.
-        expect(fixture.componentInstance.focusedHour(), 'focused hour should be seeded from value').toBe(14);
-        expect(fixture.componentInstance.focusedMinute(), 'focused minute should be seeded from value').toBe(30);
-        expect(fixture.componentInstance.activeColumn(), 'column should stay hour when only seeding').toBe('hour');
-        expect(document.activeElement, 'focus should stay in hour listbox when only seeding').toBe(fixture.componentInstance.hourRef().nativeElement);
       });
 
       it('should select focused hour and focus minute column on Enter', async () => {
@@ -1303,24 +1303,26 @@ describe('TimePicker', () => {
         expect(document.activeElement, 'focus should return to input').toBe(getInput(fixture));
       });
 
-      it('should seed focus without selecting on Enter when nothing is focused', async () => {
-        // Arrange: Create component with value 14:30 and open panel via mouse.
+      it('should select seeded hour on Enter right after open', async () => {
+        // Arrange: Create component with value 14:30 and open panel (open seeds focus from value).
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
         await openPanel(fixture);
         const before = fixture.componentInstance.value();
+        expect(fixture.componentInstance.focusedHour(), 'open should seed focused hour from value').toBe(14);
 
-        // Act: Press Enter with no focused hour.
+        // Act: Press Enter without any prior key press.
         await user.keyboard('{Enter}');
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Focus seeded, value untouched, panel still open.
-        expect(fixture.componentInstance.focusedHour(), 'focused hour should be seeded from value').toBe(14);
-        expect(fixture.componentInstance.focusedMinute(), 'focused minute should be seeded from value').toBe(30);
-        expect(fixture.componentInstance.value(), 'value should stay untouched when only seeding').toBe(before);
-        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open when only seeding').toBe(true);
-        expect(document.activeElement, 'focus should stay in hour listbox when only seeding').toBe(fixture.componentInstance.hourRef().nativeElement);
+        // Assert: Seeded hour is committed and the flow advances to the seeded minute.
+        expect(fixture.componentInstance.value(), 'Enter should keep the clean seeded value instance').toBe(before);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain seeded hour 14').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be preserved').toBe(30);
+        expect(fixture.componentInstance.activeColumn(), 'flow should advance to minute column').toBe('minute');
+        expect(fixture.componentInstance.focusedMinute(), 'focused minute should stay seeded').toBe(30);
+        expect(document.activeElement, 'focus should move to minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
       });
 
       it('should close panel and refocus input on Escape from hour listbox', async () => {
@@ -1599,27 +1601,6 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
         expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
-      });
-
-      it('should seed focus without selecting on Enter when nothing is focused', async () => {
-        // Arrange: Create component with value 14:30 and open panel via mouse.
-        const user = userEvent.setup();
-        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
-        await openPanel(fixture);
-        fixture.componentInstance.minuteRef().nativeElement.focus();
-        const before = fixture.componentInstance.value();
-        expect(fixture.componentInstance.focusedMinute(), 'focus event should not seed focused minute').toBeNull();
-
-        // Act: Press Enter with no focused minute.
-        await user.keyboard('{Enter}');
-        await fixture.whenStable();
-        fixture.detectChanges();
-
-        // Assert: Focus seeded, value untouched, panel still open.
-        expect(fixture.componentInstance.focusedMinute(), 'focused minute should be seeded from value').toBe(30);
-        expect(fixture.componentInstance.focusedHour(), 'focused hour should be seeded from value').toBe(14);
-        expect(fixture.componentInstance.value(), 'value should stay untouched when only seeding').toBe(before);
-        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open when only seeding').toBe(true);
       });
 
       it('should close panel and refocus input on Escape from minute listbox', async () => {

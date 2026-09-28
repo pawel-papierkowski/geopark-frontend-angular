@@ -145,23 +145,16 @@ export class TimePicker implements FormValueControl<Date | null> {
   // GENERAL
 
   /** Toggle visibility of time picker panel. */
-  async toggleTimePickerVisibility(viaKeyboard: boolean) {
+  async toggleTimePickerVisibility() {
     if (this.isClockVisible()) {
       this.hidePanel();
     } else {
       this.isClockVisible.set(true);
       this.findViewTime();
 
-      // Initialize keyboard focus state.
-      if (viaKeyboard) {
-        if (this.value()) {
-          this.focusedHour.set(this.value()?.getUTCHours() ?? null);
-          this.focusedMinute.set(this.value()?.getUTCMinutes() ?? null);
-        } else {
-          this.focusedHour.set(this.viewHour());
-          this.focusedMinute.set(this.viewMinute());
-        }
-      }
+      // Seed keyboard focus state on EVERY open. Focus always moves into the hour listbox below,
+      // so the active option must exist right away.
+      this.setupFocus(true);
       this.activeColumn.set('hour');
 
       await afterRender(this.injector);
@@ -325,19 +318,16 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** Handle focus arriving on the input (e.g. via Tab). */
   async handleInputFocus() {
     if (!this.focusFromClick && !this.suppressFocusOpen && !this.isClockVisible() && !this.disabled()) {
-      await this.toggleTimePickerVisibility(false);
+      await this.toggleTimePickerVisibility();
     }
     this.focusFromClick = false;
   }
 
-  /**
-   * Handle click.
-   * @param viaKeyboard True if "click" was actually via keyboard.
-   */
-  async handleClick(viaKeyboard: boolean) {
+  /** Handle click on the input. */
+  async handleClick() {
     if (this.disabled()) return;
     this.focusFromClick = false; // Any click-caused focus already happened (focus precedes click) - never leave a stale flag behind.
-    await this.toggleTimePickerVisibility(viaKeyboard);
+    await this.toggleTimePickerVisibility();
   };
 
   /**
@@ -381,7 +371,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
       e.preventDefault();
-      if (!this.isClockVisible()) await this.toggleTimePickerVisibility(true);
+      if (!this.isClockVisible()) await this.toggleTimePickerVisibility();
     } else if (e.key === 'Escape' && this.isClockVisible()) {
       e.preventDefault();
       this.hidePanel();
@@ -569,12 +559,12 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /** Flip panel. */
   async flipPanel() {
-    await this.toggleTimePickerVisibility(false);
+    await this.toggleTimePickerVisibility();
   }
 
   /** Show panel (if not already visible). */
   async showPanel() {
-    if (!this.isClockVisible()) await this.toggleTimePickerVisibility(false);
+    if (!this.isClockVisible()) await this.toggleTimePickerVisibility();
   }
 
   /**
