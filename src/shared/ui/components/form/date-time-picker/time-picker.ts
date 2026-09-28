@@ -33,7 +33,7 @@ import { afterRender } from '@/shared/utils/render/after-render';
  * - canNull - If true, allow deselecting date. Optional, default is false.
  *
  * Outputs:
- * - touch - Informs that user blurred out of component.
+ * - touch - Informs that user blurred out of component (focus left it), regardless of panel visibility.
  *
  * Special (set indirectly):
  * - required - If true, component is required. Default is false.
@@ -64,7 +64,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   readonly disabled = input<boolean>(false);
   /** Is component invalid? */
   readonly invalid = input<boolean>(false);
-  /** Informs that user blurred out of component. */
+  /** Informs that user blurred out of component (focus left it), regardless of panel visibility. */
   touch = output<void>();
 
   /** Indicates visibility of clock panel. */
@@ -294,14 +294,17 @@ export class TimePicker implements FormValueControl<Date | null> {
   };
 
   /**
-   * Handle focus leaving the picker entirely (e.g. Tab out of grid). It will close clock panel.
+   * Handle focus leaving the picker entirely (e.g. Tab out of grid). It closes clock panel and,
+   * unless focus only moved inside the component, reports the control as touched.
+   * Note the panel visibility is intentionally not checked: internal helpers hide the panel before
+   * or after focus moves, so a closed panel must still report touch when focus really left.
    * @param e Focus event.
    */
   handleFocusOut(e: FocusEvent) {
-    if (!this.isClockVisible()) return;
     const next = e.relatedTarget;
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
     this.hidePanel();
+    if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
     this.touch.emit();
   }
 
@@ -525,37 +528,38 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /**
    * Hide panel and return focus to the input.
-   * The refocus is programmatic, so auto-open on focus is suppressed for its duration.
+   * Focus moves BEFORE the panel is hidden so the resulting focusout reports an internal move
+   * (relatedTarget is the input) instead of a leaving blur - focus must stay inside the component,
+   * so no touch is reported. The refocus is programmatic, so auto-open on focus is suppressed too.
    */
-  async hidePanelAndRefocus() {
-    this.hidePanel();
-
-    await afterRender(this.injector);
-
+  hidePanelAndRefocus() {
     const inputEl = document.getElementById(`${this.ident()}_input`);
     this.suppressFocusOpen = true;
     inputEl?.focus(); // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
     this.suppressFocusOpen = false;
+    this.hidePanel();
   }
 
-  /** Hide panel and move focus to the next focusable element on page. */
-  async hidePanelAndFocusNext() {
-    this.hidePanel();
-
-    await afterRender(this.injector);
-
+  /**
+   * Hide panel and move focus to the next focusable element on page.
+   * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
+   * focus leaving the component, closes the panel and reports touch.
+   */
+  hidePanelAndFocusNext() {
     const inputEl = document.getElementById(`${this.ident()}_input`);
     NavUtils.FocusNext(inputEl);
+    this.hidePanel();
   }
 
-  /** Hide panel and move focus to the previous focusable element on page. */
-  async hidePanelAndFocusPrev() {
-    this.hidePanel();
-
-    await afterRender(this.injector);
-
+  /**
+   * Hide panel and move focus to the previous focusable element on page.
+   * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
+   * focus leaving the component, closes the panel and reports touch.
+   */
+  hidePanelAndFocusPrev() {
     const inputEl = document.getElementById(`${this.ident()}_input`);
     NavUtils.FocusPrev(inputEl);
+    this.hidePanel();
   }
 
   /**

@@ -568,8 +568,9 @@ describe('TimePicker', () => {
         expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
       });
 
-      it('should not emit touch when panel is already closed', async () => {
-        // Arrange: Create component with closed panel and spy on touch output.
+      it('should emit touch when focus leaves while panel is already closed', async () => {
+        // Arrange: Create component with closed panel (state reached after Escape or keyboard
+        // commit moved focus back to the input) and spy on touch output.
         const fixture = await arrangeTimePicker();
         const touchSpy = vi.fn();
         fixture.componentInstance.touch.subscribe(touchSpy);
@@ -581,12 +582,73 @@ describe('TimePicker', () => {
           getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
           fixture.detectChanges();
 
-          // Assert: Nothing happens (component only reports touch for an open panel).
+          // Assert: Blur reports touch even though the panel was already closed.
           expect(fixture.componentInstance.isClockVisible(), 'panel should stay closed').toBe(false);
-          expect(touchSpy, 'touch should not be emitted when panel is already closed').not.toHaveBeenCalled();
+          expect(touchSpy, 'touch should be emitted when focus leaves while panel is closed').toHaveBeenCalledTimes(1);
         } finally { // cleanup
           outside.remove();
         }
+      });
+
+      it('should not emit touch when focus returns to the input inside the component', async () => {
+        // Arrange: Create component, open panel and spy on touch output.
+        const fixture = await arrangeTimePicker();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        await openPanel(fixture);
+
+        // Act: Simulate focusout produced by Escape refocusing the input (relatedTarget stays inside).
+        fixture.componentInstance.hourRef().nativeElement.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: getInput(fixture) }));
+        fixture.detectChanges();
+
+        // Assert: Focus never left the component, so no touch is reported (Escape closes the panel separately).
+        expect(touchSpy, 'refocus onto the input should not emit touch').not.toHaveBeenCalled();
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open for internal focus move').toBe(true);
+      });
+
+      it('should not emit touch when component becomes disabled while focus is inside', async () => {
+        // Arrange: Create component, open panel, spy on touch and disable it (effect closes panel).
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        await openPanel(fixture);
+        fixture.componentRef.setInput('disabled', true);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+
+        try {
+          // Act: Simulate the focusout browsers fire when the focused listbox is hidden by disabling.
+          fixture.componentInstance.hourRef().nativeElement.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
+          fixture.detectChanges();
+
+          // Assert: Programmatic close caused by disabling must not report touch.
+          expect(touchSpy, 'disabling should not emit touch').toHaveBeenCalledTimes(0);
+        } finally { // cleanup
+          outside.remove();
+        }
+      });
+
+      it('should not emit touch when Escape returns focus to the input', async () => {
+        // Arrange: Create component with value and open panel (focus sits in the hour listbox).
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        await openPanel(fixture);
+        expect(document.activeElement, 'focus should sit in the hour listbox before Escape').toBe(fixture.componentInstance.hourRef().nativeElement);
+
+        // Act: Leave the panel via Escape (refocuses the input, then hides the panel).
+        fixture.componentInstance.hidePanelAndRefocus();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Focus stayed inside the component, so no touch is reported.
+        expect(fixture.componentInstance.isClockVisible(), 'Escape should close the panel').toBe(false);
+        expect(document.activeElement, 'Escape should refocus the input').toBe(getInput(fixture));
+        expect(touchSpy, 'Escape refocus should not emit touch').not.toHaveBeenCalled();
       });
 
       it('should close panel and emit touch on focusout without relatedTarget', async () => {

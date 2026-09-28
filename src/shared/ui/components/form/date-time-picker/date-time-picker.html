@@ -13,6 +13,7 @@
     <date-picker
       #datePickerRef
       [(value)]="value"
+      (touch)="touch.emit()"
 
       [ident]="`dateId_${ident()}`"
       [label]="label()"
@@ -31,6 +32,7 @@
     <time-picker
       #timePickerRef
       [(value)]="value"
+      (touch)="touch.emit()"
 
       [ident]="`timeId_${ident()}`"
       [label]="label()"
