@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import userEvent from '@testing-library/user-event';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
@@ -66,6 +66,25 @@ describe('ComboBox', () => {
     await fixture.whenStable();
     return fixture;
   }
+
+  /** Viewport width assumed by positioning logic (jsdom performs no layout, real value is 0). */
+  const VIEWPORT_WIDTH = 1024;
+  /** Viewport height assumed by positioning logic (jsdom performs no layout, real value is 0). */
+  const VIEWPORT_HEIGHT = 768;
+
+  beforeAll(() => {
+    // jsdom performs no layout, so `documentElement.clientWidth/clientHeight` (the viewport
+    // dimensions the component checks for overflow) always report 0 - every open would look
+    // like it overflows both edges. Define them as viewport-sized values for this suite.
+    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, get: () => VIEWPORT_WIDTH });
+    Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, get: () => VIEWPORT_HEIGHT });
+  });
+
+  afterAll(() => {
+    // Drop the own-property stubs so the prototype (jsdom) definitions are back in place.
+    Reflect.deleteProperty(document.documentElement, 'clientWidth');
+    Reflect.deleteProperty(document.documentElement, 'clientHeight');
+  });
 
   describe('general', () => {
     describe('rendering&display', () => {
@@ -601,6 +620,135 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.isOpen(), 'list should close when component becomes disabled').toBe(false);
         expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset when disabled').toBe(-1);
         expect(touchSpy, 'closing programmatically should not emit touch').toHaveBeenCalledTimes(0);
+      });
+    });
+
+    describe('positioning', () => {
+      /**
+       * Build the list rect parts read by the positioning logic.
+       * Defaults model a list that fits into the viewport on both axes.
+       * @param overrides Rect parts to override the fitting defaults.
+       * @returns DOMRect containing (at least) `right` and `bottom`.
+       */
+      function panelRect(overrides: Partial<DOMRect> = {}): DOMRect {
+        return {
+          right: VIEWPORT_WIDTH - 100,
+          bottom: VIEWPORT_HEIGHT - 100,
+          ...overrides,
+        } as DOMRect;
+      }
+
+      /**
+       * Get the options list popup of given fixture.
+       * @param fixture Fixture of the component.
+       * @returns Options list element.
+       */
+      function getList(fixture: ComponentFixture<ComboBox>): HTMLElement {
+        return fixture.nativeElement.querySelector('.combobox-options');
+      }
+
+      /**
+       * Toggle the list with a click on the combobox root and flush pending component work.
+       * Placement is resolved asynchronously after render, hence the stability flushes.
+       * @param fixture Fixture of the component.
+       */
+      async function toggleList(fixture: ComponentFixture<ComboBox>): Promise<void> {
+        fixture.nativeElement.querySelector('[data-testid="test-combo"]').click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      }
+
+      it('should keep baseline placement when list fits into the viewport', async () => {
+        // Arrange: Create component and stub list geometry to fit on both axes.
+        const fixture = await arrangeComboBox();
+        const list = getList(fixture);
+        vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(panelRect());
+
+        // Act: Open the list (placement is resolved after render).
+        await toggleList(fixture);
+
+        // Assert: List keeps the baseline (CSSOM normalizes unitless zero to pixels).
+        expect(list.style.top, 'list should stay below the anchor when it fits vertically').toBe('100%');
+        expect(list.style.bottom, 'list should stay below the anchor when it fits vertically').toBe('auto');
+        expect(list.style.left, 'list should stay stretched to the anchor when it fits horizontally').toBe('0px');
+        expect(list.style.right, 'list should stay stretched to the anchor when it fits horizontally').toBe('0px');
+      });
+
+      it('should right-align list when it would overflow the viewport', async () => {
+        // Arrange: Create component and stub list geometry to report horizontal overflow only.
+        const fixture = await arrangeComboBox();
+        const list = getList(fixture);
+        vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(panelRect({ right: VIEWPORT_WIDTH + 50 }));
+
+        // Act: Open the list.
+        await toggleList(fixture);
+
+        // Assert: List is right-aligned, vertical axis untouched.
+        expect(list.style.left, 'list should not be left-aligned on overflow').toBe('auto');
+        expect(list.style.right, 'list should be right-aligned on overflow').toBe('0px');
+        expect(list.style.top, 'list should stay below the anchor when it fits vertically').toBe('100%');
+        expect(list.style.bottom, 'list should stay below the anchor when it fits vertically').toBe('auto');
+      });
+
+      it('should flip list above the anchor when it would overflow the viewport bottom', async () => {
+        // Arrange: Create component and stub list geometry to report vertical overflow only.
+        const fixture = await arrangeComboBox();
+        const list = getList(fixture);
+        vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+
+        // Act: Open the list.
+        await toggleList(fixture);
+
+        // Assert: List is flipped above the anchor (bottom: 100% mirrors the CSS top: 100%),
+        // horizontal axis untouched.
+        expect(list.style.top, 'list should not stay below the anchor on vertical overflow').toBe('auto');
+        expect(list.style.bottom, 'list should sit above the anchor on vertical overflow').toBe('100%');
+        expect(list.style.left, 'list should stay stretched to the anchor when it fits horizontally').toBe('0px');
+        expect(list.style.right, 'list should stay stretched to the anchor when it fits horizontally').toBe('0px');
+      });
+
+      it('should keep right alignment on reopen while the list still overflows', async () => {
+        // Arrange: Geometry models real layout - baseline list pokes out of the viewport,
+        // right-aligned list fits (its right edge sits at the anchor, inside the viewport).
+        const fixture = await arrangeComboBox();
+        const list = getList(fixture);
+        vi.spyOn(list, 'getBoundingClientRect').mockImplementation(() =>
+          list.style.left === 'auto'
+            ? panelRect({ right: VIEWPORT_WIDTH - 100 })
+            : panelRect({ right: VIEWPORT_WIDTH + 50 }),
+        );
+
+        // Act: Open, close, open again.
+        await toggleList(fixture);
+        expect(list.style.right, 'first open should right-align the overflowing list').toBe('0px');
+        await toggleList(fixture);
+        await toggleList(fixture);
+
+        // Assert: Placement resolved under the reset baseline, so the list must NOT revert to
+        // left alignment (measuring under the persisted right alignment would see "fits").
+        expect(list.style.right, 'reopen must keep right alignment while the list overflows').toBe('0px');
+        expect(list.style.left, 'reopen must keep right alignment while the list overflows').toBe('auto');
+      });
+
+      it('should restore baseline placement when list fits again', async () => {
+        // Arrange: Open with overflow geometry first to get into right-aligned state.
+        const fixture = await arrangeComboBox();
+        const list = getList(fixture);
+        const geometrySpy = vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(panelRect({ right: VIEWPORT_WIDTH + 50 }));
+        await toggleList(fixture);
+        expect(list.style.right, 'list should start right-aligned on overflow').toBe('0px');
+
+        // Act: Close the list, switch geometry to "fits", then reopen it.
+        await toggleList(fixture);
+        geometrySpy.mockReturnValue(panelRect());
+        await toggleList(fixture);
+
+        // Assert: List is back on the baseline.
+        expect(list.style.left, 'list should be left-aligned when it fits').toBe('0px');
+        expect(list.style.right, 'list should not be right-aligned when it fits').toBe('0px');
+        expect(list.style.top, 'list should be below the anchor when it fits').toBe('100%');
+        expect(list.style.bottom, 'list should not stay above the anchor when it fits').toBe('auto');
       });
     });
   });

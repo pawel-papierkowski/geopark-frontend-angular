@@ -120,10 +120,27 @@ describe('TimePicker', () => {
     return input;
   }
 
+  /** Viewport width assumed by positioning logic (jsdom performs no layout, real value is 0). */
+  const VIEWPORT_WIDTH = 1024;
+  /** Viewport height assumed by positioning logic (jsdom performs no layout, real value is 0). */
+  const VIEWPORT_HEIGHT = 768;
+
   beforeAll(() => {
     // jsdom does not implement scrollIntoView; stubbed so a stray call cannot throw.
     // Doubles as a spy: the scrolling suite asserts the component never calls it.
     Element.prototype.scrollIntoView = vi.fn();
+
+    // jsdom performs no layout, so `documentElement.clientWidth/clientHeight` (the viewport
+    // dimensions the component checks for overflow) always report 0 - every open would look
+    // like it overflows both edges. Define them as viewport-sized values for this suite.
+    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, get: () => VIEWPORT_WIDTH });
+    Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, get: () => VIEWPORT_HEIGHT });
+  });
+
+  afterAll(() => {
+    // Drop the own-property stubs so the prototype (jsdom) definitions are back in place.
+    Reflect.deleteProperty(document.documentElement, 'clientWidth');
+    Reflect.deleteProperty(document.documentElement, 'clientHeight');
   });
 
   describe('general', () => {
@@ -861,11 +878,37 @@ describe('TimePicker', () => {
     });
 
     describe('positioning', () => {
-      it('should right-align panel when it would overflow the window', async () => {
-        // Arrange: Create component and stub panel geometry to report window overflow.
+      /**
+       * Build the panel rect parts read by the positioning logic.
+       * Defaults model a panel that fits into the viewport on both axes.
+       * @param overrides Rect parts to override the fitting defaults.
+       * @returns DOMRect containing (at least) `right` and `bottom`.
+       */
+      function panelRect(overrides: Partial<DOMRect> = {}): DOMRect {
+        return {
+          right: VIEWPORT_WIDTH - 100,
+          bottom: VIEWPORT_HEIGHT - 100,
+          ...overrides,
+        } as DOMRect;
+      }
+
+      /**
+       * Close the clock panel with a mouse click on the input and flush pending component work.
+       * Mirrors the flushing of `openPanel` so the async close cycle fully settles.
+       * @param fixture Fixture of the component.
+       */
+      async function closePanel(fixture: ComponentFixture<TimePicker>): Promise<void> {
+        getInput(fixture).click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      }
+
+      it('should right-align panel when it would overflow the viewport', async () => {
+        // Arrange: Create component and stub panel geometry to report horizontal overflow only.
         const fixture = await arrangeTimePicker();
         const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
-        vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ right: window.innerWidth + 50 } as DOMRect);
+        vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect({ right: VIEWPORT_WIDTH + 50 }));
 
         // Act: Open the panel (positioning is recomputed after render).
         await openPanel(fixture);
@@ -873,27 +916,84 @@ describe('TimePicker', () => {
         // Assert: Panel is right-aligned (CSSOM normalizes unitless zero to pixels).
         expect(panel.style.left, 'panel should not be left-aligned on overflow').toBe('auto');
         expect(panel.style.right, 'panel should be right-aligned on overflow').toBe('0px');
+        expect(panel.style.top, 'panel should stay below the input when it fits vertically').toBe('100%');
+        expect(panel.style.bottom, 'panel should stay below the input when it fits vertically').toBe('auto');
       });
 
-      it('should restore left alignment when panel fits into the window', async () => {
+      it('should restore left alignment when panel fits into the viewport', async () => {
         // Arrange: Open panel with overflow geometry first to get into right-aligned state.
         const fixture = await arrangeTimePicker();
         const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
-        const geometrySpy = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ right: window.innerWidth + 50 } as DOMRect);
+        const geometrySpy = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect({ right: VIEWPORT_WIDTH + 50 }));
         await openPanel(fixture);
         expect(panel.style.right, 'panel should start right-aligned on overflow').toBe('0px');
 
         // Act: Panel now fits, so close and reopen it.
-        getInput(fixture).click();
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        geometrySpy.mockReturnValue({ right: 100 } as DOMRect);
+        await closePanel(fixture);
+        geometrySpy.mockReturnValue(panelRect());
         await openPanel(fixture);
 
         // Assert: Panel alignment flipped back to the left.
         expect(panel.style.left, 'panel should be left-aligned when it fits').toBe('0px');
         expect(panel.style.right, 'panel should not be right-aligned when it fits').toBe('auto');
+      });
+
+      it('should keep right alignment on reopen while the panel still overflows', async () => {
+        // Arrange: Geometry models real layout - left-aligned panel pokes out of the viewport,
+        // right-aligned panel fits (its right edge sits at the anchor, inside the viewport).
+        const fixture = await arrangeTimePicker();
+        const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
+        vi.spyOn(panel, 'getBoundingClientRect').mockImplementation(() =>
+          panel.style.left === 'auto'
+            ? panelRect({ right: VIEWPORT_WIDTH - 100 })
+            : panelRect({ right: VIEWPORT_WIDTH + 50 }),
+        );
+
+        // Act: Open, close, open again.
+        await openPanel(fixture);
+        expect(panel.style.right, 'first open should right-align the overflowing panel').toBe('0px');
+        await closePanel(fixture);
+        await openPanel(fixture);
+
+        // Assert: Measurement ran under the reset baseline, so the panel must NOT revert to
+        // left alignment (the old code measured under the persisted right alignment, saw
+        // "fits" and wrote left - leaving an overflowing panel on every even reopen).
+        expect(panel.style.right, 'reopen must keep right alignment while the panel overflows').toBe('0px');
+        expect(panel.style.left, 'reopen must keep right alignment while the panel overflows').toBe('auto');
+      });
+
+      it('should flip panel above the input when it would overflow the viewport bottom', async () => {
+        // Arrange: Geometry fits horizontally but pokes out below the viewport.
+        const fixture = await arrangeTimePicker();
+        const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
+        vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+
+        // Act: Open the panel.
+        await openPanel(fixture);
+
+        // Assert: Panel is flipped above the input (bottom: 100% mirrors the CSS top: 100%).
+        expect(panel.style.top, 'panel should not stay below the input on vertical overflow').toBe('auto');
+        expect(panel.style.bottom, 'panel should sit above the input on vertical overflow').toBe('100%');
+        expect(panel.style.left, 'panel should stay left-aligned when it fits horizontally').toBe('0px');
+        expect(panel.style.right, 'panel should stay left-aligned when it fits horizontally').toBe('auto');
+      });
+
+      it('should restore placement below the input when it fits again', async () => {
+        // Arrange: Open with vertical overflow first to get into flipped-above state.
+        const fixture = await arrangeTimePicker();
+        const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
+        const geometrySpy = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+        await openPanel(fixture);
+        expect(panel.style.bottom, 'panel should start flipped above on vertical overflow').toBe('100%');
+
+        // Act: Panel now fits, so close and reopen it.
+        await closePanel(fixture);
+        geometrySpy.mockReturnValue(panelRect());
+        await openPanel(fixture);
+
+        // Assert: Panel placement flipped back below the input.
+        expect(panel.style.top, 'panel should be below the input when it fits').toBe('100%');
+        expect(panel.style.bottom, 'panel should not stay above the input when it fits').toBe('auto');
       });
     });
   });

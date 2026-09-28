@@ -5,7 +5,23 @@ import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 
 import { TimeUtils } from '@/core/utils/TimeUtils';
 import { NavUtils } from '@/core/utils/NavUtils';
+import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
 import { afterRender } from '@/shared/utils/render/after-render';
+
+/**
+ * Placement of the clock panel relative to its input - single source of truth for both the
+ * baseline reset on open and the flip decision (see `WindowUtils.resolvePanelPlacement`).
+ * `flipY` anchors the panel's BOTTOM to the input's TOP (`bottom: 100%`), NOT `bottom: 0`:
+ * `bottom: 0` would pin the panel's bottom to the input's bottom, so the panel would sit
+ * ON TOP of the input and intercept its clicks.
+ * Note: both flips rely on `.clock-container` having zero right/bottom margins
+ * (`--datetimepicker-clock-offset` in styles/var/components-custom.css).
+ */
+const panelPlacement: PanelPlacement = {
+  baseline: { top: '100%', bottom: 'auto', left: '0', right: 'auto' },
+  flipX: { left: 'auto', right: '0' },
+  flipY: { top: 'auto', bottom: '100%' },
+};
 
 /**
  * This is a time picker. Uses `Date` class for both input and output. Do not use it directly.
@@ -95,11 +111,14 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** Currently viewed minute. */
   viewMinute = signal<number | null>(null);
 
-  /** Style of clock panel. Used to ensure correct positioning of panel. */
-  containerStyle = signal({
-    left: '0',
-    right: 'auto',
-  });
+  /**
+   * Inline style of the clock panel (see `panelPlacement`). All four insets are managed
+   * TOGETHER: the CSS default (`top: 100%`, `left: 0`) can be overridden inline, so a stale
+   * inline `top: auto` from a previous upward flip would otherwise persist, and having both
+   * `top` and `bottom` non-auto would over-constrain the absolutely positioned panel.
+   * Reset to the baseline on every open before measuring.
+   */
+  containerStyle = signal<PanelInsets>(panelPlacement.baseline);
 
   // COMPUTED
 
@@ -149,6 +168,10 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (this.isClockVisible()) {
       this.hidePanel();
     } else {
+      // Reset placement to the baseline (below the input, left-aligned) BEFORE the panel renders.
+      // The measurement below then always runs under this known alignment - measuring the panel
+      // as left over from the previous open would judge alignment by the OLD placement.
+      this.containerStyle.set(panelPlacement.baseline);
       this.isClockVisible.set(true);
       this.findViewTime();
 
@@ -159,19 +182,23 @@ export class TimePicker implements FormValueControl<Date | null> {
 
       await afterRender(this.injector);
 
-      // Adjust picker position if needed to prevent window overflow.
+      // Adjust picker position if needed to prevent window overflow (measured under baseline).
       if (this.clockPanelRef()) {
-        const rect = this.clockPanelRef().nativeElement.getBoundingClientRect();
-        if (rect.right > window.innerWidth) {
-          this.containerStyle.set({ left: 'auto', right: '0' });
-        } else {
-          this.containerStyle.set({ left: '0', right: 'auto' });
-        }
+        this.positionPanel();
       }
 
       // Move keyboard focus into the panel (hour column) so user can navigate immediately.
       this.hourRef()?.nativeElement.focus();
     }
+  }
+
+  /**
+   * Resolve the clock panel placement so it does not overflow the viewport.
+   * Runs once per open, right after the panel rendered under the baseline - the measurement
+   * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
+   */
+  private positionPanel(): void {
+    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.clockPanelRef().nativeElement, panelPlacement));
   }
 
   /** Find and set current time. */

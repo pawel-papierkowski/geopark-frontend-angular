@@ -34,8 +34,10 @@
     </div>
 
     <div
+      #optionsRef
       class="combobox-options"
       [id]="listboxId()"
+      [style]="containerStyle()"
       [style.display]="isOpen() ? '' : 'none'"
       role="listbox">
 

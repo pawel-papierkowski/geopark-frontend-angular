@@ -1,6 +1,23 @@
-import { Component, effect, inject, model, input, output, computed, signal, viewChild, ElementRef, DestroyRef, DOCUMENT } from '@angular/core';
+import { Component, effect, inject, model, input, output, computed, signal, viewChild, ElementRef, DestroyRef, DOCUMENT, Injector } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 import {TranslateService } from '@ngx-translate/core';
+
+import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
+import { afterRender } from '@/shared/utils/render/after-render';
+
+/**
+ * Placement of the options list relative to its anchor - single source of truth for both the
+ * baseline reset on open and the flip decision (see `WindowUtils.resolvePanelPlacement`).
+ * Baseline stretches the list to the anchor width (`left: 0; right: 0`), matching the CSS.
+ * `flipY` anchors the list's BOTTOM to the anchor's TOP (`bottom: 100%`), NOT `bottom: 0`:
+ * `bottom: 0` would pin it to the anchor's bottom, so the list would cover the combobox.
+ * Note: both flips rely on `.combobox-options` having zero right/bottom margins.
+ */
+const panelPlacement: PanelPlacement = {
+  baseline: { top: '100%', bottom: 'auto', left: '0', right: '0' },
+  flipX: { left: 'auto', right: '0' },
+  flipY: { top: 'auto', bottom: '100%' },
+};
 
 /** Custom combobox implementation. Needed because <select> and <option> have very poor CSS support for dropdown lists
  * across all browsers.
@@ -48,6 +65,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   private readonly translateService = inject(TranslateService);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
 
   /** Value held by component. */
   value = model<number | string | null>(null);
@@ -76,8 +94,20 @@ export class ComboBox implements FormValueControl<number | string | null> {
   focusOpened = signal(false);
   /** Index of currently highlighted option. -1 means none highlighted. */
   highlightedIndex = signal(-1);
+  /**
+   * Inline style of the options list (see `panelPlacement`). All four insets are managed
+   * TOGETHER: the CSS default (`top: 100%`, `left: 0`, `right: 0`) can be overridden inline,
+   * so a stale inline `top: auto` from a previous upward flip would otherwise persist, and
+   * having both `top` and `bottom` non-auto would over-constrain the absolutely positioned list.
+   * Reset to the baseline on every open before measuring.
+   */
+  containerStyle = signal<PanelInsets>(panelPlacement.baseline);
+  /** Number of the most recent open - drops stale placement work from an earlier open. */
+  private positionSession = 0;
   /** Root focusable element (role=combobox). */
   comboRef = viewChild.required<ElementRef<HTMLDivElement>>('comboRef');
+  /** Reference to the options list popup. */
+  optionsRef = viewChild.required<ElementRef<HTMLDivElement>>('optionsRef');
 
   constructor() {
     // Watch `disabled` field: close open list when component becomes disabled.
@@ -132,7 +162,14 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * @param top If true, set highlight on top, false on bottom, null do not change highlight. Ignored if highlight already set.
    */
   openList(top: boolean | null = null) {
+    // Reset placement to the baseline (below the anchor, stretched) BEFORE the list renders,
+    // so the measurement below always runs under this known alignment - measuring the list
+    // as left over from the previous open would judge alignment by the OLD placement.
+    this.containerStyle.set(panelPlacement.baseline);
+    const session = ++this.positionSession;
     this.isOpen.set(true);
+    void this.positionOptionsPanel(session);
+
     // Yes, popup window with list is opened even if no options exist.
     if (this.options().length === 0) return;
 
@@ -143,6 +180,21 @@ export class ComboBox implements FormValueControl<number | string | null> {
       // Still nothing highlighted and we want to highlight either beginning or end of list.
       this.highlightedIndex.set(top ? 0 : this.options().length - 1);
     }
+  }
+
+  /**
+   * Resolve the options list placement so it does not overflow the viewport.
+   * Runs once per open, right after the list rendered under the baseline - the measurement
+   * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
+   * Work from a superseded open (list closed or reopened before the render settled) is dropped,
+   * so the measurement can never run under a placement other than the baseline.
+   * @param session Placement session captured when the list was opened.
+   */
+  private async positionOptionsPanel(session: number): Promise<void> {
+    await afterRender(this.injector);
+
+    if (session !== this.positionSession || !this.isOpen()) return;
+    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.optionsRef().nativeElement, panelPlacement));
   }
 
   /**
