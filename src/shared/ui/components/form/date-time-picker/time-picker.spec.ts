@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import userEvent from '@testing-library/user-event';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateService, type TranslationObject } from '@ngx-translate/core';
 
 import { TimePicker } from './time-picker';
 
@@ -27,7 +27,7 @@ describe('TimePicker', () => {
     /** Whether the picker is in invalid state. */
     invalid?: boolean;
     /** Translations registered before component creation (needed for computed placeholder). */
-    translations?: Record<string, unknown>;
+    translations?: TranslationObject;
   }
 
   /**
@@ -1120,6 +1120,35 @@ describe('TimePicker', () => {
         expect(document.activeElement, 'Escape should return focus to input').toBe(getInput(fixture));
       });
 
+      it('should close panel and move focus to previous control on Shift+Tab from hour listbox', async () => {
+        // Arrange: Create component with open panel focused in hour listbox and a focusable
+        // control before the picker (target of backwards focus handoff).
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        fixture.componentInstance.focusedHour.set(14);
+        const before = fixture.componentInstance.value();
+        const prevControl = document.createElement('button');
+        prevControl.setAttribute('data-testid', 'prev-control');
+        document.body.insertBefore(prevControl, fixture.nativeElement);
+
+        try {
+          // Act: Press Shift+Tab to move backwards out of the picker.
+          await user.keyboard('{Shift>}{Tab}{/Shift}');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: Panel closed, focus state reset, value untouched, focus moved on.
+          expect(fixture.componentInstance.isClockVisible(), 'panel should close on Shift+Tab').toBe(false);
+          expect(fixture.componentInstance.focusedHour(), 'Shift+Tab should reset focused hour').toBeNull();
+          expect(fixture.componentInstance.focusedMinute(), 'Shift+Tab should reset focused minute').toBeNull();
+          expect(fixture.componentInstance.value(), 'Shift+Tab should not change value').toBe(before);
+          expect(document.activeElement, 'focus should move to previous focusable control').toBe(prevControl);
+        } finally { // cleanup
+          prevControl.remove();
+        }
+      });
+
       it('should track focused hour with focused class and aria-activedescendant', async () => {
         // Arrange: Create component, open panel and seed focused hour.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
@@ -1334,6 +1363,34 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedHour(), 'Escape should reset focused hour').toBeNull();
         expect(fixture.componentInstance.focusedMinute(), 'Escape should reset focused minute').toBeNull();
         expect(document.activeElement, 'Escape should return focus to input').toBe(getInput(fixture));
+      });
+
+      it('should close panel and move focus to previous control on Shift+Tab from minute listbox', async () => {
+        // Arrange: Create component focused in minute listbox and a focusable control before
+        // the picker (target of backwards focus handoff).
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute({ value: utcTime(14, 5) });
+        fixture.componentInstance.focusedMinute.set(30);
+        const before = fixture.componentInstance.value();
+        const prevControl = document.createElement('button');
+        prevControl.setAttribute('data-testid', 'prev-control');
+        document.body.insertBefore(prevControl, fixture.nativeElement);
+
+        try {
+          // Act: Press Shift+Tab to move backwards out of the picker.
+          await user.keyboard('{Shift>}{Tab}{/Shift}');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: Panel closed, focus state reset, value untouched, focus moved on.
+          expect(fixture.componentInstance.isClockVisible(), 'panel should close on Shift+Tab').toBe(false);
+          expect(fixture.componentInstance.focusedHour(), 'Shift+Tab should reset focused hour').toBeNull();
+          expect(fixture.componentInstance.focusedMinute(), 'Shift+Tab should reset focused minute').toBeNull();
+          expect(fixture.componentInstance.value(), 'Shift+Tab should not change value').toBe(before);
+          expect(document.activeElement, 'focus should move to previous focusable control').toBe(prevControl);
+        } finally { // cleanup
+          prevControl.remove();
+        }
       });
     });
   });

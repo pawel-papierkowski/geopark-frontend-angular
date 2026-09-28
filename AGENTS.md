@@ -117,6 +117,7 @@ Core and shared should not import from features.
 - **Verification**:
   - Run lint: `npm run lint`
   - Run eslint: `npx eslint`
+  - Run typecheck: `npm run typecheck`
 - **Testing**:
   - Run all unit tests: `npm test`
   - Run single test file: `npm test -- src/app/example/example.spec.ts`

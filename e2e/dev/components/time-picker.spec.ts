@@ -264,6 +264,31 @@ test.describe('TimePicker', () => {
       await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
     });
+
+    test('should navigate backwards from submit to time-picker to previous picker on Shift+Tab presses', async ({ page }) => {
+      // Arrange: Start keyboard modality on the submit button (the element after the time-picker).
+      await goToComponentsPage(page);
+      await page.getByRole('button', { name: 'Submit' }).focus();
+
+      // Act: Shift+Tab into the time-picker.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Panel opened and focus moved into the hour listbox (picker properly selected).
+      const timePicker = getTimePicker(page);
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getPanel(page)).toBeVisible();
+      await expect(getHourColumn(page)).toBeFocused();
+
+      // Act: Shift+Tab again — one press must close panel AND move focus out backwards.
+      await page.keyboard.press('Shift+Tab');
+
+      // Assert: Focus moved to previous picker (datetime row's time input, which auto-opens on
+      // focus); our panel closed and our input no longer holds focus.
+      const previousPicker = page.getByTestId('timeId_cc-dateTimePicker_input');
+      await expect(previousPicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker).not.toBeFocused();
+    });
   });
 
   test.describe('display', () => {

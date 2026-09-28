@@ -22,6 +22,21 @@ export class NavUtils {
   }
 
   /**
+   * Starting from the current element, focus on the previous focusable element on the page. Does nothing in case of failure.
+   * @param currElement Current element.
+   */
+  public static FocusPrev(currElement: HTMLElement | null) {
+    if (!currElement) return;
+
+    const allFocusable = document.querySelectorAll<HTMLElement>(NavUtils.focusable);
+    const idx = Array.from(allFocusable).indexOf(currElement as HTMLElement);
+    if (idx <= 0) return; // current element is not focusable or is the first one
+
+    const prevElement = allFocusable[idx - 1] || null;
+    prevElement?.focus();
+  }
+
+  /**
    * Starting from the current element, focus on the first focusable element INSIDE the current element. If it fails, focus on the current element.
    * @param currElement Current element.
    */

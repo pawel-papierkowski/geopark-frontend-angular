@@ -370,6 +370,14 @@ export class TimePicker implements FormValueControl<Date | null> {
         e.preventDefault();
         this.hidePanelAndRefocus();
         break;
+      case 'Tab':
+        // One backwards press must leave the whole component (mirrors forward Tab, which skips
+        // the input because it sits behind the panel).
+        if (e.shiftKey) {
+          e.preventDefault();
+          this.hidePanelAndFocusPrev();
+        }
+        break;
     }
   }
 
@@ -419,6 +427,14 @@ export class TimePicker implements FormValueControl<Date | null> {
       case 'Escape':
         e.preventDefault();
         this.hidePanelAndRefocus();
+        break;
+      case 'Tab':
+        // One backwards press must leave the whole component (mirrors forward Tab, which skips
+        // the input because it sits behind the panel).
+        if (e.shiftKey) {
+          e.preventDefault();
+          this.hidePanelAndFocusPrev();
+        }
         break;
     }
   }
@@ -530,6 +546,16 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     const inputEl = document.getElementById(`${this.ident()}_input`);
     NavUtils.FocusNext(inputEl);
+  }
+
+  /** Hide panel and move focus to the previous focusable element on page. */
+  async hidePanelAndFocusPrev() {
+    this.hidePanel();
+
+    await afterRender(this.injector);
+
+    const inputEl = document.getElementById(`${this.ident()}_input`);
+    NavUtils.FocusPrev(inputEl);
   }
 
   /**
