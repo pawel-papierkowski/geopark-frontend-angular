@@ -77,10 +77,12 @@ describe('TimePicker', () => {
    * Create a Date on a fixed date with given UTC time. Keeps assertions timezone-agnostic.
    * @param hour UTC hour.
    * @param minute UTC minute.
+   * @param seconds UTC seconds (defaults to 0).
+   * @param ms UTC milliseconds (defaults to 0).
    * @returns Date set to 2026-01-15 at given UTC time.
    */
-  function utcTime(hour: number, minute: number): Date {
-    return new Date(Date.UTC(2026, 0, 15, hour, minute, 0, 0));
+  function utcTime(hour: number, minute: number, seconds: number = 0, ms: number = 0): Date {
+    return new Date(Date.UTC(2026, 0, 15, hour, minute, seconds, ms));
   }
 
   /**
@@ -403,6 +405,71 @@ describe('TimePicker', () => {
         // Assert: Value carries minute with cleared seconds.
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 45').toBe(45);
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+      });
+
+      it('should clear seconds and milliseconds when changing hour on value with sub-minute parts', async () => {
+        // Arrange: Create component with value carrying stray seconds and milliseconds.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123) });
+        await openPanel(fixture);
+
+        // Act: Click hour 15.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h15"]').click();
+        fixture.detectChanges();
+
+        // Assert: Selected hour applied, seconds and milliseconds dropped.
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain hour 15').toBe(15);
+        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+        expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
+      });
+
+      it('should clear seconds and milliseconds when changing minute on value with sub-minute parts', async () => {
+        // Arrange: Create component with value carrying stray seconds and milliseconds.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123) });
+        await openPanel(fixture);
+
+        // Act: Click minute 45.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
+        fixture.detectChanges();
+
+        // Assert: Selected minute applied, hour preserved, seconds and milliseconds dropped.
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 45').toBe(45);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+        expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
+      });
+
+      it('should normalize sub-minute parts when re-clicking selected hour with canNull false', async () => {
+        // Arrange: Create component with unclean value and open panel.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123), canNull: false });
+        await openPanel(fixture);
+
+        // Act: Click already selected hour 14.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+
+        // Assert: Value is kept but normalized instead of left with stray seconds.
+        expect(fixture.componentInstance.value(), 'value should stay selected').not.toBeNull();
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should stay selected').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be preserved').toBe(30);
+        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+        expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
+      });
+
+      it('should normalize sub-minute parts when re-clicking selected minute with canNull false', async () => {
+        // Arrange: Create component with unclean value and open panel.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123), canNull: false });
+        await openPanel(fixture);
+
+        // Act: Click already selected minute 30.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
+        fixture.detectChanges();
+
+        // Assert: Value is kept but normalized instead of left with stray seconds.
+        expect(fixture.componentInstance.value(), 'value should stay selected').not.toBeNull();
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should stay selected').toBe(30);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+        expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
       });
 
       it('should keep value when same hour is clicked again and canNull is false', async () => {

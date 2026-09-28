@@ -194,14 +194,19 @@ export class TimePicker implements FormValueControl<Date | null> {
   selectHour(h: number | null) {
     if (this.disabled() || h === null) return;
 
+    const current = this.value();
+
     // Selecting same hour.
-    if (this.value() && this.value()?.getUTCHours() === h) {
-      if (this.canNull()) this.value.set(null); // Deselect time.
+    if (current && current.getUTCHours() === h) {
+      if (this.canNull()) {
+        this.value.set(null); // Deselect time.
+        return;
+      }
+      this.value.set(this.clearSubMinute(current)); // Normalize stray seconds even when selection does not change.
       return;
     }
 
-    const date = this.value() ? new Date(this.value() || '') : new Date();
-    if (!this.value()) date.setUTCSeconds(0, 0);
+    const date = this.clearSubMinute(current ? new Date(current) : new Date());
     date.setUTCHours(h);
     this.value.set(date);
   }
@@ -210,16 +215,36 @@ export class TimePicker implements FormValueControl<Date | null> {
   selectMinute(m: number | null, viaKeyboard: boolean) {
     if (this.disabled() || m === null) return;
 
+    const current = this.value();
+
     // Selecting same minute.
-    if (!viaKeyboard && this.value() && this.value()?.getUTCMinutes() === m) {
-      if (this.canNull()) this.value.set(null); // Deselect time.
+    if (!viaKeyboard && current && current.getUTCMinutes() === m) {
+      if (this.canNull()) {
+        this.value.set(null); // Deselect time.
+        return;
+      }
+      this.value.set(this.clearSubMinute(current)); // Normalize stray seconds even when selection does not change.
       return;
     }
 
-    const date = this.value() ? new Date(this.value() || '') : new Date();
-    if (!this.value()) date.setUTCSeconds(0, 0);
+    const date = this.clearSubMinute(current ? new Date(current) : new Date());
     date.setUTCMinutes(m);
     this.value.set(date);
+  }
+
+  /**
+   * Return a Date with seconds and milliseconds zeroed. The picker only lets the user pick
+   * hours and minutes (display shows `HH:mm`), so sub-minute parts must never leave the
+   * component - otherwise values seeded with stray seconds would reach the backend untouched.
+   * Returns the same instance when already clean, so untouched clean values keep their identity.
+   * @param date Date to normalize.
+   * @returns Date without seconds and milliseconds.
+   */
+  private clearSubMinute(date: Date): Date {
+    if (date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0) return date;
+    const copy = new Date(date);
+    copy.setUTCSeconds(0, 0);
+    return copy;
   }
 
   /** Scroll to selected hour and minute. */
