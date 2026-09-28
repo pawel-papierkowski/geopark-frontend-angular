@@ -99,7 +99,7 @@
               role="option"
               [attr.aria-selected]="selectedMinute() === m"
               [attr.aria-label]="`${m} ${'dateTimePicker.minute' | translate}`"
-              (click)="selectMinute(m, false)">
+              (click)="handleMinuteClick(m)">
               {{ m.toString().padStart(2, '0') }}
             </div>
           }

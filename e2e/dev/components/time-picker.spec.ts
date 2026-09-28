@@ -115,6 +115,7 @@ async function readFocusoutCount(page: Page): Promise<number> {
 /**
  * Select a deterministic time (14:30) through mouse interaction.
  * Uses fixed values so assertions do not depend on the current time.
+ * Note: picking the minute closes the panel and leaves focus on the input.
  * @param page Browser page.
  */
 async function selectTimeViaMouse(page: Page): Promise<void> {
@@ -148,11 +149,16 @@ test.describe('TimePicker', () => {
 
       // Act: Pick hour 14 and minute 30.
       await getHour(page, 14).click();
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true'); // Hour picking keeps the panel open for the minute.
       await getMinute(page, 30).click();
 
       // Assert: Input shows formatted time and raw value propagated to form display.
       await expect(timePicker).toHaveValue('🕜 14:30');
       await expect(getValueDisplay(page)).toContainText('T14:30:00');
+
+      // Assert: Picking the minute completes the selection - panel closes, focus returns to input.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker).toBeFocused();
     });
 
     test('should close panel on second click', async ({ page }) => {
@@ -170,12 +176,15 @@ test.describe('TimePicker', () => {
     });
 
     test('should close panel when clicking outside and keep selected value', async ({ page }) => {
-      // Arrange: Navigate and select a time so value retention can be verified.
+      // Arrange: Navigate and select a time (minute selection closes the panel on its own).
       await goToComponentsPage(page);
       await selectTimeViaMouse(page);
-      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'true');
+      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'false');
+      await expect(getValueDisplay(page)).toContainText('T14:30:00');
 
-      // Act: Click page heading (moves focus away from the picker).
+      // Act: Reopen the panel, then click page heading (moves focus away from the picker).
+      await getTimePicker(page).click();
+      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'true');
       await page.locator('h1').click();
 
       // Assert: Panel closed via real focusout flow, selected value retained.
@@ -262,11 +271,12 @@ test.describe('TimePicker', () => {
     });
 
     test('should select time via keyboard and move focus to submit button', async ({ page }) => {
-      // Arrange: Select a deterministic time with the mouse, then Escape back to the input.
+      // Arrange: Select a deterministic time with the mouse (minute selection closes the panel
+      // and returns focus to the input, so no Escape is needed to get back to it).
       await goToComponentsPage(page);
       await selectTimeViaMouse(page);
-      await getHourColumn(page).press('Escape');
       const timePicker = getTimePicker(page);
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
       await expect(timePicker).toBeFocused();
 
       // Act: Open the panel via keyboard (seeds keyboard focus state from the selected value).

@@ -378,19 +378,23 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after hour click').toBe(true);
       });
 
-      it('should select minute on minute click without closing panel', async () => {
-        // Arrange: Create component with value 14:05 and open panel.
+      it('should select minute on minute click, close panel and refocus input', async () => {
+        // Arrange: Create component with value 14:05, open panel and spy on touch output.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
         await openPanel(fixture);
 
         // Act: Click minute 30.
         fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
         fixture.detectChanges();
 
-        // Assert: Minute updated, hour preserved, panel stays open.
+        // Assert: Minute updated, hour preserved, panel closed and focus back on the input.
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 30').toBe(30);
         expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
-        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after minute click').toBe(true);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should close after minute click').toBe(false);
+        expect(document.activeElement, 'focus should return to input after minute click').toBe(getInput(fixture));
+        expect(touchSpy, 'refocusing the input should not emit touch').not.toHaveBeenCalled();
       });
 
       it('should select minute from empty value with seconds cleared', async () => {
@@ -534,7 +538,7 @@ describe('TimePicker', () => {
 
         // Act: Call selection handlers with null (defensive API contract).
         fixture.componentInstance.selectHour(null);
-        fixture.componentInstance.selectMinute(null, false);
+        fixture.componentInstance.selectMinute(null);
         fixture.detectChanges();
 
         // Assert: Value is untouched.
@@ -548,7 +552,7 @@ describe('TimePicker', () => {
 
         // Act: Call selection handlers directly (disabled input does not receive user clicks).
         fixture.componentInstance.selectHour(5);
-        fixture.componentInstance.selectMinute(5, false);
+        fixture.componentInstance.selectMinute(5);
         fixture.detectChanges();
 
         // Assert: Value is untouched.
@@ -1527,21 +1531,74 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.isClockVisible(), 'panel should close after minute selection').toBe(false);
       });
 
-      it('should keep value on Enter with same minute when canNull', async () => {
-        // Arrange: Create deselectable component focused in minute listbox with selected minute focused.
+      it('should deselect value on Enter with same minute when canNull', async () => {
+        // Arrange: Create deselectable component focused in minute listbox with selected minute focused
+        // and a focusable control after the picker (target of focus handoff).
         const user = userEvent.setup();
         const fixture = await arrangeFocusedMinute({ canNull: true });
         fixture.componentInstance.focusedMinute.set(30);
+        const nextControl = document.createElement('button');
+        nextControl.setAttribute('data-testid', 'next-control');
+        document.body.appendChild(nextControl);
 
-        // Act: Press Enter on already selected minute (keyboard selection never deselects).
+        try {
+          // Act: Press Enter on already selected minute (same toggle as mouse re-click).
+          await user.keyboard('{Enter}');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: Value deselected, panel closed, focus moved on (Enter commits and exits).
+          expect(fixture.componentInstance.value(), 'Enter on same minute with canNull should clear value').toBeNull();
+          expect(fixture.componentInstance.isClockVisible(), 'panel should close after deselecting').toBe(false);
+          expect(document.activeElement, 'focus should move to next focusable control').toBe(nextControl);
+        } finally { // cleanup
+          nextControl.remove();
+        }
+      });
+
+      it('should keep the same value instance on Enter with same minute', async () => {
+        // Arrange: Create component focused in minute listbox with the already selected minute focused
+        // and a focusable control after the picker (target of focus handoff).
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute({ canNull: false });
+        fixture.componentInstance.focusedMinute.set(30);
+        const before = fixture.componentInstance.value();
+        const nextControl = document.createElement('button');
+        nextControl.setAttribute('data-testid', 'next-control');
+        document.body.appendChild(nextControl);
+
+        try {
+          // Act: Press Enter on already selected minute.
+          await user.keyboard('{Enter}');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: Value instance untouched (no spurious model update), flow still completes.
+          expect(fixture.componentInstance.value(), 'Enter on same minute should keep the same value instance').toBe(before);
+          expect(fixture.componentInstance.isClockVisible(), 'panel should close after minute selection').toBe(false);
+          expect(document.activeElement, 'focus should move to next focusable control').toBe(nextControl);
+        } finally { // cleanup
+          nextControl.remove();
+        }
+      });
+
+      it('should clear seconds and milliseconds on Enter with same minute', async () => {
+        // Arrange: Create component with value carrying stray seconds and milliseconds,
+        // focused in minute listbox on the selected minute.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute({ value: utcTime(14, 30, 47, 123), canNull: false });
+        fixture.componentInstance.focusedMinute.set(30);
+
+        // Act: Press Enter on already selected minute.
         await user.keyboard('{Enter}');
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Value kept (unlike mouse re-click), panel closed.
-        expect(fixture.componentInstance.value(), 'keyboard Enter on same minute should not clear value').not.toBeNull();
+        // Assert: Sub-minute parts normalized while the selection stays.
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should stay selected').toBe(30);
-        expect(fixture.componentInstance.isClockVisible(), 'panel should close after minute selection').toBe(false);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+        expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
       });
 
       it('should seed focus without selecting on Enter when nothing is focused', async () => {

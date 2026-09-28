@@ -119,10 +119,10 @@ export class TimePicker implements FormValueControl<Date | null> {
     return `${this.ident()}_opt_m${this.focusedMinute()}`;
   });
 
-  /** Compute currently displayed time value in time input. */
+  /** Compute currently displayed time value in time input. Always a string (never null), so the `[value]` binding never writes null into the input. */
   displayTimeValue = computed(() => {
     const formattedTime = TimeUtils.formatUTCTime(this.value());
-    if (!formattedTime) return null;
+    if (!formattedTime) return '';
     return '🕜 ' + formattedTime;
   });
   /** Compute placeholder value for time input. */
@@ -212,13 +212,13 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /** Select minute. */
-  selectMinute(m: number | null, viaKeyboard: boolean) {
+  selectMinute(m: number | null) {
     if (this.disabled() || m === null) return;
 
     const current = this.value();
 
     // Selecting same minute.
-    if (!viaKeyboard && current && current.getUTCMinutes() === m) {
+    if (current && current.getUTCMinutes() === m) {
       if (this.canNull()) {
         this.value.set(null); // Deselect time.
         return;
@@ -339,6 +339,21 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.focusFromClick = false; // Any click-caused focus already happened (focus precedes click) - never leave a stale flag behind.
     await this.toggleTimePickerVisibility(viaKeyboard);
   };
+
+  /**
+   * Handle click on a minute option: apply the selection and close the clock panel - picking a
+   * minute completes the time, so the interaction ends here (hour clicks keep the panel open
+   * because the minute still has to be picked). Focus returns to the input (the panel's focus
+   * owner), so the resulting focusout stays internal and no touch is reported - touch fires only
+   * when focus really leaves the component, same as on Escape. The panel also closes when the
+   * click deselected the time (canNull toggle): either way the interaction is complete.
+   * @param m Clicked minute.
+   */
+  handleMinuteClick(m: number) {
+    if (this.disabled()) return;
+    this.selectMinute(m);
+    this.hidePanelAndRefocus(); // Focus moves to the input BEFORE the panel is hidden, so the focusout reads as an internal move.
+  }
 
   /**
    * Handle focus leaving the picker entirely (e.g. Tab out of grid). It closes clock panel and,
@@ -546,7 +561,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       return;
     }
 
-    this.selectMinute(this.focusedMinute(), true);
+    this.selectMinute(this.focusedMinute());
     this.hidePanelAndFocusNext();
   }
 
