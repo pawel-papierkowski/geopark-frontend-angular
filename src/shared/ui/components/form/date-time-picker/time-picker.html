@@ -20,7 +20,7 @@
     role="combobox"
     [tabindex]="disabled() ? -1 : 0"
 
-    aria-haspopup="listbox"
+    aria-haspopup="dialog"
     [attr.aria-expanded]="isClockVisible()"
     [attr.aria-controls]="`${ident()}_panel`"
     [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
@@ -45,7 +45,6 @@
       role="dialog"
 
       [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
-      aria-modal="true"
 
       (mousedown)="handlePanelMousedown($event)">
 

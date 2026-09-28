@@ -921,14 +921,15 @@ describe('TimePicker', () => {
 
   describe('accessibility', () => {
     describe('aria', () => {
-      it('should have combobox role and aria-haspopup listbox on input', async () => {
+      it('should have combobox role and aria-haspopup dialog on input', async () => {
         // Arrange: Create component.
         const fixture = await arrangeTimePicker();
         const input = getInput(fixture);
 
-        // Assert: Combobox semantics present.
+        // Assert: Combobox semantics present; popup announced as dialog because aria-controls
+        // references the role=dialog panel, not a listbox directly.
         expect(input.getAttribute('role'), 'should have combobox role').toBe('combobox');
-        expect(input.getAttribute('aria-haspopup'), 'should have listbox popup').toBe('listbox');
+        expect(input.getAttribute('aria-haspopup'), 'should have dialog popup').toBe('dialog');
       });
 
       it('should link aria-controls to panel id', async () => {
@@ -943,14 +944,15 @@ describe('TimePicker', () => {
         expect(input.getAttribute('aria-controls'), 'aria-controls should equal actual panel id').toBe(panel.getAttribute('id'));
       });
 
-      it('should have dialog role and aria-modal on panel', async () => {
+      it('should have dialog role and no aria-modal on panel', async () => {
         // Arrange: Create component.
         const fixture = await arrangeTimePicker();
         const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
 
-        // Assert: Panel is a modal dialog.
+        // Assert: Panel is a non-modal dialog - Tab intentionally leaves the component, so
+        // claiming modality would tell AT the background is inert when it is not.
         expect(panel.getAttribute('role'), 'panel should have dialog role').toBe('dialog');
-        expect(panel.getAttribute('aria-modal'), 'panel should be modal').toBe('true');
+        expect(panel.hasAttribute('aria-modal'), 'panel should not claim to be modal').toBe(false);
       });
 
       it('should have listbox roles, aria-labels and tabindex -1 on columns', async () => {
