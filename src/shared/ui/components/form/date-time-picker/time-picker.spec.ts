@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import userEvent from '@testing-library/user-event';
 import { TranslateService, type TranslationObject } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 
 import { TimePicker } from './time-picker';
 
@@ -803,6 +804,28 @@ describe('TimePicker', () => {
         expect(panel.style.left, 'panel should be left-aligned when it fits').toBe('0px');
         expect(panel.style.right, 'panel should not be right-aligned when it fits').toBe('auto');
       });
+    });
+  });
+
+  describe('i18n', () => {
+    it('should update placeholder and translated labels on language switch', async () => {
+      // Arrange: Create component with English translations registered before creation.
+      const fixture = await arrangeTimePicker({
+        value: null,
+        translations: { dateTimePicker: { placeholder: { time: 'hh:mm' }, hour: 'Hour', minute: 'Minute' } },
+      });
+      const translateService = TestBed.inject(TranslateService);
+      translateService.setTranslation('pl', { dateTimePicker: { placeholder: { time: 'gg:mm' }, hour: 'Godzina', minute: 'Minuta' } });
+      expect(getInput(fixture).getAttribute('placeholder'), 'precondition: placeholder should show English text').toContain('hh:mm');
+
+      // Act: Activate Polish while the component is alive.
+      await firstValueFrom(translateService.use('pl'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: Placeholder follows the language; pipe-based label proves both update together.
+      expect(getInput(fixture).getAttribute('placeholder'), 'placeholder should switch to Polish text').toContain('gg:mm');
+      expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-label'), 'hour label should switch to Polish text').toBe('Godzina');
     });
   });
 

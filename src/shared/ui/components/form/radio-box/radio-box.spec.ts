@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import userEvent from '@testing-library/user-event';
 import { TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 
 import { RadioBox } from './radio-box';
 
@@ -273,6 +274,31 @@ describe('RadioBox', () => {
         // Assert: Touch event was emitted.
         expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe('i18n', () => {
+    it('should update option labels on language switch', async () => {
+      // Arrange: Create component with langPrefix and register English translations.
+      const fixture = await arrangeRadioBox({ options: ['a', 'b'], langPrefix: 'test.options' });
+      const translateService = TestBed.inject(TranslateService);
+      translateService.setTranslation('en', { test: { options: { a: 'Option One', b: 'Option Two' } } });
+      translateService.setTranslation('pl', { test: { options: { a: 'Opcja Pierwsza', b: 'Opcja Druga' } } });
+      
+      await firstValueFrom(translateService.use('en'));
+      await fixture.whenStable();
+      const labels = fixture.nativeElement.querySelectorAll('.radiobox-label');
+      expect(labels[0].textContent, 'precondition: first option should show English text').toContain('Option One');
+      expect(labels[1].textContent, 'precondition: second option should show English text').toContain('Option Two');
+
+      // Act: Activate Polish while the component is alive; no manual detectChanges,
+      // so only a scheduler-driven refresh can update the DOM.
+      await firstValueFrom(translateService.use('pl'));
+      await fixture.whenStable();
+
+      // Assert: Option labels follow the language switch.
+      expect(labels[0].textContent, 'first option should switch to Polish text').toContain('Opcja Pierwsza');
+      expect(labels[1].textContent, 'second option should switch to Polish text').toContain('Opcja Druga');
     });
   });
 

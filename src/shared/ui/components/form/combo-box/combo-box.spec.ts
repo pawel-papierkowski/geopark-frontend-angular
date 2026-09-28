@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import userEvent from '@testing-library/user-event';
 import { TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 
 import { ComboBox } from './combo-box';
 
@@ -601,6 +602,31 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset when disabled').toBe(-1);
         expect(touchSpy, 'closing programmatically should not emit touch').toHaveBeenCalledTimes(0);
       });
+    });
+  });
+
+  describe('i18n', () => {
+    it('should update placeholder and option labels on language switch', async () => {
+      // Arrange: Create component with langPrefix and register English translations.
+      const fixture = await arrangeComboBox({ value: null, options: ['a', 'b'], langPrefix: 'test.options', placeholder: 'test.pick' });
+      const translateService = TestBed.inject(TranslateService);
+      translateService.setTranslation('en', { test: { pick: 'Please pick', options: { a: 'Option A', b: 'Option B' } } });
+      translateService.setTranslation('pl', { test: { pick: 'Wybierz opcję', options: { a: 'Opcja A', b: 'Opcja B' } } });
+      
+      await firstValueFrom(translateService.use('en'));
+      await fixture.whenStable();
+      const selected = fixture.nativeElement.querySelector('.combobox-selected-text');
+      expect(selected.textContent, 'precondition: placeholder should show English text').toContain('Please pick');
+
+      // Act: Activate Polish while the component is alive; no manual detectChanges,
+      // so only a scheduler-driven refresh can update the DOM.
+      await firstValueFrom(translateService.use('pl'));
+      await fixture.whenStable();
+
+      // Assert: Placeholder and option labels follow the language switch.
+      expect(selected.textContent, 'placeholder should switch to Polish text').toContain('Wybierz opcję');
+      const firstOption = fixture.nativeElement.querySelector('[data-testid="test-combo_0"]');
+      expect(firstOption.textContent, 'first option label should switch to Polish text').toContain('Opcja A');
     });
   });
 
