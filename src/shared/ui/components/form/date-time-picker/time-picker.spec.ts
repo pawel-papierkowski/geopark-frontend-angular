@@ -249,13 +249,13 @@ describe('TimePicker', () => {
       });
 
       it('should mark selected and current time options with classes when panel is open', async () => {
-        // Arrange: Remember current hour to tolerate hour rollover during the test.
-        const beforeHour = new Date().getUTCHours();
+        // Arrange: Remember current local hour to tolerate hour rollover during the test.
+        const beforeHour = new Date().getHours();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
 
         // Act: Open the clock panel (this computes viewed/current time).
         await openPanel(fixture);
-        const afterHour = new Date().getUTCHours();
+        const afterHour = new Date().getHours();
 
         // Assert: Selected options match the value, exactly one option per column is current.
         expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('selected'), 'hour 14 should be selected').toBe(true);
@@ -264,8 +264,30 @@ describe('TimePicker', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="test-time_m29"]').classList.contains('selected'), 'minute 29 should not be selected').toBe(false);
         const currHours = fixture.nativeElement.querySelectorAll('.time-hour.curr');
         expect(currHours.length, 'exactly one hour should be marked as current').toBe(1);
-        expect([beforeHour, afterHour], 'current hour should match real current UTC hour').toContain(Number(currHours[0].textContent));
+        expect([beforeHour, afterHour], 'current hour should match real current local hour').toContain(Number(currHours[0].textContent));
         expect(fixture.nativeElement.querySelectorAll('.time-minute.curr').length, 'exactly one minute should be marked as current').toBe(1);
+      });
+
+      it('should seed current time highlight from local timezone when no value is set', async () => {
+        // Arrange: Remember current local time to tolerate rollover during the test.
+        const beforeHour = new Date().getHours();
+        const beforeMinute = new Date().getMinutes();
+        const fixture = await arrangeTimePicker({ value: null });
+
+        // Act: Open the clock panel (this computes viewed/current time).
+        await openPanel(fixture);
+        const afterHour = new Date().getHours();
+        const afterMinute = new Date().getMinutes();
+
+        // Assert: Viewed time and `curr` markers come from local time, not UTC.
+        expect([beforeHour, afterHour], 'viewed hour should match real current local hour').toContain(fixture.componentInstance.viewHour());
+        expect([beforeMinute, afterMinute], 'viewed minute should match real current local minute').toContain(fixture.componentInstance.viewMinute());
+        const currHours = fixture.nativeElement.querySelectorAll('.time-hour.curr');
+        expect(currHours.length, 'exactly one hour should be marked as current').toBe(1);
+        expect([beforeHour, afterHour], 'current hour marker should match real current local hour').toContain(Number(currHours[0].textContent));
+        const currMinutes = fixture.nativeElement.querySelectorAll('.time-minute.curr');
+        expect(currMinutes.length, 'exactly one minute should be marked as current').toBe(1);
+        expect([beforeMinute, afterMinute], 'current minute marker should match real current local minute').toContain(Number(currMinutes[0].textContent));
       });
     });
 

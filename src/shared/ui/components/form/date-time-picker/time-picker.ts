@@ -27,6 +27,8 @@ const panelPlacement: PanelPlacement = {
  * This is a time picker. Uses `Date` class for both input and output. Do not use it directly.
  * Use DateTimePicker with attribute mode="time".
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
+ * Values are read/written through UTC accessors, but the default "current time" highlight and
+ * keyboard/scroll seed (used when no value is set) come from the browser's local timezone.
  * Designed to be used with signal-based forms.
  *
  * Features:
@@ -201,11 +203,16 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.clockPanelRef().nativeElement, panelPlacement));
   }
 
-  /** Find and set current time. */
+  /**
+   * Find and set current time in the browser's local timezone.
+   * Drives the `curr` marker (always), and - when no value is set - the scroll target and the
+   * keyboard focus seed, so opening the picker without a value pre-selects local time.
+   * Values themselves stay timezone-agnostic (UTC-carried), see class doc.
+   */
   findViewTime() {
     const date = new Date();
-    this.viewHour.set(date.getUTCHours());
-    this.viewMinute.set(date.getUTCMinutes());
+    this.viewHour.set(date.getHours());
+    this.viewMinute.set(date.getMinutes());
   }
 
   //
