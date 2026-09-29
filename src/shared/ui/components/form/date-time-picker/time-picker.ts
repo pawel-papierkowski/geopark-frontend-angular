@@ -185,22 +185,20 @@ export class TimePicker implements FormValueControl<Date | null> {
       await afterRender(this.injector);
 
       // Adjust picker position if needed to prevent window overflow (measured under baseline).
-      if (this.clockPanelRef()) {
-        this.positionPanel();
-        // Let the placement reach the DOM before focusing: focus() scrolls the focused
-        // element into view, so focusing while the panel still renders at its baseline
-        // (possibly below-the-fold) position makes the browser scroll the page to a spot
-        // the panel is about to leave. That scroll moves the page under the user's cursor
-        // and their next click can miss the label entirely (the click is retargeted to a
-        // common ancestor, so the toggle is silently lost).
-        await afterRender(this.injector);
-      }
+      this.positionPanel();
+      // Let the placement reach the DOM before focusing: focus() scrolls the focused
+      // element into view, so focusing while the panel still renders at its baseline
+      // (possibly below-the-fold) position makes the browser scroll the page to a spot
+      // the panel is about to leave. That scroll moves the page under the user's cursor
+      // and their next click can miss the label entirely (the click is retargeted to a
+      // common ancestor, so the toggle is silently lost).
+      await afterRender(this.injector);
 
       // Move keyboard focus into the panel (hour column) so user can navigate immediately.
       // preventScroll: placement guarantees the panel fits the viewport when either side
       // does, so there is nothing to reveal - and any focus-triggered page scroll would
       // race with the user's mouse.
-      this.hourRef()?.nativeElement.focus({ preventScroll: true });
+      this.hourRef().nativeElement.focus({ preventScroll: true });
     }
   }
 
@@ -331,17 +329,10 @@ export class TimePicker implements FormValueControl<Date | null> {
   async scrollToSelected() {
     await afterRender(this.injector);
 
-    let selHourElement: HTMLElement | null = null;
-    let selMinuteElement: HTMLElement | null = null;
-
     // If time is not selected, use current time as scroll target.
-    if (this.value() === null) {
-      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector<HTMLElement>('.curr');
-      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector<HTMLElement>('.curr');
-    } else {
-      if (this.hourRef()) selHourElement = this.hourRef().nativeElement.querySelector<HTMLElement>('.selected');
-      if (this.minuteRef()) selMinuteElement = this.minuteRef().nativeElement.querySelector<HTMLElement>('.selected');
-    }
+    const targetClass = this.value() === null ? '.curr' : '.selected';
+    const selHourElement = this.hourRef().nativeElement.querySelector<HTMLElement>(targetClass);
+    const selMinuteElement = this.minuteRef().nativeElement.querySelector<HTMLElement>(targetClass);
     if (selHourElement) this.centerOptionInColumn(this.hourRef().nativeElement, selHourElement);
     if (selMinuteElement) this.centerOptionInColumn(this.minuteRef().nativeElement, selMinuteElement);
   }
@@ -351,11 +342,9 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (h === null) return;
     await afterRender(this.injector);
 
-    if (this.hourRef()) {
-      const column = this.hourRef().nativeElement;
-      const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_h${h}"]`);
-      if (el) this.centerOptionInColumn(column, el);
-    }
+    const column = this.hourRef().nativeElement;
+    const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_h${h}"]`);
+    if (el) this.centerOptionInColumn(column, el);
   }
 
   /** Scroll minute listbox so given minute is visible. */
@@ -363,11 +352,9 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (m === null) return;
     await afterRender(this.injector);
 
-    if (this.minuteRef()) {
-      const column = this.minuteRef().nativeElement;
-      const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_m${m}"]`);
-      if (el) this.centerOptionInColumn(column, el);
-    }
+    const column = this.minuteRef().nativeElement;
+    const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_m${m}"]`);
+    if (el) this.centerOptionInColumn(column, el);
   }
 
   // EVENTS
