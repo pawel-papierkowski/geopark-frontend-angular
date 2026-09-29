@@ -125,9 +125,20 @@ export class TimePicker implements FormValueControl<Date | null> {
   // COMPUTED
 
   /** Currently selected hour. */
-  selectedHour = computed(() => this.value()?.getUTCHours() ?? null);
+  selectedHour = computed(() => this.normalizedValue()?.getUTCHours() ?? null);
   /** Currently selected minute. */
-  selectedMinute = computed(() => this.value()?.getUTCMinutes() ?? null);
+  selectedMinute = computed(() => this.normalizedValue()?.getUTCMinutes() ?? null);
+
+  /**
+   * `value` when it carries a real time. An `Invalid Date` fed by the parent (e.g. failed
+   * parsing of backend data) counts as "no time set": every UTC accessor on it returns `NaN`,
+   * which would print `NaN:NaN`, seed a `NaN` keyboard cursor and propagate through selections.
+   * Never mutates the model - the parent owns that value; interacting with the picker heals it.
+   */
+  normalizedValue = computed<Date | null>(() => {
+    const value = this.value();
+    return value !== null && !Number.isNaN(value.getTime()) ? value : null;
+  });
 
   /** aria-activedescendant value for the hour listbox. */
   hourActiveDesc = computed(() => {
@@ -142,7 +153,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /** Compute currently displayed time value in time input. Always a string (never null), so the `[value]` binding never writes null into the input. */
   displayTimeValue = computed(() => {
-    const formattedTime = TimeUtils.formatUTCTime(this.value());
+    const formattedTime = TimeUtils.formatUTCTime(this.normalizedValue());
     if (!formattedTime) return '';
     return '🕜 ' + formattedTime;
   });
@@ -232,7 +243,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     // Selection and the keyboard cursor must agree.
     this.focusedHour.set(h);
 
-    const current = this.value();
+    const current = this.normalizedValue();
 
     // Selecting same hour.
     if (current && current.getUTCHours() === h) {
@@ -253,7 +264,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   selectMinute(m: number | null) {
     if (this.disabled() || m === null) return;
 
-    const current = this.value();
+    const current = this.normalizedValue();
 
     // Selecting same minute.
     if (current && current.getUTCMinutes() === m) {
@@ -330,7 +341,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     await afterRender(this.injector);
 
     // If time is not selected, use current time as scroll target.
-    const targetClass = this.value() === null ? '.curr' : '.selected';
+    const targetClass = this.normalizedValue() === null ? '.curr' : '.selected';
     const selHourElement = this.hourRef().nativeElement.querySelector<HTMLElement>(targetClass);
     const selMinuteElement = this.minuteRef().nativeElement.querySelector<HTMLElement>(targetClass);
     if (selHourElement) this.centerOptionInColumn(this.hourRef().nativeElement, selHourElement);
@@ -611,12 +622,12 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     // If time was deselected (canNull same-hour toggle), close panel.
     // Otherwise move focus to minute column.
-    if (this.value() === null) {
+    if (this.normalizedValue() === null) {
       this.hidePanelAndRefocus();
     } else {
       this.activeColumn.set('minute');
       if (this.focusedMinute() === null) {
-        const val = this.value()?.getUTCMinutes() ?? this.viewMinute();
+        const val = this.normalizedValue()?.getUTCMinutes() ?? this.viewMinute();
         this.focusedMinute.set(val ?? null);
       }
       await afterRender(this.injector);
@@ -715,11 +726,11 @@ export class TimePicker implements FormValueControl<Date | null> {
    */
   setupFocus(force: boolean) {
     if (force || this.focusedHour() === null) {
-      const val = this.value()?.getUTCHours() ?? this.viewHour();
+      const val = this.normalizedValue()?.getUTCHours() ?? this.viewHour();
       this.focusedHour.set(val ?? null);
     }
     if (force || this.focusedMinute() === null) {
-      const val = this.value()?.getUTCMinutes() ?? this.viewMinute();
+      const val = this.normalizedValue()?.getUTCMinutes() ?? this.viewMinute();
       this.focusedMinute.set(val ?? null);
     }
   }

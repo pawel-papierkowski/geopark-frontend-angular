@@ -1125,6 +1125,61 @@ describe('TimePicker', () => {
         expect(panel.style.bottom, 'panel should not stay above the input when it fits').toBe('auto');
       });
     });
+
+    describe('invalid value', () => {
+      /** Date the parser rejects: every UTC accessor on it returns NaN. */
+      const invalidDate = new Date('not-a-date');
+
+      it('should show empty value instead of NaN when value is an invalid Date', async () => {
+        // Arrange: Create component fed an invalid Date (e.g. parsed from garbage input).
+        const fixture = await arrangeTimePicker({ value: invalidDate });
+
+        // Assert: Input stays empty so the placeholder shows - no NaN leaks into the field.
+        expect(getInput(fixture).value, 'input must not show NaN:NaN for an invalid Date').toBe('');
+      });
+
+      it('should seed keyboard cursor from current time when value is an invalid Date', async () => {
+        // Arrange: Create component fed an invalid Date and open the panel.
+        const fixture = await arrangeTimePicker({ value: invalidDate });
+        await openPanel(fixture);
+
+        // Assert: Cursor lands on the highlighted current hour, not on a NaN index.
+        expect(
+          fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-activedescendant'),
+          'hour activedescendant must reference the highlighted current hour',
+        ).toBe(`test-time_opt_h${fixture.componentInstance.viewHour()}`);
+      });
+
+      it('should heal an invalid value when an hour is clicked', async () => {
+        // Arrange: Create component fed an invalid Date and open the panel.
+        const fixture = await arrangeTimePicker({ value: invalidDate });
+        await openPanel(fixture);
+
+        // Act: Click hour 14.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+
+        // Assert: Value became a valid Date carrying the clicked hour.
+        const healed = fixture.componentInstance.value();
+        expect(healed !== null && !Number.isNaN(healed.getTime()), 'value must become a valid Date after clicking an hour').toBe(true);
+        expect(healed?.getUTCHours(), 'healed value must carry the clicked hour').toBe(14);
+      });
+
+      it('should heal an invalid value when a minute is clicked', async () => {
+        // Arrange: Create component fed an invalid Date and open the panel.
+        const fixture = await arrangeTimePicker({ value: invalidDate });
+        await openPanel(fixture);
+
+        // Act: Click minute 45.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
+        fixture.detectChanges();
+
+        // Assert: Value became a valid Date carrying the clicked minute.
+        const healed = fixture.componentInstance.value();
+        expect(healed !== null && !Number.isNaN(healed.getTime()), 'value must become a valid Date after clicking a minute').toBe(true);
+        expect(healed?.getUTCMinutes(), 'healed value must carry the clicked minute').toBe(45);
+      });
+    });
   });
 
   describe('i18n', () => {
