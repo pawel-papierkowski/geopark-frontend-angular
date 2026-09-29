@@ -1347,6 +1347,63 @@ describe('TimePicker', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="test-time_m29"]').getAttribute('aria-selected'), 'minute 29 should not be aria-selected').toBe('false');
       });
 
+      it('should set aria-current on exactly one option per column, mirroring the curr class', async () => {
+        // Arrange: Create component with value 14:30 (panel closed, no viewed time yet).
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+
+        // Act: Open the clock panel (this seeds the viewed/current local time).
+        await openPanel(fixture);
+        const viewHour = fixture.componentInstance.viewHour() ?? 0;
+        const viewMinute = fixture.componentInstance.viewMinute() ?? 0;
+        const root: HTMLElement = fixture.nativeElement;
+        const currentHours = root.querySelectorAll('.time-hour[aria-current]');
+        const currentMinutes = root.querySelectorAll('.time-minute[aria-current]');
+
+        // Assert: Exactly one option per column carries aria-current="time" and it is the option
+        // marked with the `curr` class (expected value comes from the component's own viewed
+        // time, so the test cannot flake on a wall-clock rollover mid-test).
+        expect(currentHours.length, 'exactly one hour should expose aria-current').toBe(1);
+        expect(currentHours[0].getAttribute('aria-current'), 'hour aria-current should use the time token').toBe('time');
+        expect(currentHours[0], 'hour aria-current should mirror the curr class').toBe(root.querySelector('.time-hour.curr'));
+        expect(root.querySelector(`[data-testid="test-time_h${viewHour}"]`)?.getAttribute('aria-current'), 'aria-current should sit on the viewed hour').toBe('time');
+        expect(currentMinutes.length, 'exactly one minute should expose aria-current').toBe(1);
+        expect(currentMinutes[0].getAttribute('aria-current'), 'minute aria-current should use the time token').toBe('time');
+        expect(currentMinutes[0], 'minute aria-current should mirror the curr class').toBe(root.querySelector('.time-minute.curr'));
+        expect(root.querySelector(`[data-testid="test-time_m${viewMinute}"]`)?.getAttribute('aria-current'), 'aria-current should sit on the viewed minute').toBe('time');
+        expect(root.querySelector(`[data-testid="test-time_h${(viewHour + 1) % 24}"]`)?.hasAttribute('aria-current'), 'non-current hour must not expose aria-current').toBe(false);
+        expect(root.querySelector(`[data-testid="test-time_m${(viewMinute + 1) % 60}"]`)?.hasAttribute('aria-current'), 'non-current minute must not expose aria-current').toBe(false);
+      });
+
+      it('should not set aria-current before the panel computes the viewed time', async () => {
+        // Arrange: Create component with value while the panel stays closed.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+
+        // Assert: No option claims to be current before findViewTime ran.
+        expect(fixture.nativeElement.querySelectorAll('[aria-current]').length, 'no option should expose aria-current while the panel is closed').toBe(0);
+      });
+
+      it('should keep aria-current alongside aria-selected when the value equals the current time', async () => {
+        // Arrange: Open the panel without a value so the viewed time is seeded.
+        const fixture = await arrangeTimePicker({ value: null });
+        await openPanel(fixture);
+
+        // Act: Select the viewed time itself, so selected and current land on the same options.
+        const viewHour = fixture.componentInstance.viewHour() ?? 0;
+        const viewMinute = fixture.componentInstance.viewMinute() ?? 0;
+        fixture.componentRef.setInput('value', utcTime(viewHour, viewMinute));
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const root: HTMLElement = fixture.nativeElement;
+        const hourOption = root.querySelector(`[data-testid="test-time_h${viewHour}"]`);
+        const minuteOption = root.querySelector(`[data-testid="test-time_m${viewMinute}"]`);
+
+        // Assert: The two states coexist on the same option without overriding each other.
+        expect(hourOption?.getAttribute('aria-selected'), 'viewed hour should also be aria-selected').toBe('true');
+        expect(hourOption?.getAttribute('aria-current'), 'viewed hour should also expose aria-current').toBe('time');
+        expect(minuteOption?.getAttribute('aria-selected'), 'viewed minute should also be aria-selected').toBe('true');
+        expect(minuteOption?.getAttribute('aria-current'), 'viewed minute should also expose aria-current').toBe('time');
+      });
+
       it('should set option ids following ident_opt_h and ident_opt_m patterns', async () => {
         // Arrange: Create component with value 14:30.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });

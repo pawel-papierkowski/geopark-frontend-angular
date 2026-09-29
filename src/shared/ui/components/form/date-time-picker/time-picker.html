@@ -73,6 +73,11 @@
           (keydown)="onHourKeydown($event)"
           (focus)="activeColumn.set('hour')">
           <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.hour' | translate }}</div>
+          <!-- aria-current mirrors the `curr` class: it exposes the wall-clock "now" option to
+               assistive tech as the current item of the set (token `time`), a state distinct from
+               aria-selected (chosen value) and aria-activedescendant (keyboard cursor). null
+               removes the attribute until findViewTime seeds the viewed time on panel open.
+               The minute column binds viewMinute the same way. -->
           @for (h of hours; track $index) {
 <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- options are focus-managed by the parent listbox via aria-activedescendant, not individually focusable -->
             <div
@@ -82,6 +87,7 @@
               [class]="resolveHourClass(h)"
               role="option"
               [attr.aria-selected]="selectedHour() === h"
+              [attr.aria-current]="viewHour() === h ? 'time' : null"
               [attr.aria-label]="`${h} ${'dateTimePicker.hour' | translate}`"
               (click)="selectHour(h)">
               {{ h.toString().padStart(2, '0') }}
@@ -109,6 +115,7 @@
               [class]="resolveMinuteClass(m)"
               role="option"
               [attr.aria-selected]="selectedMinute() === m"
+              [attr.aria-current]="viewMinute() === m ? 'time' : null"
               [attr.aria-label]="`${m} ${'dateTimePicker.minute' | translate}`"
               (click)="handleMinuteClick(m)">
               {{ m.toString().padStart(2, '0') }}

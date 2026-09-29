@@ -49,12 +49,6 @@ const fallbackPageStep = 5;
  *     opposite end only when already standing on the end item
  *   - enter/space (pick hour/minute)
  *   - esc (close panel).
- * - Supports labelling through the `label` input (wired to `aria-labelledby`). When it is empty,
- *   the input gets an `aria-label` fallback from `dateTimePicker.time`. A native `<label for>`
- *   pointing at this input only reaches the accessible name when its id is ALSO passed via
- *   `label`; otherwise the fallback shadows it (accname gives aria-label precedence over native
- *   labelling). Plain `<label for>` pairing belongs to the parent DateTimePicker, whose label
- *   target is its own hidden button, not this input.
  * - Supports WAI-ARIA.
  *
  * Template binding:
