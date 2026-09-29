@@ -156,16 +156,18 @@ export class TimePicker implements FormValueControl<Date | null> {
     return `${this.ident()}_opt_m${this.focusedMinute()}`;
   });
 
-  /** Compute currently displayed time value in time input. Always a string (never null), so the `[value]` binding never writes null into the input. */
-  displayTimeValue = computed(() => {
-    const formattedTime = TimeUtils.formatUTCTime(this.normalizedValue());
-    if (!formattedTime) return '';
-    return '🕜 ' + formattedTime;
-  });
-  /** Compute placeholder value for time input. */
-  placeholderTimeValue = computed(() => {
-    return '🕜 ' + this.translateService.instant('dateTimePicker.placeholder.time');
-  });
+  /**
+   * Compute currently displayed time value in time input. Always a string (never null), so the `[value]` binding never writes null into the input.
+   * Deliberately plain text - a screen reader announces the input's VALUE, so a decorative glyph
+   * baked in here would be read out ("clock face one-thirty") before the time. The clock glyph
+   * is rendered outside the input as an `aria-hidden` span (see the template).
+   */
+  displayTimeValue = computed(() => TimeUtils.formatUTCTime(this.normalizedValue()));
+  /**
+   * Compute placeholder value for time input. Same rule as the value: no decorative glyph, so
+   * the format hint is announced (and read) as plain `hh:mm`.
+   */
+  placeholderTimeValue = computed(() => this.translateService.instant('dateTimePicker.placeholder.time'));
 
   constructor() {
     // Watch `disabled` field: close clock panel when component becomes disabled.

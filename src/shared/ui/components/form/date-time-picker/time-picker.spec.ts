@@ -177,8 +177,9 @@ describe('TimePicker', () => {
         // Arrange: Create component with value 14:30 UTC.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
 
-        // Assert: Input shows formatted time with the clock emoji prefix.
-        expect(getInput(fixture).value, 'input should show formatted UTC time').toBe('🕜 14:30');
+        // Assert: Input shows formatted time as plain text - the decorative clock glyph is a
+        // separate aria-hidden element, never part of the value (screen readers announce values).
+        expect(getInput(fixture).value, 'input should show formatted UTC time').toBe('14:30');
       });
 
       it('should update input display when value changes programmatically', async () => {
@@ -188,7 +189,7 @@ describe('TimePicker', () => {
         // Act: Set new value, then clear it.
         fixture.componentRef.setInput('value', utcTime(9, 5));
         fixture.detectChanges();
-        expect(getInput(fixture).value, 'input should show updated time').toBe('🕜 09:05');
+        expect(getInput(fixture).value, 'input should show updated time').toBe('09:05');
 
         // Assert: Clearing value empties the input again.
         fixture.componentRef.setInput('value', null);
@@ -200,8 +201,9 @@ describe('TimePicker', () => {
         // Arrange: Create component without value and translations.
         const fixture = await arrangeTimePicker({ value: null });
 
-        // Assert: Placeholder contains the translation key (no translations registered).
-        expect(fixture.nativeElement.querySelector('[data-testid="test-time_input"]').getAttribute('placeholder'), 'placeholder should contain translation key').toContain('dateTimePicker.placeholder.time');
+        // Assert: Placeholder is exactly the translation key (no translations registered) - the
+        // decorative glyph must never leak into it.
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_input"]').getAttribute('placeholder'), 'placeholder should be the translation key').toBe('dateTimePicker.placeholder.time');
       });
 
       it('should show translated placeholder when translations are provided', async () => {
@@ -211,8 +213,28 @@ describe('TimePicker', () => {
           translations: { dateTimePicker: { placeholder: { time: 'hh:mm' } } },
         });
 
-        // Assert: Placeholder is resolved via translation.
-        expect(fixture.nativeElement.querySelector('[data-testid="test-time_input"]').getAttribute('placeholder'), 'placeholder should contain translated text').toContain('hh:mm');
+        // Assert: Placeholder is exactly the resolved translation - no decorative prefix.
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_input"]').getAttribute('placeholder'), 'placeholder should be translated text').toBe('hh:mm');
+      });
+
+      it('should render the clock glyph as a separate aria-hidden decoration, not as value text', async () => {
+        // Arrange: Create component with value and translations so both value and placeholder render.
+        const fixture = await arrangeTimePicker({
+          value: utcTime(14, 30),
+          translations: { dateTimePicker: { placeholder: { time: 'hh:mm' } } },
+        });
+        const icon = fixture.nativeElement.querySelector('[data-testid="test-time_icon"]');
+
+        // Assert: Value and placeholder carry pure text - a screen reader announces the value, so
+        // an emoji in it would be read as "clock face one-thirty" before the time.
+        expect(getInput(fixture).value, 'value must not contain the decorative glyph').toBe('14:30');
+        expect(getInput(fixture).getAttribute('placeholder'), 'placeholder must not contain the decorative glyph').toBe('hh:mm');
+
+        // Assert: The glyph exists once, outside the input, and is hidden from assistive technology.
+        expect(icon, 'decorative icon element should be rendered').not.toBeNull();
+        expect(icon.textContent, 'decorative icon should show the clock glyph').toBe('🕜');
+        expect(icon.getAttribute('aria-hidden'), 'decorative icon must be hidden from AT').toBe('true');
+        expect(fixture.nativeElement.querySelectorAll('[data-testid="test-time_icon"]').length, 'exactly one decorative icon').toBe(1);
       });
 
       it('should apply disabled state to input when disabled', async () => {
@@ -551,7 +573,7 @@ describe('TimePicker', () => {
         // highlight shifted by the browser's UTC offset (which the old seeding produced).
         expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should come from the highlighted current time').toBe(highlightedHour);
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be the clicked one').toBe(45);
-        expect(getInput(fixture).value, 'input should show highlighted hour with clicked minute').toBe(`🕜 ${String(highlightedHour).padStart(2, '0')}:45`);
+        expect(getInput(fixture).value, 'input should show highlighted hour with clicked minute').toBe(`${String(highlightedHour).padStart(2, '0')}:45`);
       });
 
       it('should seed the untouched minute from the highlighted current time when only an hour is picked', async () => {

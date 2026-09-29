@@ -36,6 +36,15 @@
     (click)="handleClick()"
     (keydown)="onInputKeydown($event)" />
 
+  <!-- Decorative clock glyph: kept OUT of the input value and placeholder because a screen
+       reader announces the field's value and would read "clock face one-thirty" before the
+       time. aria-hidden keeps it out of browse mode as well; positioned over the input's
+       left padding (pointer-events: none in CSS, so clicks still reach the input). -->
+  <span
+    class="picker-time-icon"
+    [attr.data-testid]="`${ident()}_icon`"
+    aria-hidden="true">🕜</span>
+
     <!-- Time picker: clock panel. Named by a dedicated key - it is a dialog of its own, the
          placeholder ("hh:mm") is a format hint, not a name. -->
     <div

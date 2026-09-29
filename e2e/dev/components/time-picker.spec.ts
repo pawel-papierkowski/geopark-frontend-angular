@@ -60,6 +60,16 @@ function getMinute(page: Page, minute: number): Locator {
 }
 
 /**
+ * Locate the decorative clock glyph of the time-picker. It renders inside the input's box but
+ * outside its value, so screen readers never announce it as part of the time.
+ * @param page Browser page.
+ * @returns Locator for the decorative icon span.
+ */
+function getTimeIcon(page: Page): Locator {
+  return page.getByTestId('timeId_cc-timePicker_icon');
+}
+
+/**
  * Locate a specific option inside the mode radioBox by index.
  * @param page Browser page.
  * @param index Option index (0-based).
@@ -285,7 +295,7 @@ test.describe('TimePicker', () => {
       await getMinute(page, 30).click();
 
       // Assert: Input shows formatted time and raw value propagated to form display.
-      await expect(timePicker).toHaveValue('🕜 14:30');
+      await expect(timePicker).toHaveValue('14:30');
       await expect(getValueDisplay(page)).toContainText('T14:30:00');
 
       // Assert: Picking the minute completes the selection - panel closes, focus returns to input.
@@ -524,7 +534,7 @@ test.describe('TimePicker', () => {
       // Assert: Panel closed, focus on submit button, value propagated through the form.
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
       await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
-      await expect(timePicker).toHaveValue('🕜 15:30');
+      await expect(timePicker).toHaveValue('15:30');
       await expect(getValueDisplay(page)).toContainText('T15:30:00');
     });
 
@@ -596,7 +606,7 @@ test.describe('TimePicker', () => {
       // aria-label: this instance is named by aria-labelledby (see the label tests), and the
       // fallback must stay off - accname gives aria-label precedence over native labelling, so
       // it would shadow a <label for> pointing at this input.
-      await expect(timePicker).toHaveAttribute('placeholder', '🕜 hh:mm');
+      await expect(timePicker).toHaveAttribute('placeholder', 'hh:mm');
       expect(await timePicker.getAttribute('aria-label'), 'labelled input must not carry an aria-label fallback').toBeNull();
 
       // Act: Open the panel.
@@ -672,6 +682,64 @@ test.describe('TimePicker', () => {
   });
 
   test.describe('accessibility', () => {
+    test('should render the decorative clock glyph outside the value and hidden from AT', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+      const icon = getTimeIcon(page);
+
+      // Assert: Icon exists once, shows the glyph and is hidden from assistive technology - the
+      // VALUE is what a screen reader announces, so the glyph must never end up in it.
+      await expect(icon, 'decorative icon should be rendered exactly once').toHaveCount(1);
+      await expect(icon, 'decorative icon must be hidden from AT').toHaveAttribute('aria-hidden', 'true');
+      await expect(icon, 'decorative icon should show the clock glyph').toHaveText('🕜');
+
+      // Assert: Value and placeholder carry pure text (an emoji in them would be announced as
+      // "clock face one-thirty" before the time).
+      await expect(timePicker, 'value must stay pure text').toHaveValue('');
+      await expect(timePicker, 'placeholder must stay pure text').toHaveAttribute('placeholder', 'hh:mm');
+
+      // Assert: Icon overlays the input's own box - it decorates the field without layout shift.
+      const iconBox = await icon.boundingBox();
+      const inputBox = await timePicker.boundingBox();
+      const iconInsideInput = iconBox !== null && inputBox !== null
+        && iconBox.x >= inputBox.x && iconBox.y >= inputBox.y
+        && iconBox.x + iconBox.width <= inputBox.x + inputBox.width
+        && iconBox.y + iconBox.height <= inputBox.y + inputBox.height;
+      expect(iconInsideInput, 'decorative icon should overlay the input box').toBe(true);
+
+      // Assert: The reserved left padding covers the rendered glyph plus the designed gap - the
+      // input's text (and placeholder) must start at least `--datetimepicker-time-icon-gap` after
+      // the icon's right edge. Glyph advance varies per platform emoji font, so this is what
+      // guards --datetimepicker-time-icon-width.
+      const boxStyles = await timePicker.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return {
+          borderLeft: parseFloat(style.borderLeftWidth),
+          paddingLeft: parseFloat(style.paddingLeft),
+          gap: parseFloat(style.getPropertyValue('--datetimepicker-time-icon-gap')),
+        };
+      });
+      const textStartsAt = (inputBox?.x ?? 0) + boxStyles.borderLeft + boxStyles.paddingLeft;
+      const iconEndsAt = (iconBox?.x ?? 0) + (iconBox?.width ?? 0);
+      expect(iconEndsAt, 'input text must start after the glyph, keeping the designed gap').toBeLessThanOrEqual(textStartsAt - boxStyles.gap);
+    });
+
+    test('should open the panel when clicking the glyph area of the input', async ({ page }) => {
+      // Arrange: Navigate; the glyph sits over the input's left padding (a few px from the edge).
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+
+      // Act: Click straight through the glyph's area. Playwright's hit-target check fails here if
+      // the decoration starts swallowing pointer events (click would land on the icon, not the
+      // input), and the panel stays closed if the click never reaches the input's handler.
+      await timePicker.click({ position: { x: 10, y: 10 } });
+
+      // Assert: Click reached the input, which owns panel opening.
+      await expect(timePicker, 'click on the glyph area must reach the input').toHaveAttribute('aria-expanded', 'true');
+      await expect(getPanel(page), 'panel should open').toBeVisible();
+    });
+
     test('is correct axe-wise with panel open', async ({ page }) => {
       // Arrange: Navigate and open the panel so its dialog/listbox markup is analyzed too.
       await goToComponentsPage(page);

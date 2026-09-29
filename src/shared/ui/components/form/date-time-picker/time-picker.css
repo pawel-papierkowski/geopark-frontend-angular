@@ -12,6 +12,10 @@
   cursor: pointer;
   caret-color: transparent;
   user-select: none;
+
+  /* Room for the decorative clock glyph at the left edge: the glyph is a sibling span, not part
+     of the value, so the text (and placeholder) must start after it. */
+  padding-left: calc(var(--input-padding) + var(--datetimepicker-time-icon-width) + var(--datetimepicker-time-icon-gap));
 }
 .picker-input-time:focus-visible {
   outline: var(--focus-outline);
@@ -24,6 +28,33 @@
 
 .picker-input-time.disabled {
   cursor: default;
+}
+
+/**
+ * Decorative clock glyph rendered INSIDE the input box but OUTSIDE its value (the value must stay
+ * pure text - screen readers announce it, see the template). Absolutely positioned within
+ * `.picker-time`, which has the exact same border box as the input (both border-box, wrapper has
+ * no border/padding), so `left` is where the input's text used to start.
+ */
+.picker-time-icon {
+  position: absolute;
+  left: calc(1px + var(--input-padding)); /** 1px: the input border from --input-border (a shorthand, not derivable). */
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+
+  pointer-events: none; /** CRITICAL: clicks and mousedown must reach the input - it owns panel opening. */
+  user-select: none;
+}
+
+/** Parity with the glyph living inside the value before: it used to inherit the input's state color. */
+.picker-input-time.disabled + .picker-time-icon {
+  color: var(--input-disabled-color);
+}
+
+.picker-input-time.invalid + .picker-time-icon {
+  color: var(--input-err-color);
 }
 
 /** Clock panel to pick time. **/

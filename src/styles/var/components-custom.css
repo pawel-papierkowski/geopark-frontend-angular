@@ -71,6 +71,13 @@
   --datetimepicker-date-width: 145px;
   --datetimepicker-time-width: 90px;
 
+  /* Reserved space for the decorative clock glyph inside the time input. The glyph itself is
+     markup (aria-hidden span), the input only reserves room for it via padding. Must cover the
+     rendered emoji advance (~22px at the base font size) plus the gap, or the value text would
+     start inside the glyph - guarded by an e2e measurement. */
+  --datetimepicker-time-icon-width: 1.5em;
+  --datetimepicker-time-icon-gap: 3px;
+
   --datetimepicker-calendar-offset: 2px 0px 0px 2px;
   --datetimepicker-calendar-background: linear-gradient(to bottom right, #fefefe 0px, #f5f5f5 400px);
   --datetimepicker-calendar-border: 1px solid #444444;

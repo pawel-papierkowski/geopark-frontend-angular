@@ -82,6 +82,7 @@ We use **Vitest** for unit tests and **Playwright** for e2e tests.
 
 
 ### Other
+- Do NOT ever commit or push unless explicitly instructed to do so.
 - Do not install new packages unless explicitly permitted or requested.
 - Avoid deep dives into framework code unless absolutely neccessary and all else fails.
 - Ignore `TODO.md`, unless explicitly referred.
