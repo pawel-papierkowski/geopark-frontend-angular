@@ -231,6 +231,9 @@ export class TimePicker implements FormValueControl<Date | null> {
   selectHour(h: number | null) {
     if (this.disabled() || h === null) return;
 
+    // Selection and the keyboard cursor must agree.
+    this.focusedHour.set(h);
+
     const current = this.value();
 
     // Selecting same hour.
