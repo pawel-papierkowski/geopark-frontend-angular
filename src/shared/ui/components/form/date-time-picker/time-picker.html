@@ -4,6 +4,8 @@
   [class.invalid]="invalid()"
   (focusout)="handleFocusOut($event)">
 
+  <!-- Input: aria-label is a FALLBACK name applied only when no label is given - aria-labelledby
+       (label input) and a native <label> must take precedence over it (accname order). -->
   <input
     [id]="`${ident()}_input`"
     [attr.data-testid]="`${ident()}_input`"
@@ -23,7 +25,7 @@
     aria-haspopup="dialog"
     [attr.aria-expanded]="isClockVisible()"
     [attr.aria-controls]="`${ident()}_panel`"
-    [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
+    [attr.aria-label]="label() ? null : ('dateTimePicker.time' | translate)"
     [attr.aria-labelledby]="label() || null"
     [attr.aria-required]="required() || null"
     [attr.aria-invalid]="invalid() || null"
@@ -34,7 +36,8 @@
     (click)="handleClick()"
     (keydown)="onInputKeydown($event)" />
 
-    <!-- Time picker: clock panel. -->
+    <!-- Time picker: clock panel. Named by a dedicated key - it is a dialog of its own, the
+         placeholder ("hh:mm") is a format hint, not a name. -->
     <div
       #clockPanelRef
       [id]="`${ident()}_panel`"
@@ -44,7 +47,7 @@
       [style.display]="isClockVisible() ? '' : 'none'"
       role="dialog"
 
-      [attr.aria-label]="'dateTimePicker.placeholder.time' | translate"
+      [attr.aria-label]="'dateTimePicker.timePicker' | translate"
 
       (mousedown)="handlePanelMousedown($event)">
 

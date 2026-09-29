@@ -365,8 +365,11 @@ test.describe('TimePicker', () => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
 
-      // Assert: aria-labelledby points to the label element's id.
+      // Assert: aria-labelledby points to the label element's id and is the sole name source -
+      // an aria-label fallback must stay off: accname gives aria-label precedence over native
+      // labelling, so its presence would shadow a <label for> pointing at this input.
       await expect(getTimePicker(page)).toHaveAttribute('aria-labelledby', 'cc-timePicker-label');
+      expect(await getTimePicker(page).getAttribute('aria-label'), 'labelled input must not carry an aria-label fallback').toBeNull();
     });
 
     // Label activation lands on the wrapper's hidden button: its focus handler redirects into the
@@ -589,12 +592,19 @@ test.describe('TimePicker', () => {
       await goToComponentsPage(page);
       const timePicker = getTimePicker(page);
 
-      // Assert: Placeholder and aria-label come from the real translation files.
+      // Assert: Placeholder comes from the real translation files. The input itself carries no
+      // aria-label: this instance is named by aria-labelledby (see the label tests), and the
+      // fallback must stay off - accname gives aria-label precedence over native labelling, so
+      // it would shadow a <label for> pointing at this input.
       await expect(timePicker).toHaveAttribute('placeholder', '🕜 hh:mm');
-      await expect(timePicker).toHaveAttribute('aria-label', 'hh:mm');
+      expect(await timePicker.getAttribute('aria-label'), 'labelled input must not carry an aria-label fallback').toBeNull();
 
       // Act: Open the panel.
       await timePicker.click();
+
+      // Assert: Dialog name comes from the dedicated key in the real translation files - it must
+      // not repeat the placeholder ("hh:mm"), which is a format hint, not a name.
+      await expect(getPanel(page)).toHaveAttribute('aria-label', 'Time picker');
 
       // Assert: Column headers show translated labels.
       await expect(getPanel(page).locator('.column-header').nth(0)).toHaveText('Hour');

@@ -39,15 +39,20 @@ const panelPlacement: PanelPlacement = {
  *   - change hour/minute
  *   - enter/space (pick hour/minute)
  *   - esc (close panel).
- * - Supports <label>.
+ * - Supports labelling through the `label` input (wired to `aria-labelledby`). When it is empty,
+ *   the input gets an `aria-label` fallback from `dateTimePicker.time`. A native `<label for>`
+ *   pointing at this input only reaches the accessible name when its id is ALSO passed via
+ *   `label`; otherwise the fallback shadows it (accname gives aria-label precedence over native
+ *   labelling). Plain `<label for>` pairing belongs to the parent DateTimePicker, whose label
+ *   target is its own hidden button, not this input.
  * - Supports WAI-ARIA.
  *
  * Template binding:
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Always provided by parent DateTimePicker, this component is not meant to be used alone.
- * - label - For `aria-labelledby`. Optional.
+ * - ident - Used for identification and id attributes of the input and panel (data-testid, aria-controls, aria-activedescendant etc.). Always provided by parent DateTimePicker, this component is not meant to be used alone.
+ * - label - For `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. Optional.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  *
  * Outputs:

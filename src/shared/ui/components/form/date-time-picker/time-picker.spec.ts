@@ -1185,10 +1185,10 @@ describe('TimePicker', () => {
       // Arrange: Create component with English translations registered before creation.
       const fixture = await arrangeTimePicker({
         value: null,
-        translations: { dateTimePicker: { placeholder: { time: 'hh:mm' }, hour: 'Hour', minute: 'Minute' } },
+        translations: { dateTimePicker: { placeholder: { time: 'hh:mm' }, time: 'Time', timePicker: 'Time picker', hour: 'Hour', minute: 'Minute' } },
       });
       const translateService = TestBed.inject(TranslateService);
-      translateService.setTranslation('pl', { dateTimePicker: { placeholder: { time: 'gg:mm' }, hour: 'Godzina', minute: 'Minuta' } });
+      translateService.setTranslation('pl', { dateTimePicker: { placeholder: { time: 'gg:mm' }, time: 'Czas', timePicker: 'Wybór czasu', hour: 'Godzina', minute: 'Minuta' } });
       expect(getInput(fixture).getAttribute('placeholder'), 'precondition: placeholder should show English text').toContain('hh:mm');
 
       // Act: Activate Polish while the component is alive.
@@ -1196,9 +1196,12 @@ describe('TimePicker', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      // Assert: Placeholder follows the language; pipe-based label proves both update together.
+      // Assert: Placeholder follows the language; pipe-based labels (columns, input fallback and
+      // dialog name) prove they all update together.
       expect(getInput(fixture).getAttribute('placeholder'), 'placeholder should switch to Polish text').toContain('gg:mm');
       expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-label'), 'hour label should switch to Polish text').toBe('Godzina');
+      expect(getInput(fixture).getAttribute('aria-label'), 'input fallback should switch to Polish text').toBe('Czas');
+      expect(fixture.nativeElement.querySelector('[data-testid="test-time_panel"]').getAttribute('aria-label'), 'dialog label should switch to Polish text').toBe('Wybór czasu');
     });
   });
 
@@ -1343,6 +1346,46 @@ describe('TimePicker', () => {
 
         // Assert: aria-labelledby is absent.
         expect(getInput(fixture).hasAttribute('aria-labelledby'), 'aria-labelledby should be absent without label').toBe(false);
+      });
+
+      it('should set aria-label fallback on input when no label is given', async () => {
+        // Arrange: Create component without label reference (no translations registered, so the
+        // translation key is rendered).
+        const fixture = await arrangeTimePicker({ label: '' });
+
+        // Assert: Input is named by the dedicated fallback key, not by the placeholder ("hh:mm").
+        expect(getInput(fixture).getAttribute('aria-label'), 'input should fall back to the dedicated time key').toBe('dateTimePicker.time');
+      });
+
+      it('should use translated aria-label fallback when translations are provided', async () => {
+        // Arrange: Create component with translations registered before creation.
+        const fixture = await arrangeTimePicker({
+          label: '',
+          translations: { dateTimePicker: { time: 'Time' } },
+        });
+
+        // Assert: Fallback name is resolved via translation.
+        expect(getInput(fixture).getAttribute('aria-label'), 'input fallback should be translated').toBe('Time');
+      });
+
+      it('should not set aria-label on input when label is given', async () => {
+        // Arrange: Create component with label reference.
+        const fixture = await arrangeTimePicker({ label: 'my-label' });
+
+        // Assert: aria-labelledby is the only name source - an aria-label would shadow a native
+        // <label for> (accname gives aria-label precedence over native labelling).
+        expect(getInput(fixture).hasAttribute('aria-label'), 'aria-label must be absent when a label is given').toBe(false);
+        expect(getInput(fixture).getAttribute('aria-labelledby'), 'aria-labelledby should still name the input').toBe('my-label');
+      });
+
+      it('should label the dialog with a dedicated key instead of the placeholder', async () => {
+        // Arrange: Create component (no translations registered, so keys are rendered).
+        const fixture = await arrangeTimePicker();
+        const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
+
+        // Assert: Dialog is named by its own key - the placeholder ("hh:mm") is a format hint.
+        expect(panel.getAttribute('aria-label'), 'dialog should use the dedicated timePicker key').toBe('dateTimePicker.timePicker');
+        expect(panel.getAttribute('aria-label'), 'dialog must not be named after the placeholder key').not.toBe('dateTimePicker.placeholder.time');
       });
 
       it('should set aria-required on input from required input', async () => {
