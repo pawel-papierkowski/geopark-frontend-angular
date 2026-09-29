@@ -988,21 +988,19 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.isClockVisible(), 'showPanel should keep open panel open').toBe(true);
       });
 
-      it('should toggle panel visibility on flipPanel', async () => {
-        // Arrange: Create component with closed panel.
-        const fixture = await arrangeTimePicker();
+      it('should not open panel via showPanel when disabled', async () => {
+        // Arrange: Create disabled component with closed panel.
+        const fixture = await arrangeTimePicker({ disabled: true });
 
-        // Act: Flip twice.
-        await fixture.componentInstance.flipPanel();
+        // Act: Attempt programmatic open.
+        await fixture.componentInstance.showPanel();
         await fixture.whenStable();
         fixture.detectChanges();
-        expect(fixture.componentInstance.isClockVisible(), 'first flipPanel should open the panel').toBe(true);
 
-        // Assert: Second flip closes it again.
-        await fixture.componentInstance.flipPanel();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(fixture.componentInstance.isClockVisible(), 'second flipPanel should close the panel').toBe(false);
+        // Assert: Panel stays closed and no focus is stolen into the listbox.
+        expect(fixture.componentInstance.isClockVisible(), 'showPanel must not open the panel of a disabled picker').toBe(false);
+        expect(document.activeElement, 'showPanel must not move focus into the panel while disabled')
+          .not.toBe(fixture.componentInstance.hourRef().nativeElement);
       });
     });
 
