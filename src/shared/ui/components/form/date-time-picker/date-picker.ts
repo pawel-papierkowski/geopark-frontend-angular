@@ -66,6 +66,20 @@ export class DatePicker implements FormValueControl<Date | null> {
   /** Informs that user blurred out of component. */
   touch = output<void>();
 
+  // GENERAL
+
+  /**
+   * Move DOM focus to the date input - entry point used by DateTimePicker's label activation,
+   * which has to redirect `<label for>` clicks into the sub-picker that actually owns the
+   * combobox.
+   * TODO: placeholder - the date picker has no focusable input yet, so nothing receives focus and
+   * label activation can fall through to the time sub-picker (when the mode renders it).
+   * @returns Always null until the placeholder is replaced by the real picker.
+   */
+  focusInput(): HTMLElement | null {
+    return null;
+  }
+
   // EVENTS
 
   /**

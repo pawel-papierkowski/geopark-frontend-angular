@@ -237,21 +237,20 @@ test.describe('TimePicker', () => {
       await expect(getTimePicker(page)).toHaveAttribute('aria-labelledby', 'cc-timePicker-label');
     });
 
-    // EXPECTED TO FAIL: currently date-time-picker is placeholder.
-    // Marked with test.fail() so the suite stays green; it will report as unexpected pass once
-    // DateTimePicker redirects focus into its date sub-picker - the annotation must be removed then.
-    test('should focus date input and open panel when label is clicked', async ({ page }) => {
+    // Label activation lands on the wrapper's hidden button, whose focusRoot() redirects into the
+    // sub-picker input; focusing that input auto-opens the clock panel and moves keyboard focus
+    // into the hour listbox - the same end state as clicking the input or Tab-ing into it.
+    test('should focus hour listbox and open panel when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
 
-      // Act: Click the label for correct date-time-picker component.
-      // There are three of them, we select one that uses only time sub-picker.
+      // Act: Click the label of the date-time-picker instance that renders only the time sub-picker.
       const label = page.locator('label#cc-timePicker-label');
       await label.click();
 
-      // Assert: Time picker receives focus and its clock panel opens.
-      await expect(getTimePicker(page)).toBeFocused();
+      // Assert: Time picker is expanded and focus sits in its hour listbox.
       await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'true');
+      await expect(getHourColumn(page)).toBeFocused();
     });
   });
 

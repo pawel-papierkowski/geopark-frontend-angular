@@ -629,6 +629,20 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
+   * Move DOM focus to the input - entry point used by DateTimePicker's label activation, which
+   * has to redirect `<label for>` clicks into the sub-picker that actually owns the combobox.
+   * Focusing the input auto-opens the panel (see `handleInputFocus`), so focus then continues
+   * into the hour listbox like it does on Tab.
+   * @returns The input that took focus, or null when there is none (e.g. disabled input).
+   */
+  focusInput(): HTMLElement | null {
+    const inputEl = document.getElementById(`${this.ident()}_input`);
+    if (inputEl === null || (inputEl instanceof HTMLInputElement && inputEl.disabled)) return null;
+    inputEl.focus();
+    return inputEl;
+  }
+
+  /**
    * Hide panel and return focus to the input.
    * Focus moves BEFORE the panel is hidden so the resulting focusout reports an internal move
    * (relatedTarget is the input) instead of a leaving blur - focus must stay inside the component,

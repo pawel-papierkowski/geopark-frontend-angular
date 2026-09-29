@@ -1,4 +1,4 @@
-import { Component, model, input, output, computed, inject, linkedSignal, viewChild, ElementRef } from '@angular/core';
+import { Component, model, input, output, computed, inject, linkedSignal, viewChild, DestroyRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
@@ -13,7 +13,8 @@ import { TimePicker } from './time-picker';
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
  * Designed to be used with signal-based forms.
  *
- * CURRENTLY PLACEHOLDER.
+ * Note: DatePicker sub-picker is still a placeholder (only its shell renders), so `mode="date"` and
+ * the date part of `mode="datetime"` are not usable yet. `mode="time"` is fully functional.
  *
  * Features:
  * - Can select date, time or both date and time.
@@ -51,6 +52,8 @@ import { TimePicker } from './time-picker';
 })
 export class DateTimePicker implements FormValueControl<Date | null> {
   private readonly idService = inject(IdService);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Value held by component. */
   value = model<Date | null>(null);
@@ -80,27 +83,53 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** Informs that user blurred out of component. */
   touch = output<void>();
 
-  /** Root focusable element (role=combobox). */
-  pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
-  /** Reference to date-picker. */
-  datePickerRef = viewChild.required<ElementRef<HTMLDivElement>>('datePickerRef');
-  /** Reference to time-picker. */
-  timePickerRef = viewChild.required<ElementRef<HTMLDivElement>>('timePickerRef');
+  /** Date sub-picker component. Absent when `mode` does not render it, hence not `required`. */
+  datePicker = viewChild(DatePicker);
+  /** Time sub-picker component. Absent when `mode` does not render it, hence not `required`. */
+  timePicker = viewChild(TimePicker);
 
   /** Identifiers of sub-pickers, derived from resolved ident so they follow it when it changes. */
   dateIdent = computed(() => `dateId_${this.resolvedIdent()}`);
   timeIdent = computed(() => `timeId_${this.resolvedIdent()}`);
 
+  constructor() {
+    // A <label> is not focusable, so mousedown on it moves focus from the sub-picker input to
+    // <body>; that blur closes the panel and reports a spurious touch, right before label
+    // activation refocuses the input and reopens the panel. Canceling the default keeps focus in
+    // place - label activation runs on the subsequent click, so redirecting focus still works.
+    // Capture phase, so no other handler can swallow it first; mousedown (not pointerdown),
+    // because canceling pointerdown would also suppress the click and break label activation.
+
+    /**
+     * Cancel focus steal when pointer down lands on this component's associated label.
+     * @param e Mousedown event.
+     */
+    const preventLabelMousedown = (e: Event) => {
+      const target = e.target;
+      const ident = this.resolvedIdent();
+      if (ident && target instanceof HTMLLabelElement && target.htmlFor === ident) {
+        e.preventDefault();
+      }
+    };
+    this.document.addEventListener('mousedown', preventLabelMousedown, true);
+    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', preventLabelMousedown, true));
+  }
+
   // INTERACTIONS
 
   /**
-   * Move focus from hidden label target to the picker root. Label activation focuses the hidden
-   * button; redirecting keeps DOM focus on the element that owns aria-activedescendant and makes
-   * the root's (blur) fire when the user later leaves the component.
+   * Move focus from the hidden label target into a sub-picker input. Label activation focuses (and
+   * clicks) the hidden button, whose handlers call this; landing on the sub-picker's input
+   * lets its own focus handler auto-open the panel and move keyboard focus into it - the same end
+   * state as clicking the input or Tab-ing into it.
+   * The date sub-picker leads `datetime`, but the placeholder DatePicker has no focusable input yet:
+   * its `focusInput()` returns null there, so focus falls through to the time sub-picker.
    */
   focusRoot() {
     if (this.disabled()) return;
-    this.pickerRef().nativeElement.focus();
+    const datePicker = this.datePicker();
+    if (datePicker !== undefined && datePicker.focusInput() !== null) return;
+    this.timePicker()?.focusInput();
   }
 
   /**
@@ -113,11 +142,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
 
     // If date input received focus, close time panel.
     if (target.id === this.dateIdent()) {
-      //this.datePickerRef()?.hidePanel(); TODO
+      //this.datePicker()?.hidePanel(); TODO
     }
     // If time input received focus, close date panel.
     if (target.id === this.timeIdent()) {
-      //this.timePickerRef()?.hidePanel(); // TODO
+      //this.timePicker()?.hidePanel(); // TODO
     }
   }
 }

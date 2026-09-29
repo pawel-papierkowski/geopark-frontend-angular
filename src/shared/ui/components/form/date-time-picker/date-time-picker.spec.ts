@@ -1,14 +1,85 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { enDateTimePickerMode } from '@/shared/ui/other/types';
 
 import { DateTimePicker } from './date-time-picker';
 
 /**
  * Unit tests of date-time-picker component.
- * Note: DateTimePicker is pretty much only wrapper for DatePicker and TimePicker subcomponents, so tests
- * are limited to checking their presence and interactions between them.
- * TODO: right now it is placeholder.
+ * Note: DateTimePicker wraps DatePicker and TimePicker subcomponents, so tests cover their
+ * presence, interactions between them and label activation (the hidden label target must
+ * redirect focus into a sub-picker input instead of the non-focusable wrapper).
+ * TODO: DatePicker sub-picker is still a placeholder.
  */
 describe('DateTimePicker', () => {
+  /** Options used to arrange a DateTimePicker instance under test. */
+  interface DateTimePickerTestOptions {
+    /** Identifier of the picker (used for ids and label association). */
+    ident?: string;
+    /** Mode of operation. */
+    mode?: enDateTimePickerMode;
+    /** Whether the picker is disabled. */
+    disabled?: boolean;
+  }
+
+  /**
+   * Create and configure a DateTimePicker component under test.
+   * @param opts Options controlling initial inputs.
+   * @returns Fixture of the created component with initial change detection applied.
+   */
+  async function arrangeDateTimePicker(opts: DateTimePickerTestOptions = {}): Promise<ComponentFixture<DateTimePicker>> {
+    const { ident = 'test-dtp', mode = 'time', disabled = false } = opts;
+
+    await TestBed.configureTestingModule({ imports: [DateTimePicker] }).compileComponents();
+
+    const fixture = TestBed.createComponent(DateTimePicker);
+    fixture.componentRef.setInput('ident', ident);
+    fixture.componentRef.setInput('mode', mode);
+    fixture.componentRef.setInput('disabled', disabled);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  /**
+   * Get the hidden label target button of given fixture.
+   * @param fixture Fixture of the component.
+   * @returns Hidden button that `<label for>` points at.
+   */
+  function getHiddenButton(fixture: ComponentFixture<DateTimePicker>): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('button.hidden-label-button');
+  }
+
+  /**
+   * Get the time input of the wrapped time-picker (ident is derived as `timeId_<ident>`).
+   * @param fixture Fixture of the component.
+   * @returns Input element of the time sub-picker.
+   */
+  function getTimeInput(fixture: ComponentFixture<DateTimePicker>): HTMLInputElement {
+    return fixture.nativeElement.querySelector(`[data-testid="timeId_${fixture.componentInstance.resolvedIdent()}_input"]`);
+  }
+
+  /**
+   * Get the hour listbox column of the wrapped time-picker (first of the two clock columns).
+   * @param fixture Fixture of the component.
+   * @returns Hour listbox element.
+   */
+  function getHourColumn(fixture: ComponentFixture<DateTimePicker>): HTMLElement {
+    return fixture.nativeElement.querySelector('.clock-column');
+  }
+
+  /**
+   * Flush pending component work: panel opening awaits `afterRender` internally, so
+   * interaction tests need stability flushes before asserting focus and panel state.
+   * @param fixture Fixture of the component.
+   */
+  async function flush(fixture: ComponentFixture<DateTimePicker>): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
   describe('general', () => {
     describe('outputs', () => {
       it('should forward touch output from time-picker', async () => {
@@ -68,6 +139,136 @@ describe('DateTimePicker', () => {
         expect(fixture.componentInstance.timeIdent(), 'timeIdent should be timeId_test-dtp').toBe('timeId_test-dtp');
         expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should mirror ident').toBe('test-dtp');
       });
+    });
+  });
+
+  describe('label', () => {
+    /**
+     * Dispatch a real mousedown on given label so it bubbles to the document.
+     * @param label Label element to dispatch the event on.
+     * @returns The dispatched event, for defaultPrevented assertions.
+     */
+    function dispatchMousedown(label: HTMLElement): Event {
+      const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+      label.dispatchEvent(event);
+      return event;
+    }
+
+    it('should open clock panel and move focus into hour listbox when hidden button (label target) is clicked', async () => {
+      // Arrange: Render wrapper in time mode with closed panel.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const timeInput = getTimeInput(fixture);
+      expect(timeInput.getAttribute('aria-expanded'), 'panel should start closed').toBe('false');
+
+      // Act: Click hidden button; label activation forwards the click here.
+      getHiddenButton(fixture).click();
+      await flush(fixture);
+
+      // Assert: Panel is open on the time input and keyboard focus sits in its hour listbox -
+      // the same end state as clicking the input directly.
+      expect(timeInput.getAttribute('aria-expanded'), 'label-target click should open the clock panel').toBe('true');
+      expect(document.activeElement, 'focus should move into the hour listbox').toBe(getHourColumn(fixture));
+    });
+
+    it('should redirect focus from hidden button into sub-picker when it receives focus directly', async () => {
+      // Arrange: Render wrapper in time mode with closed panel.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const hiddenButton = getHiddenButton(fixture);
+
+      // Act: Focus hidden button programmatically (as label activation does before clicking it).
+      hiddenButton.focus();
+      await flush(fixture);
+
+      // Assert: Focus left the hidden button and the panel opened through the input focus handler.
+      expect(document.activeElement, 'focus should leave the hidden button').not.toBe(hiddenButton);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'redirected focus should open the clock panel').toBe('true');
+      expect(document.activeElement, 'focus should end in the hour listbox').toBe(getHourColumn(fixture));
+    });
+
+    it('should not redirect focus or open panel when disabled', async () => {
+      // Arrange: Render wrapper in time mode and disabled.
+      const fixture = await arrangeDateTimePicker({ mode: 'time', disabled: true });
+
+      // Act: Click hidden button (label activation target).
+      getHiddenButton(fixture).click();
+      await flush(fixture);
+
+      // Assert: Panel stays closed and focus is not pulled into the sub-picker.
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'disabled picker should keep panel closed').toBe('false');
+      expect(document.activeElement, 'disabled picker should not take focus via label target').not.toBe(getTimeInput(fixture));
+      expect(document.activeElement, 'disabled picker should not focus hour listbox').not.toBe(getHourColumn(fixture));
+    });
+
+    it('should prevent default on mousedown of associated label', async () => {
+      // Arrange: Create component and a label targeting its hidden button.
+      await arrangeDateTimePicker();
+      const label = document.createElement('label');
+      label.htmlFor = 'test-dtp';
+      document.body.appendChild(label);
+
+      try {
+        // Act: Dispatch mousedown as a real pointer interaction would.
+        const event = dispatchMousedown(label);
+
+        // Assert: Default canceled, so focus is not stolen from the sub-picker input.
+        expect(event.defaultPrevented, 'mousedown on associated label should be default-prevented').toBe(true);
+      } finally { // cleanup
+        label.remove();
+      }
+    });
+
+    it('should not prevent default on mousedown of foreign label', async () => {
+      // Arrange: Create component and a label targeting an unrelated control.
+      await arrangeDateTimePicker();
+      const label = document.createElement('label');
+      label.htmlFor = 'other-control';
+      document.body.appendChild(label);
+
+      try {
+        // Act: Dispatch mousedown on the foreign label.
+        const event = dispatchMousedown(label);
+
+        // Assert: Default untouched, unrelated labels keep native behavior.
+        expect(event.defaultPrevented, 'mousedown on foreign label should keep its default').toBe(false);
+      } finally { // cleanup
+        label.remove();
+      }
+    });
+
+    it('should not prevent default on label mousedown after component is destroyed', async () => {
+      // Arrange: Create component, then destroy it (removes the document listener).
+      const fixture = await arrangeDateTimePicker();
+      const label = document.createElement('label');
+      label.htmlFor = 'test-dtp';
+      document.body.appendChild(label);
+      fixture.destroy();
+
+      try {
+        // Act: Dispatch mousedown after destroy.
+        const event = dispatchMousedown(label);
+
+        // Assert: Listener was cleaned up with the component.
+        expect(event.defaultPrevented, 'destroyed component should not prevent label mousedown').toBe(false);
+      } finally { // cleanup
+        label.remove();
+      }
+    });
+
+    it('should not prevent default on mousedown when ident is empty', async () => {
+      // Arrange: Create component without ident (its generated ident never matches labels without for).
+      await arrangeDateTimePicker({ ident: '' });
+      const label = document.createElement('label');
+      document.body.appendChild(label);
+
+      try {
+        // Act: Dispatch mousedown on a label without for attribute.
+        const event = dispatchMousedown(label);
+
+        // Assert: Generated ident never matches empty htmlFor, defaults preserved.
+        expect(event.defaultPrevented, 'generated ident should not match label without for').toBe(false);
+      } finally { // cleanup
+        label.remove();
+      }
     });
   });
 });
