@@ -124,6 +124,138 @@ async function selectTimeViaMouse(page: Page): Promise<void> {
   await getMinute(page, 30).click();
 }
 
+/** One entry of the page-side event log. */
+interface LoggedEvent {
+  /** Event sequence number (stable ordering). */
+  seq: number;
+  /** Marker pushed by the test before each label click, `step` type only. */
+  type: string;
+  /** performance.now() at logging time. */
+  t: number;
+  /** Described event target. */
+  target?: string;
+  /** Described relatedTarget (focus events). */
+  related?: string;
+  /** Whether mousedown default was already prevented when observed. */
+  defaultPrevented?: boolean;
+  /** Described document.elementFromPoint() at the mousedown point. */
+  atPoint?: string;
+  /** Described document.activeElement at logging time. */
+  active?: string;
+  /** aria-expanded of the time input at logging time (best effort, may lag CD). */
+  expanded?: string | null;
+  /** Whether the event was user-trusted. */
+  trusted?: boolean;
+  /** true when logged after the event dispatch settled (post handlers). */
+  settled?: boolean;
+  /** window.scrollY at logging time. */
+  scrollY?: number;
+}
+
+/**
+ * Install page-side event listeners recording every interaction relevant to the label
+ * toggle state machine into `window.__eventLog`. Events are logged once on dispatch and
+ * once more on a microtask after their dispatch settled, so handler side effects
+ * (e.g. panel opened by a focus handler) are visible.
+ * @param page Browser page.
+ */
+async function installEventLog(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __eventLog: LoggedEvent[]; __seq: number };
+    w.__eventLog = [];
+    w.__seq = 0;
+
+    /** Render an element as a readable `tag#id.class1.class2` string. */
+    const describe = (el: Element | null): string => {
+      if (el === null) return 'null';
+      if (el === document.body) return 'body';
+      if (el === document.documentElement) return 'html';
+      const id = el.id !== '' ? `#${el.id}` : '';
+      const cls = typeof el.className === 'string' && el.className.trim() !== ''
+        ? `.${el.className.trim().split(/\s+/).join('.')}`
+        : '';
+      return `${el.tagName.toLowerCase()}${id}${cls}`;
+    };
+
+    /** Push one log entry. */
+    const rec = (type: string, ev: Event, settled: boolean): void => {
+      const input = document.querySelector('[data-testid="timeId_cc-timePicker_input"]');
+      const focusEv = ev as FocusEvent;
+      const mouseEv = ev as MouseEvent;
+      const entry: LoggedEvent = {
+        seq: w.__seq++,
+        type,
+        t: Math.round(performance.now()),
+        settled,
+        active: describe(document.activeElement instanceof Element ? document.activeElement : null),
+        expanded: input !== null ? input.getAttribute('aria-expanded') : null,
+        scrollY: Math.round(window.scrollY),
+      };
+      if (ev.target instanceof Element) entry.target = describe(ev.target);
+      if ('relatedTarget' in focusEv) entry.related = describe(focusEv.relatedTarget instanceof Element ? focusEv.relatedTarget : null);
+      if ('isTrusted' in ev) entry.trusted = ev.isTrusted;
+      if (type === 'mousedown') {
+        entry.defaultPrevented = ev.defaultPrevented;
+        entry.atPoint = describe(document.elementFromPoint(mouseEv.clientX, mouseEv.clientY));
+      }
+      w.__eventLog.push(entry);
+      if (!settled) queueMicrotask(() => rec(type, ev, true));
+    };
+
+    // focus/blur do not bubble - capture phase is the only way to see them everywhere.
+    for (const type of ['focus', 'blur']) {
+      document.addEventListener(type, (e) => rec(type, e, false), true);
+    }
+    // Bubbling events: document bubble phase runs after component handlers, so
+    // defaultPrevented and side effects of the same event are already visible.
+    for (const type of ['mousedown', 'mouseup', 'click', 'focusin', 'focusout']) {
+      document.addEventListener(type, (e) => rec(type, e, false));
+    }
+  });
+}
+
+/**
+ * Push a step marker into the log so the failing activation can be located easily.
+ * @param page Browser page.
+ * @param step Step number about to run.
+ */
+async function markStep(page: Page, step: number): Promise<void> {
+  await page.evaluate((n) => {
+    const w = window as unknown as { __eventLog: LoggedEvent[]; __seq: number };
+    w.__eventLog.push({ seq: w.__seq++, type: `step ${n}`, t: Math.round(performance.now()) });
+  }, step);
+}
+
+/**
+ * Read the accumulated page-side event log.
+ * @param page Browser page.
+ * @returns Logged events in order.
+ */
+async function readEventLog(page: Page): Promise<LoggedEvent[]> {
+  return page.evaluate(() => (window as unknown as { __eventLog: LoggedEvent[] }).__eventLog);
+}
+
+/**
+ * Render the event log as aligned text lines for attachments and error messages.
+ * @param log Events to render.
+ * @returns Multi-line human-readable representation.
+ */
+function formatLog(log: LoggedEvent[]): string {
+  return log.map((e) => {
+    const parts = [`#${String(e.seq).padStart(4, '0')}`, `${String(e.t).padStart(6)}ms`, e.type];
+    if (e.settled === true) parts.push('[settled]');
+    if (e.target !== undefined) parts.push(`target=${e.target}`);
+    if (e.related !== undefined) parts.push(`related=${e.related}`);
+    if (e.atPoint !== undefined) parts.push(`atPoint=${e.atPoint}`);
+    if (e.defaultPrevented !== undefined) parts.push(`prevented=${String(e.defaultPrevented)}`);
+    if (e.active !== undefined) parts.push(`active=${e.active}`);
+    if (e.expanded !== undefined) parts.push(`expanded=${String(e.expanded)}`);
+    if (e.scrollY !== undefined) parts.push(`scrollY=${String(e.scrollY)}`);
+    if (e.trusted !== undefined) parts.push(`trusted=${String(e.trusted)}`);
+    return parts.join(' | ');
+  }).join('\n');
+}
+
 /**
  * E2e tests of time-picker component in form present in page-custom-components.
  * Covers interactions that are hard to unit test: real focus flows, signal form propagation
@@ -271,6 +403,67 @@ test.describe('TimePicker', () => {
       // same end state as clicking the input twice (combo-box toggles on second label click too).
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
       await expect(timePicker).toBeFocused();
+    });
+
+    // Regression: opening the panel must not scroll the page under the user's cursor. The
+    // placement flip used to reach the DOM only after focus() had already scrolled the viewport
+    // to the baseline (below-the-fold) panel position - a ~122px page jump that moved the label
+    // away between a human's mousedown and mouseup, so the browser retargeted the click to a
+    // common ancestor and the toggle was silently lost (label clicks intermittently "did
+    // nothing"). Raw mouse input (no Playwright stable-box/hit-target guards, no pauses between
+    // clicks) in back-to-back bursts is what catches it; state is asserted per burst.
+    test('should toggle panel on every label click in back-to-back raw mouse bursts', async ({ page }, info) => {
+      test.setTimeout(60_000);
+      const CLICKS_PER_BURST = 3;
+      const BURSTS = 5;
+      const DOWN_UP_DELAY_MS = 80;
+
+      // Arrange: short viewport where the page (722px of content) is scrollable, so the bug's
+      // pre-condition (panel opens below the fold) actually holds; instrument the event log so
+      // a failure can be traced to the exact lost activation.
+      await page.setViewportSize({ width: 1100, height: 600 });
+      await goToComponentsPage(page);
+      await installEventLog(page);
+      const label = page.locator('label#cc-timePicker-label');
+      const timePicker = getTimePicker(page);
+      await expect(timePicker, 'panel should start closed').toHaveAttribute('aria-expanded', 'false');
+
+      // Act + Assert: fire bursts of clicks with no pauses (re-aiming at the label's current
+      // position, holding through any page movement), then assert the net toggle per burst.
+      let expected = false;
+      let step = 0;
+      for (let burst = 1; burst <= BURSTS; burst++) {
+        const firstStepOfBurst = step + 1;
+        for (let j = 0; j < CLICKS_PER_BURST; j++) {
+          step++;
+          await markStep(page, step);
+          const box = await label.boundingBox(); // aim at where the label IS right now
+          if (box !== null) {
+            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+            await page.mouse.down();
+            await page.waitForTimeout(DOWN_UP_DELAY_MS);
+            await page.mouse.up();
+          }
+          expected = !expected;
+        }
+
+        try {
+          await expect(
+            timePicker,
+            `burst ${burst} (steps ${firstStepOfBurst}-${step}) should toggle the panel ${expected ? 'open' : 'closed'} despite rapid clicking`,
+          ).toHaveAttribute('aria-expanded', String(expected), { timeout: 2000 });
+        } catch (error) {
+          // Assert: surface the failing burst together with the captured event trace.
+          const log = await readEventLog(page);
+          await info.attach('event-log.txt', { body: formatLog(log), contentType: 'text/plain' });
+          await info.attach('event-log.json', { body: JSON.stringify(log, null, 2), contentType: 'application/json' });
+          const markerIndex = log.findIndex((e) => e.type === `step ${firstStepOfBurst}`);
+          const excerpt = formatLog(log.slice(Math.max(0, markerIndex - 6)));
+          const original = error instanceof Error ? error.message : String(error);
+          throw new Error(`${original}\n\nEvent trace around failing burst:\n${excerpt}`, { cause: error });
+        }
+        await page.waitForTimeout(250); // let any focus work from a trailing open settle
+      }
     });
   });
 

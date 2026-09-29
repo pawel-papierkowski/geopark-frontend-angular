@@ -8,7 +8,8 @@ import { TimePicker } from './time-picker';
 /**
  * Unit tests of time-picker component.
  * Note: the component moves keyboard focus into the clock panel after opening and uses
- * `afterRender` internally, so interaction tests always flush with `whenStable` + `detectChanges`.
+ * `afterRender` twice (baseline measure, then flip applied before focus), so interaction
+ * tests always flush with `whenStable` + `detectChanges` - twice for focus-open flows.
  */
 describe('TimePicker', () => {
   /** Options used to arrange a TimePicker instance under test. */
@@ -331,6 +332,10 @@ describe('TimePicker', () => {
 
         // Act: Focus the input (e.g. via Tab).
         getInput(fixture).focus();
+        // The open spans two afterRender rounds (measure under baseline, apply flip, then
+        // focus), so a single whenStable + detectChanges pair cannot cover it yet.
+        fixture.detectChanges();
+        await fixture.whenStable();
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();

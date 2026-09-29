@@ -24,10 +24,6 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-html:focus-within {
-  scroll-behavior: smooth; /* Smooth scrolling */
-}
-
 body {
   min-width: 100%;
   min-height: 100dvh; /* Fill at least the full viewport */
@@ -66,9 +62,6 @@ select {
 
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  html:focus-within {
-    scroll-behavior: auto;
-  }
   *,
   *::before,
   *::after {

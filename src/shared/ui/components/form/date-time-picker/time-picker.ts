@@ -187,10 +187,20 @@ export class TimePicker implements FormValueControl<Date | null> {
       // Adjust picker position if needed to prevent window overflow (measured under baseline).
       if (this.clockPanelRef()) {
         this.positionPanel();
+        // Let the placement reach the DOM before focusing: focus() scrolls the focused
+        // element into view, so focusing while the panel still renders at its baseline
+        // (possibly below-the-fold) position makes the browser scroll the page to a spot
+        // the panel is about to leave. That scroll moves the page under the user's cursor
+        // and their next click can miss the label entirely (the click is retargeted to a
+        // common ancestor, so the toggle is silently lost).
+        await afterRender(this.injector);
       }
 
       // Move keyboard focus into the panel (hour column) so user can navigate immediately.
-      this.hourRef()?.nativeElement.focus();
+      // preventScroll: placement guarantees the panel fits the viewport when either side
+      // does, so there is nothing to reveal - and any focus-triggered page scroll would
+      // race with the user's mouse.
+      this.hourRef()?.nativeElement.focus({ preventScroll: true });
     }
   }
 
