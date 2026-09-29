@@ -531,6 +531,50 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
       });
 
+      it('should seed the untouched hour from the highlighted current time when only a minute is picked', async () => {
+        // Arrange: Create component without value and open panel (both columns highlight current
+        // local time). Shift the highlighted hour by one so it cannot coincide with the
+        // wall-clock hour the seeding used to copy from `new Date()` - the assertion then fails
+        // on every machine timezone instead of passing vacuously on UTC runners.
+        const fixture = await arrangeTimePicker({ value: null });
+        await openPanel(fixture);
+        expect(fixture.componentInstance.viewHour(), 'precondition: open should seed the viewed hour').not.toBeNull();
+        const highlightedHour = ((fixture.componentInstance.viewHour() ?? 0) + 1) % 24;
+        fixture.componentInstance.viewHour.set(highlightedHour);
+        fixture.detectChanges();
+
+        // Act: Click minute 45 without picking an hour first.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
+        fixture.detectChanges();
+
+        // Assert: Value carries the clicked minute with the hour the panel highlighted - not the
+        // highlight shifted by the browser's UTC offset (which the old seeding produced).
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should come from the highlighted current time').toBe(highlightedHour);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be the clicked one').toBe(45);
+        expect(getInput(fixture).value, 'input should show highlighted hour with clicked minute').toBe(`🕜 ${String(highlightedHour).padStart(2, '0')}:45`);
+      });
+
+      it('should seed the untouched minute from the highlighted current time when only an hour is picked', async () => {
+        // Arrange: Create component without value, open panel and shift the highlighted minute
+        // by one, for the same timezone-robustness reason as the hour variant above.
+        const fixture = await arrangeTimePicker({ value: null });
+        await openPanel(fixture);
+        expect(fixture.componentInstance.viewMinute(), 'precondition: open should seed the viewed minute').not.toBeNull();
+        const highlightedMinute = ((fixture.componentInstance.viewMinute() ?? 0) + 1) % 60;
+        fixture.componentInstance.viewMinute.set(highlightedMinute);
+        fixture.detectChanges();
+
+        // Act: Click hour 14 without picking a minute first.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+
+        // Assert: Value carries the clicked hour with the minute the panel highlighted and no
+        // stray seconds.
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be the clicked one').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should come from the highlighted current time').toBe(highlightedMinute);
+        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+      });
+
       it('should clear seconds and milliseconds when changing hour on value with sub-minute parts', async () => {
         // Arrange: Create component with value carrying stray seconds and milliseconds.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123) });

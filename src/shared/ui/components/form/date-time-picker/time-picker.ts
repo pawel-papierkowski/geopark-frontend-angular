@@ -246,7 +246,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       return;
     }
 
-    const date = this.clearSubMinute(current ? new Date(current) : new Date());
+    const date = this.clearSubMinute(current ? new Date(current) : this.createSeedDate());
     date.setUTCHours(h);
     this.value.set(date);
   }
@@ -267,7 +267,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       return;
     }
 
-    const date = this.clearSubMinute(current ? new Date(current) : new Date());
+    const date = this.clearSubMinute(current ? new Date(current) : this.createSeedDate());
     date.setUTCMinutes(m);
     this.value.set(date);
   }
@@ -285,6 +285,25 @@ export class TimePicker implements FormValueControl<Date | null> {
     const copy = new Date(date);
     copy.setUTCSeconds(0, 0);
     return copy;
+  }
+
+  /**
+   * Base date for a selection made while no value is set: today's calendar date (taken from
+   * `new Date()`, so the date part stays exactly as before) carrying the VIEWED local time as
+   * UTC fields, with sub-minute parts zeroed.
+   * Reading the UTC fields of a plain `new Date()` instead would seed `localHour - utcOffset`,
+   * which contradicts the `curr` marker and the keyboard seed - both show the local time, so a
+   * partial selection (hour only or minute only) must follow them, not the timezone-shifted
+   * clock. The viewed time is frozen when the panel opened, exactly like the markers the user
+   * is picking against. Falls back to the wall clock when nothing has been viewed yet (e.g.
+   * programmatic selection without opening the panel), mirroring `findViewTime`.
+   * @returns Date ready for the chosen hour/minute to be applied via UTC accessors.
+   */
+  private createSeedDate(): Date {
+    const now = new Date();
+    const date = new Date(now);
+    date.setUTCHours(this.viewHour() ?? now.getHours(), this.viewMinute() ?? now.getMinutes(), 0, 0);
+    return date;
   }
 
   /**
