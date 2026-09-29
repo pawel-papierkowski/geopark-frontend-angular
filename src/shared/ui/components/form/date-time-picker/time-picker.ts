@@ -363,23 +363,29 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (selMinuteElement) this.centerOptionInColumn(this.minuteRef().nativeElement, selMinuteElement);
   }
 
-  /** Scroll hour listbox so given hour is visible. */
+  /**
+   * Scroll hour listbox so given hour is visible.
+   * @param h Hour to reveal, or null to do nothing.
+   */
   async scrollHourIntoView(h: number | null) {
     if (h === null) return;
     await afterRender(this.injector);
 
     const column = this.hourRef().nativeElement;
-    const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_h${h}"]`);
+    const el = document.getElementById(`${this.ident()}_opt_h${h}`);
     if (el) this.centerOptionInColumn(column, el);
   }
 
-  /** Scroll minute listbox so given minute is visible. */
+  /**
+   * Scroll minute listbox so given minute is visible.
+   * @param m Minute to reveal, or null to do nothing.
+   */
   async scrollMinuteIntoView(m: number | null) {
     if (m === null) return;
     await afterRender(this.injector);
 
     const column = this.minuteRef().nativeElement;
-    const el = column.querySelector<HTMLElement>(`[data-testid="${this.ident()}_m${m}"]`);
+    const el = document.getElementById(`${this.ident()}_opt_m${m}`);
     if (el) this.centerOptionInColumn(column, el);
   }
 
