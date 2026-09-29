@@ -89,6 +89,7 @@
               [attr.aria-selected]="selectedHour() === h"
               [attr.aria-current]="viewHour() === h ? 'time' : null"
               [attr.aria-label]="`${h} ${'dateTimePicker.hour' | translate}`"
+              (mousedown)="handleMousedownOption('hour', h)"
               (click)="selectHour(h)">
               {{ h.toString().padStart(2, '0') }}
             </div>
@@ -117,6 +118,7 @@
               [attr.aria-selected]="selectedMinute() === m"
               [attr.aria-current]="viewMinute() === m ? 'time' : null"
               [attr.aria-label]="`${m} ${'dateTimePicker.minute' | translate}`"
+              (mousedown)="handleMousedownOption('minute', m)"
               (click)="handleMinuteClick(m)">
               {{ m.toString().padStart(2, '0') }}
             </div>

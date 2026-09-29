@@ -538,6 +538,42 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedHour(), 'cursor should follow the clicked hour 14').toBe(14);
       });
 
+      it('should move keyboard cursor to the minute pressed with mouse before the click lands', async () => {
+        // Arrange: Create component with value 14:30 and open panel (minute cursor seeded at 30).
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        expect(fixture.componentInstance.focusedMinute(), 'precondition: open should seed cursor at minute 30').toBe(30);
+
+        // Act: Dispatch mousedown only. The browser paints between mousedown and the click, so
+        // the cursor must already be correct before the click selects anything - otherwise the
+        // focus ring flashes on the previous/default option while the button is held.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m25"]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        fixture.detectChanges();
+
+        // Assert: Cursor, aria-activedescendant and focus ring all follow the pressed minute.
+        expect(fixture.componentInstance.focusedMinute(), 'pressing minute 25 should move the keyboard cursor there').toBe(25);
+        expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-activedescendant'), 'minute activedescendant should reference pressed option').toBe('test-time_opt_m25');
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m25"]').classList.contains('focused'), 'pressed minute 25 should carry the focus ring').toBe(true);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').classList.contains('focused'), 'previously seeded minute 30 should lose the focus ring').toBe(false);
+      });
+
+      it('should move keyboard cursor to the hour pressed with mouse before the click lands', async () => {
+        // Arrange: Create component with value 14:30 and open panel (hour cursor seeded at 14).
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        expect(fixture.componentInstance.focusedHour(), 'precondition: open should seed cursor at hour 14').toBe(14);
+
+        // Act: Dispatch mousedown only (see the minute counterpart for why the gap matters).
+        fixture.nativeElement.querySelector('[data-testid="test-time_h5"]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        fixture.detectChanges();
+
+        // Assert: Cursor, aria-activedescendant and focus ring all follow the pressed hour.
+        expect(fixture.componentInstance.focusedHour(), 'pressing hour 5 should move the keyboard cursor there').toBe(5);
+        expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-activedescendant'), 'hour activedescendant should reference pressed option').toBe('test-time_opt_h5');
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h5"]').classList.contains('focused'), 'pressed hour 5 should carry the focus ring').toBe(true);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('focused'), 'previously seeded hour 14 should lose the focus ring').toBe(false);
+      });
+
       it('should select minute on minute click, close panel and refocus input', async () => {
         // Arrange: Create component with value 14:05, open panel and spy on touch output.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
@@ -763,6 +799,24 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.value(), 'disabled component should not change value').toBe(before);
         expect(fixture.componentInstance.focusedHour(), 'disabled component should not move keyboard cursor').toBeNull();
         expect(fixture.componentInstance.focusedMinute(), 'disabled component should not move keyboard cursor').toBeNull();
+      });
+
+      it('should ignore option mousedown when disabled', async () => {
+        // Arrange: Create disabled component with seeded keyboard focus state.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), disabled: true });
+        fixture.componentInstance.focusedHour.set(3);
+        fixture.componentInstance.focusedMinute.set(7);
+
+        // Act: Dispatch mousedown directly on both options (the disabled panel stays hidden,
+        // so real pointer input never reaches them - the guard is checked directly).
+        fixture.nativeElement.querySelector('[data-testid="test-time_h5"]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        fixture.nativeElement.querySelector('[data-testid="test-time_m25"]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        fixture.detectChanges();
+
+        // Assert: Keyboard focus state is untouched.
+        expect(fixture.componentInstance.focusedHour(), 'disabled component should not move focused hour').toBe(3);
+        expect(fixture.componentInstance.focusedMinute(), 'disabled component should not move focused minute').toBe(7);
+        expect(fixture.componentInstance.activeColumn(), 'disabled component should not change active column').toBe('hour');
       });
 
       it('should not open panel on click when disabled', async () => {

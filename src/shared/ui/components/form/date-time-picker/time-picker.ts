@@ -275,6 +275,10 @@ export class TimePicker implements FormValueControl<Date | null> {
   selectMinute(m: number | null) {
     if (this.disabled() || m === null) return;
 
+    // Selection and the keyboard cursor must agree (mirrors `selectHour`; also covers clicks
+    // that arrive without a prior mousedown on the option, e.g. synthesized/touch events).
+    this.focusedMinute.set(m);
+
     const current = this.normalizedValue();
 
     // Selecting same minute.
@@ -428,6 +432,26 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /** True while a programmatic refocus (e.g. after closing the panel) must not auto-open the panel. */
   private suppressFocusOpen = false;
+
+  /**
+   * Handle mousedown on an hour/minute option: seed the keyboard cursor onto the pressed
+   * option and mark its column active BEFORE the click lands. The browser's default mousedown
+   * action focuses the column (flipping `activeColumn`) and the page can paint in the gap up
+   * to mouseup, so without this the `.focused` ring and `aria-activedescendant` would flash on
+   * the stale cursor (previous selection, or the seeded default when no value is set). Runs
+   * before the column's focus handler, which then re-asserts the same active column.
+   * @param column Which column the option belongs to.
+   * @param value Hour or minute value of the pressed option.
+   */
+  handleMousedownOption(column: 'hour' | 'minute', value: number): void {
+    if (this.disabled()) return;
+    this.activeColumn.set(column);
+    if (column === 'hour') {
+      this.focusedHour.set(value);
+    } else {
+      this.focusedMinute.set(value);
+    }
+  }
 
   /**
    * Handle mousedown on input: if focus is about to arrive (input not focused yet), mark it as

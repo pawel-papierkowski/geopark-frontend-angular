@@ -368,6 +368,36 @@ test.describe('TimePicker', () => {
       // Assert: Focus is still tracked on the column, so arrow keys keep working.
       await expect(getHourColumn(page)).toHaveAttribute('aria-activedescendant', /timeId_cc-timePicker_opt_h\d+/);
     });
+
+    test('should show the focus ring on the pressed minute, not the seeded one, while the button is held', async ({ page }) => {
+      // Arrange: Open the panel with an empty value - the minute cursor is seeded from the
+      // current time, which is exactly the stale default the ring used to flash on.
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page);
+      await timePicker.click();
+      await expect(getPanel(page)).toBeVisible();
+      const seeded = await getMinuteColumn(page).getAttribute('aria-activedescendant');
+      const seededMinute = Number(seeded?.match(/_opt_m(\d+)$/)?.[1]);
+      expect(Number.isFinite(seededMinute), 'precondition: minute cursor should be seeded on open').toBe(true);
+      const pressedMinute = (seededMinute + 1) % 60;
+
+      // Act: Press and hold an option one minute away (hover scrolls it into the column view).
+      await getMinute(page, pressedMinute).hover();
+      await page.mouse.down();
+
+      // Assert: The browser paints in the mousedown-to-click gap, so the ring and the announced
+      // active option must already sit on the pressed minute - not on the seeded default.
+      await expect(page.locator('.time-minute.focused')).toHaveAttribute('data-testid', `timeId_cc-timePicker_m${pressedMinute}`);
+      await expect(getMinuteColumn(page)).toHaveAttribute('aria-activedescendant', `timeId_cc-timePicker_opt_m${pressedMinute}`);
+
+      // Act: Release, so the click selects the pressed minute and completes the flow.
+      await page.mouse.up();
+
+      // Assert: Panel closes, focus returns to the input and the value carries the pressed minute.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker).toHaveValue(new RegExp(`\\d{2}:${String(pressedMinute).padStart(2, '0')}`));
+      await expect(timePicker).toBeFocused();
+    });
   });
 
   test.describe('label', () => {
