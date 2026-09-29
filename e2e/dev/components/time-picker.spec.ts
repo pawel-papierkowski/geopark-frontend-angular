@@ -237,9 +237,10 @@ test.describe('TimePicker', () => {
       await expect(getTimePicker(page)).toHaveAttribute('aria-labelledby', 'cc-timePicker-label');
     });
 
-    // Label activation lands on the wrapper's hidden button, whose focusRoot() redirects into the
+    // Label activation lands on the wrapper's hidden button: its focus handler redirects into the
     // sub-picker input; focusing that input auto-opens the clock panel and moves keyboard focus
-    // into the hour listbox - the same end state as clicking the input or Tab-ing into it.
+    // into the hour listbox - the same end state as clicking the input or Tab-ing into it. The
+    // forwarded click is swallowed on that first activation; every later one toggles the panel.
     test('should focus hour listbox and open panel when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
@@ -251,6 +252,25 @@ test.describe('TimePicker', () => {
       // Assert: Time picker is expanded and focus sits in its hour listbox.
       await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'true');
       await expect(getHourColumn(page)).toBeFocused();
+    });
+
+    test('should close panel and focus input on second label click', async ({ page }) => {
+      // Arrange: Navigate and open the panel through the first label click.
+      await goToComponentsPage(page);
+      const label = page.locator('label#cc-timePicker-label');
+      const timePicker = getTimePicker(page);
+      await label.click();
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getHourColumn(page)).toBeFocused();
+
+      // Act: Click the label a second time (label activation refocuses the hidden button, which
+      // must read as an internal focus move - no touch, no close+reopen flicker).
+      await label.click();
+
+      // Assert: Second activation toggles the panel closed and parks focus on the input - the
+      // same end state as clicking the input twice (combo-box toggles on second label click too).
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker).toBeFocused();
     });
   });
 

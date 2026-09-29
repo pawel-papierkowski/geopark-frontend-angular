@@ -185,6 +185,68 @@ describe('DateTimePicker', () => {
       expect(document.activeElement, 'focus should end in the hour listbox').toBe(getHourColumn(fixture));
     });
 
+    it('should keep clock panel open and not emit touch when focus moves to hidden button', async () => {
+      // Arrange: Open the clock panel via first label activation and spy on touch output.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      getHiddenButton(fixture).click();
+      await flush(fixture);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'panel should be open before act').toBe('true');
+
+      // Act: Simulate label activation moving focus from inside the time-picker to the hidden
+      // button (bubbles to the time-picker's focusout handler, like a real focus move does).
+      getTimeInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: getHiddenButton(fixture) }));
+      fixture.detectChanges();
+
+      // Assert: The hidden button is the host component's label relay - still "inside" the
+      // component, so it must neither close the panel nor report the control as touched.
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'focus move to hidden button should keep panel open').toBe('true');
+      expect(touchSpy, 'focus move to hidden button should not emit touch').not.toHaveBeenCalled();
+    });
+
+    it('should close clock panel and keep focus on time input on second label activation', async () => {
+      // Arrange: Open the clock panel through the first label activation.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      getHiddenButton(fixture).click();
+      await flush(fixture);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'panel should be open before second activation').toBe('true');
+
+      // Act: Second label activation - the browser focuses the hidden button, then forwards click.
+      const hiddenButton = getHiddenButton(fixture);
+      hiddenButton.focus();
+      hiddenButton.click();
+      await flush(fixture);
+
+      // Assert: Second activation toggles closed; focus never left the component, so no touch.
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'second label activation should close the panel').toBe('false');
+      expect(document.activeElement, 'focus should end on the time input').toBe(getTimeInput(fixture));
+      expect(touchSpy, 'second label activation should not emit touch').not.toHaveBeenCalled();
+    });
+
+    it('should reopen clock panel on third label activation', async () => {
+      // Arrange: Open then close the panel through two label activations.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const hiddenButton = getHiddenButton(fixture);
+      hiddenButton.click();
+      await flush(fixture);
+      hiddenButton.focus();
+      hiddenButton.click();
+      await flush(fixture);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'panel should be closed before third activation').toBe('false');
+
+      // Act: Third label activation.
+      hiddenButton.focus();
+      hiddenButton.click();
+      await flush(fixture);
+
+      // Assert: Activation toggles back open with keyboard focus in the hour listbox.
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'third label activation should reopen the panel').toBe('true');
+      expect(document.activeElement, 'focus should end in the hour listbox').toBe(getHourColumn(fixture));
+    });
+
     it('should not redirect focus or open panel when disabled', async () => {
       // Arrange: Render wrapper in time mode and disabled.
       const fixture = await arrangeDateTimePicker({ mode: 'time', disabled: true });

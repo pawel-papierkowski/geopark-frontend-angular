@@ -1,4 +1,4 @@
-import { Component, model, input, output, computed, inject, linkedSignal, viewChild, DestroyRef, DOCUMENT } from '@angular/core';
+import { Component, model, input, output, computed, inject, linkedSignal, signal, viewChild, DestroyRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
@@ -83,6 +83,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** Informs that user blurred out of component. */
   touch = output<void>();
 
+  /** Whether the current label activation's focus redirect just opened the panel; the click that
+   * label activation forwards right after the focus must then be swallowed instead of toggling
+   * the panel closed again. Mirrors combo-box `focusOpened`. */
+  focusOpened = signal(false);
+
   /** Date sub-picker component. Absent when `mode` does not render it, hence not `required`. */
   datePicker = viewChild(DatePicker);
   /** Time sub-picker component. Absent when `mode` does not render it, hence not `required`. */
@@ -101,32 +106,74 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     // because canceling pointerdown would also suppress the click and break label activation.
 
     /**
-     * Cancel focus steal when pointer down lands on this component's associated label.
+     * Begin a fresh pointer interaction and cancel focus steal when pointer down lands on this
+     * component's associated label.
+     * Resetting `focusOpened` handles a focus-only activation that never received its click -
+     * without it, that stale marker would swallow the next activation's toggle. Reset happens
+     * before label activation's focus (and its marker) of the interaction that follows.
      * @param e Mousedown event.
      */
-    const preventLabelMousedown = (e: Event) => {
+    const handleDocumentMousedown = (e: Event) => {
+      this.focusOpened.set(false);
       const target = e.target;
       const ident = this.resolvedIdent();
       if (ident && target instanceof HTMLLabelElement && target.htmlFor === ident) {
         e.preventDefault();
       }
     };
-    this.document.addEventListener('mousedown', preventLabelMousedown, true);
-    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', preventLabelMousedown, true));
+    this.document.addEventListener('mousedown', handleDocumentMousedown, true);
+    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', handleDocumentMousedown, true));
   }
 
   // INTERACTIONS
 
   /**
-   * Move focus from the hidden label target into a sub-picker input. Label activation focuses (and
-   * clicks) the hidden button, whose handlers call this; landing on the sub-picker's input
-   * lets its own focus handler auto-open the panel and move keyboard focus into it - the same end
-   * state as clicking the input or Tab-ing into it.
-   * The date sub-picker leads `datetime`, but the placeholder DatePicker has no focusable input yet:
-   * its `focusInput()` returns null there, so focus falls through to the time sub-picker.
+   * Handle label activation focusing its hidden target (the wrapper's hidden button).
+   * Redirect focus into the sub-picker input; landing there lets the input's own focus handler
+   * auto-open the panel and move keyboard focus into it - the same end state as clicking the
+   * input or Tab-ing into it. When the panel was closed, remember that this redirect opened it,
+   * so the click label activation forwards right afterwards is swallowed instead of toggling
+   * the panel back closed within the same activation.
    */
-  focusRoot() {
+  handleLabelFocus() {
     if (this.disabled()) return;
+    const timePicker = this.timePicker();
+    // TODO: once DatePicker is a real picker, account for its panel state here as well.
+    const wasClosed = timePicker !== undefined && !timePicker.isClockVisible();
+    this.focusSubPicker();
+    if (wasClosed) this.focusOpened.set(true);
+  }
+
+  /**
+   * Handle the click label activation forwards to its hidden target (clicks on the hidden button
+   * do not bubble into the sub-pickers, so the wrapper has to toggle on their behalf).
+   * First activation: the paired focus just opened the panel - swallow the click (no toggle).
+   * Every later activation toggles: when open, close via `hidePanelAndRefocus()` so focus parks
+   * on the input without re-triggering auto-open; when closed, redirect focus to reopen.
+   */
+  handleLabelClick() {
+    if (this.disabled()) return;
+    if (this.focusOpened()) {
+      this.focusOpened.set(false);
+      return;
+    }
+    const timePicker = this.timePicker();
+    // TODO: once DatePicker is a real picker, toggle its panel here as well.
+    if (timePicker !== undefined && timePicker.isClockVisible()) {
+      timePicker.hidePanelAndRefocus();
+      return;
+    }
+    this.focusSubPicker();
+  }
+
+  /**
+   * Move focus from the hidden label target into a sub-picker input - the open half of label
+   * activation. Focusing the input lets its own focus handler auto-open the panel and steer
+   * keyboard focus into it. The date sub-picker leads `datetime`, but the placeholder DatePicker
+   * has no focusable input yet: its `focusInput()` returns null there, so focus falls through to
+   * the time sub-picker.
+   */
+  private focusSubPicker() {
     const datePicker = this.datePicker();
     if (datePicker !== undefined && datePicker.focusInput() !== null) return;
     this.timePicker()?.focusInput();

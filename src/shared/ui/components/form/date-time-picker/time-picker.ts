@@ -405,6 +405,11 @@ export class TimePicker implements FormValueControl<Date | null> {
   handleFocusOut(e: FocusEvent) {
     const next = e.relatedTarget;
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
+    // The wrapper's hidden label target (`.hidden-label-button`) is a sibling of this component -
+    // it lives on the parent DateTimePicker's root - so containment misses it. Focus landing
+    // there means label activation is about to redirect straight back into this component
+    // (it always pairs focus with a click), so it reads as an internal move, not a user blur.
+    if (next instanceof Element && next.classList.contains('hidden-label-button')) return;
     this.hidePanel();
     if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
     this.touch.emit();
