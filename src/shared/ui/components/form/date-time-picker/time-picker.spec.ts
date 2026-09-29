@@ -126,6 +126,24 @@ describe('TimePicker', () => {
   /** Viewport height assumed by positioning logic (jsdom performs no layout, real value is 0). */
   const VIEWPORT_HEIGHT = 768;
 
+  /**
+   * Stub clock column geometry so PageUp/PageDown can measure a known page step. jsdom performs
+   * no layout: every height reports 0 and the component would fall back to its fixed page size.
+   * @param fixture Fixture of the component.
+   * @param column Column whose geometry gets stubbed.
+   * @param sizes Assumed heights - visible column, sticky header, single option.
+   */
+  function stubColumnGeometry(fixture: ComponentFixture<TimePicker>, column: 'hour' | 'minute', sizes: { clientHeight: number; headerHeight: number; optionHeight: number }): void {
+    const el = column === 'hour' ? fixture.componentInstance.hourRef().nativeElement : fixture.componentInstance.minuteRef().nativeElement;
+    const header = el.querySelector('.column-header');
+    const option = el.querySelector('.time-item');
+    if (header === null || option === null) throw new Error('clock column should render a header and its options');
+
+    Object.defineProperty(el, 'clientHeight', { value: sizes.clientHeight, configurable: true });
+    Object.defineProperty(header, 'offsetHeight', { value: sizes.headerHeight, configurable: true });
+    Object.defineProperty(option, 'offsetHeight', { value: sizes.optionHeight, configurable: true });
+  }
+
   beforeAll(() => {
     // jsdom does not implement scrollIntoView; stubbed so a stray call cannot throw.
     // Doubles as a spy: the scrolling suite asserts the component never calls it.
@@ -784,6 +802,8 @@ describe('TimePicker', () => {
         // Act: Dispatch keydown directly on both listboxes.
         fixture.componentInstance.hourRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
         fixture.componentInstance.minuteRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+        fixture.componentInstance.hourRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true, cancelable: true }));
+        fixture.componentInstance.minuteRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true, cancelable: true }));
         await fixture.whenStable();
         fixture.detectChanges();
 
@@ -1557,6 +1577,111 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedHour(), 'End should jump to last hour').toBe(23);
       });
 
+      it('should page hours by the measured page size, clamping and then wrapping at the ends', async () => {
+        // Arrange: Open panel, stub geometry so the page step is measurable (jsdom has no
+        // layout): (200 - 20 header) / 20 option = 9 visible, minus 1 overlap => step 8.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        stubColumnGeometry(fixture, 'hour', { clientHeight: 200, headerHeight: 20, optionHeight: 20 });
+        fixture.componentInstance.focusedHour.set(10);
+
+        // Act: Page down from 10.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedHour(), 'PageDown should move by the measured step of 8 (10 -> 18)').toBe(18);
+
+        // Act: Page down again - 18 + 8 overshoots the list end.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedHour(), 'PageDown should clamp onto hour 23 instead of wrapping right away').toBe(23);
+
+        // Act: Page down again - cursor already stands on the end item.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedHour(), 'PageDown from hour 23 should wrap to 0').toBe(0);
+
+        // Act: Page down again - stepping resumes from the wrapped position.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Normal step after the wrap, with AT state following the new cursor.
+        expect(fixture.componentInstance.focusedHour(), 'PageDown after wrapping should apply the step again (0 -> 8)').toBe(8);
+        expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-activedescendant'), 'hour activedescendant should follow the paged cursor').toBe('test-time_opt_h8');
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h8"]').classList.contains('focused'), 'paged-to hour should carry the focus highlight').toBe(true);
+      });
+
+      it('should page hours backward by the measured page size, clamping and then wrapping at the ends', async () => {
+        // Arrange: Open panel, stub geometry (see previous test - step is 8) and seed near the start.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        stubColumnGeometry(fixture, 'hour', { clientHeight: 200, headerHeight: 20, optionHeight: 20 });
+        fixture.componentInstance.focusedHour.set(5);
+
+        // Act: Page up from 5 - 5 - 8 undershoots the list start.
+        await user.keyboard('{PageUp}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedHour(), 'PageUp should clamp onto hour 0 instead of wrapping right away').toBe(0);
+
+        // Act: Page up again - cursor already stands on the first item.
+        await user.keyboard('{PageUp}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedHour(), 'PageUp from hour 0 should wrap to 23').toBe(23);
+
+        // Act: Page up again - stepping resumes from the wrapped position.
+        await user.keyboard('{PageUp}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Normal step after the wrap.
+        expect(fixture.componentInstance.focusedHour(), 'PageUp after wrapping should apply the step again (23 -> 15)').toBe(15);
+      });
+
+      it('should only seed the focused hour from the value when no hour is focused yet', async () => {
+        // Arrange: Open panel (value 14:30 seeds the cursor) and clear it to reach the unfocused state.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        fixture.componentInstance.focusedHour.set(null);
+
+        // Act: Press PageDown with nothing focused yet.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: The press only shows focus on the value's hour - no page jump, mirroring how
+        // the Arrow keys treat a null cursor.
+        expect(fixture.componentInstance.focusedHour(), 'first PageDown should seed from value without paging (14 stays 14)').toBe(14);
+      });
+
+      it('should cancel the native page scroll of PageUp and PageDown on both listboxes', async () => {
+        // Arrange: Open panel so both listboxes carry their keyboard handlers.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        const hourBox = fixture.componentInstance.hourRef().nativeElement;
+        const minuteBox = fixture.componentInstance.minuteRef().nativeElement;
+
+        // Act: Dispatch cancelable keydowns directly - userEvent does not expose the event object.
+        const pageDown = new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true, cancelable: true });
+        const pageUp = new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true, cancelable: true });
+        hourBox.dispatchEvent(pageDown);
+        minuteBox.dispatchEvent(pageUp);
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Without preventDefault the browser scrolls the column natively and the
+        // highlight stays behind - the keys must be fully owned by the component.
+        expect(pageDown.defaultPrevented, 'PageDown should be default-prevented on the hour listbox').toBe(true);
+        expect(pageUp.defaultPrevented, 'PageUp should be default-prevented on the minute listbox').toBe(true);
+      });
+
       it('should advance from seeded hour on first ArrowDown', async () => {
         // Arrange: Create component with value 14:30 and open panel (open seeds focus from value).
         const user = userEvent.setup();
@@ -1822,6 +1947,63 @@ describe('TimePicker', () => {
 
         // Assert: Jumped to last minute.
         expect(fixture.componentInstance.focusedMinute(), 'End should jump to last minute').toBe(59);
+      });
+
+      it('should page minutes with clamp then wrap when the column cannot be measured', async () => {
+        // Arrange: Focused minute listbox WITHOUT geometry stubs - jsdom has no layout, so the
+        // component falls back to its fixed page step of 5.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute();
+        fixture.componentInstance.focusedMinute.set(58);
+
+        // Act: Page down from 58 - 58 + 5 overshoots the list end.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedMinute(), 'PageDown should clamp onto minute 59 instead of wrapping right away').toBe(59);
+
+        // Act: Page down again - cursor already stands on the end item.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedMinute(), 'PageDown from minute 59 should wrap straight to 0').toBe(0);
+
+        // Act: Page down again - stepping resumes from the wrapped position.
+        await user.keyboard('{PageDown}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Fallback step applies after the wrap, with AT state following the cursor.
+        expect(fixture.componentInstance.focusedMinute(), 'PageDown after wrapping should apply the fallback step (0 -> 5)').toBe(5);
+        expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-activedescendant'), 'minute activedescendant should follow the paged cursor').toBe('test-time_opt_m5');
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m5"]').classList.contains('focused'), 'paged-to minute should carry the focus highlight').toBe(true);
+      });
+
+      it('should page minutes backward with clamp then wrap when the column cannot be measured', async () => {
+        // Arrange: Focused minute listbox without geometry stubs (fallback page step of 5).
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute();
+        fixture.componentInstance.focusedMinute.set(1);
+
+        // Act: Page up from 1 - 1 - 5 undershoots the list start.
+        await user.keyboard('{PageUp}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedMinute(), 'PageUp should clamp onto minute 0 instead of wrapping right away').toBe(0);
+
+        // Act: Page up again - cursor already stands on the first item.
+        await user.keyboard('{PageUp}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.focusedMinute(), 'PageUp from minute 0 should wrap straight to 59').toBe(59);
+
+        // Act: Page up again - stepping resumes from the wrapped position.
+        await user.keyboard('{PageUp}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Fallback step applies after the wrap.
+        expect(fixture.componentInstance.focusedMinute(), 'PageUp after wrapping should apply the fallback step (59 -> 54)').toBe(54);
       });
 
       it('should switch to hour column on ArrowLeft', async () => {

@@ -24,6 +24,13 @@ const panelPlacement: PanelPlacement = {
 };
 
 /**
+ * Page size used for PageUp/PageDown when the column cannot be measured (no layout yet, so
+ * the visible-height division below yields 0/NaN). Keeps paging usable instead of degrading
+ * to a no-op; real browsers always measure successfully while the panel is open.
+ */
+const fallbackPageStep = 5;
+
+/**
  * This is a time picker. Uses `Date` class for both input and output. Do not use it directly.
  * Use DateTimePicker with attribute mode="time".
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
@@ -36,7 +43,10 @@ const panelPlacement: PanelPlacement = {
  * - Can disable or mark as invalid.
  * - Keyboard navigation supported:
  *   - if clock panel closed, open it with enter, space or down arrow
- *   - change hour/minute
+ *   - change hour/minute via arrows
+ *   - home/end: jump to beginning/end of list
+ *   - page up/down: jump a whole visible page, clamping at the list ends and wrapping to the
+ *     opposite end only when already standing on the end item
  *   - enter/space (pick hour/minute)
  *   - esc (close panel).
  * - Supports labelling through the `label` input (wired to `aria-labelledby`). When it is empty,
@@ -375,6 +385,48 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (el) this.centerOptionInColumn(column, el);
   }
 
+  /**
+   * Page size, in options, for one PageUp/PageDown press: how many options fit in the column's
+   * visible height, minus one so the edge of the previous page stays visible as context.
+   * The sticky column header covers the top of that visible height and all options share the
+   * same height, so a single division measures the whole list. Falls back to
+   * `fallbackPageStep` when the panel has no layout yet (0/NaN result).
+   * @param column The scrollable clock column.
+   * @returns Number of options a page press moves, always at least 1.
+   */
+  private pageStep(column: HTMLElement): number {
+    const optionHeight = column.querySelector<HTMLElement>('.time-item')?.offsetHeight ?? 0;
+    const headerHeight = column.querySelector<HTMLElement>('.column-header')?.offsetHeight ?? 0;
+    const visible = Math.floor((column.clientHeight - headerHeight) / optionHeight);
+
+    if (!Number.isFinite(visible) || visible <= 0) return fallbackPageStep;
+    return Math.max(1, visible - 1);
+  }
+
+  /**
+   * Move a listbox keyboard cursor by one page with boundary wrap.
+   * The move always clamps to the list ends first: a press that reaches an end stops there,
+   * and only the NEXT press - cursor already standing on the end item - wraps to the opposite
+   * end, landing exactly on it rather than on a step-aligned value. Example with step 12 on
+   * minutes: 30 -> 42 -> 54 -> 59 (clamp) -> 0 (wrap) -> 12.
+   * A null cursor is only seeded (no movement), mirroring how the Arrow-key cases treat it.
+   * @param current Current cursor value, or null when nothing is focused yet.
+   * @param direction 1 to page down, -1 to page up.
+   * @param max Last index of the column (23 for hours, 59 for minutes).
+   * @param step Page size coming from `pageStep`.
+   * @param seed Value used when `current` is null (selected ?? viewed).
+   * @returns New cursor value.
+   */
+  private pageMove(current: number | null, direction: 1 | -1, max: number, step: number, seed: number | null): number {
+    if (current === null) return seed ?? 0;
+
+    const clamped = Math.min(max, Math.max(0, current + direction * step));
+    if (clamped !== current) return clamped;
+
+    // Already on the boundary: wrap straight to the opposite end.
+    return direction > 0 ? 0 : max;
+  }
+
   // EVENTS
 
   /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). Set only when a click-caused focus event is actually coming. */
@@ -515,6 +567,18 @@ export class TimePicker implements FormValueControl<Date | null> {
         this.focusedHour.set(23);
         this.scrollHourIntoView(23);
         break;
+      case 'PageDown': // Page forward; wraps to the top only when already standing on the last hour.
+        e.preventDefault(); // Without it the browser scrolls the column natively, leaving the cursor behind.
+        this.focusedHour.set(this.pageMove(this.focusedHour(), 1, 23,
+          this.pageStep(this.hourRef().nativeElement), this.selectedHour() ?? this.viewHour() ?? 0));
+        this.scrollHourIntoView(this.focusedHour());
+        break;
+      case 'PageUp': // Page backward; wraps to the bottom only when already standing on the first hour.
+        e.preventDefault();
+        this.focusedHour.set(this.pageMove(this.focusedHour(), -1, 23,
+          this.pageStep(this.hourRef().nativeElement), this.selectedHour() ?? this.viewHour() ?? 0));
+        this.scrollHourIntoView(this.focusedHour());
+        break;
       case 'Enter':
       case ' ':
         e.preventDefault();
@@ -572,6 +636,18 @@ export class TimePicker implements FormValueControl<Date | null> {
         e.preventDefault();
         this.focusedMinute.set(59);
         this.scrollMinuteIntoView(59);
+        break;
+      case 'PageDown': // Page forward; wraps to the top only when already standing on the last minute.
+        e.preventDefault(); // Without it the browser scrolls the column natively, leaving the cursor behind.
+        this.focusedMinute.set(this.pageMove(this.focusedMinute(), 1, 59,
+          this.pageStep(this.minuteRef().nativeElement), this.selectedMinute() ?? this.viewMinute() ?? 0));
+        this.scrollMinuteIntoView(this.focusedMinute());
+        break;
+      case 'PageUp': // Page backward; wraps to the bottom only when already standing on the first minute.
+        e.preventDefault();
+        this.focusedMinute.set(this.pageMove(this.focusedMinute(), -1, 59,
+          this.pageStep(this.minuteRef().nativeElement), this.selectedMinute() ?? this.viewMinute() ?? 0));
+        this.scrollMinuteIntoView(this.focusedMinute());
         break;
       case 'Enter':
       case ' ':
