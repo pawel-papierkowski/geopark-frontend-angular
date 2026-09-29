@@ -1,6 +1,6 @@
 <div
     #comboRef
-    [attr.data-testid]="ident()"
+    [attr.data-testid]="resolvedIdent()"
     class="combobox"
     [class.disabled]="disabled()"
     [class.invalid]="invalid()"
@@ -25,7 +25,7 @@
     <!-- Hidden button: labelable target for <label for="...">. -->
     <!-- Label activation focuses this button and bubbles its click here; both handlers redirect
          focus to the root so aria-activedescendant stays valid and (blur) works on leaving. -->
-    <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
+    <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
       (focus)="focusRoot()" (click)="focusRoot()"></button>
 
     <div class="combobox-selected">
@@ -45,7 +45,7 @@
         <!-- Options are not tab stops: highlight moves via aria-activedescendant on root,
              so one Tab from root closes the list and exits straight to the next component. -->
         <div
-          [attr.data-testid]="ident()+'_'+$index"
+          [attr.data-testid]="resolvedIdent()+'_'+$index"
           [id]="optionId($index)"
           class="combobox-option"
           [class.highlighted]="highlightedIndex() === $index"

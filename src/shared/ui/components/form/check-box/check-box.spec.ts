@@ -370,6 +370,25 @@ describe('CheckBox', () => {
         expect(hiddenButton.getAttribute('aria-hidden'), 'hidden button should be hidden from assistive technology').toBe('true');
       });
 
+      it('should generate id following check-box-N pattern when ident is empty', async () => {
+        // Arrange: Create component with empty ident (same state as ident not provided).
+        const fixture = await arrangeCheckBox({ ident: '' });
+
+        // Assert: Hidden button gets generated id, also used as data-testid.
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        expect(hiddenButton.getAttribute('id'), 'hidden button id should follow check-box-N pattern').toMatch(/^check-box-\d+$/);
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.getAttribute('data-testid'), 'data-testid should use generated id').toBe(hiddenButton.getAttribute('id'));
+      });
+
+      it('should expose provided ident via resolvedIdent', async () => {
+        // Arrange: Create component with custom ident.
+        const fixture = await arrangeCheckBox({ ident: 'my-checkbox' });
+
+        // Assert: resolvedIdent mirrors ident.
+        expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should mirror ident').toBe('my-checkbox');
+      });
+
       it('should set aria-labelledby when label is provided', async () => {
         // Arrange: Create component with label input.
         const fixture = await arrangeCheckBox({ label: 'my-label' });

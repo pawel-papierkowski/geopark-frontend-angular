@@ -1,8 +1,8 @@
 <div class="checkbox-wrapper">
   <!-- Hidden button: labelable target for <label for="...">. -->
-  <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true" (click)="toggle()"></button>
+  <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true" (click)="toggle()"></button>
   <div
-    [attr.data-testid]="ident()"
+    [attr.data-testid]="resolvedIdent()"
     class="checkbox"
     [class.disabled]="disabled()"
     [class.invalid]="invalid()"

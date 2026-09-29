@@ -1,9 +1,10 @@
-import { Component, inject, model, input, output, ElementRef } from '@angular/core';
+import { Component, inject, model, input, output, linkedSignal, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import {TranslateService } from '@ngx-translate/core';
 
 import { NavUtils } from '@/core/utils/NavUtils';
+import { IdService } from '@/shared/utils/id/id-service';
 
 /**
  * Custom form component that allows selecting between multiple choices. Equivalent of `<input type="radio">`.
@@ -21,7 +22,7 @@ import { NavUtils } from '@/core/utils/NavUtils';
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
+ * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional. If omitted, unique `radio-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
  * - label - For `aria-labelledby`. Optional.
  * - options - Array of options. String, number (so also enum) and null allowed.
  * - langPrefix - Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation.
@@ -43,11 +44,15 @@ import { NavUtils } from '@/core/utils/NavUtils';
 export class RadioBox implements FormValueControl<number | string | null> {
   private readonly hostEl: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly translateService = inject(TranslateService);
+  private readonly idService = inject(IdService);
 
   /** Value held by component. */
   value = model<number | string | null>(null);
   /** Identifier for this component. */
   ident = input<string>('');
+  /** Resolved identifier: `ident` when provided, otherwise a generated `radio-box-N`.
+   * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
+  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('radio-box'));
   /** Label reference. */
   label = input<string>('');
   /** Array of options. String, number (so also enum) and null allowed. */
@@ -64,7 +69,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
   touch = output<void>();
 
   optionId(index: number): string {
-    return this.ident() + '_opt_' + index;
+    return this.resolvedIdent() + '_opt_' + index;
   }
 
   /**

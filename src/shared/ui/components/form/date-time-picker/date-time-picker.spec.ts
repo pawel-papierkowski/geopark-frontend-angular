@@ -37,5 +37,37 @@ describe('DateTimePicker', () => {
         }
       });
     });
+
+    describe('ident', () => {
+      it('should generate id following date-time-picker-N pattern when ident is empty', async () => {
+        // Arrange: Render wrapper without ident (empty ident input).
+        await TestBed.configureTestingModule({ imports: [DateTimePicker] }).compileComponents();
+        const fixture = TestBed.createComponent(DateTimePicker);
+        fixture.componentRef.setInput('mode', 'time');
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        // Assert: Hidden button gets generated id, sub-picker derives its ident from it.
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const ident = hiddenButton.getAttribute('id');
+        expect(ident, 'hidden button id should follow date-time-picker-N pattern').toMatch(/^date-time-picker-\d+$/);
+        const timeInput = fixture.nativeElement.querySelector(`[data-testid="timeId_${ident}_input"]`);
+        expect(timeInput, 'time-picker should derive ident from generated parent ident').not.toBeNull();
+      });
+
+      it('should derive sub-picker idents from provided ident', async () => {
+        // Arrange: Render wrapper with explicit ident.
+        await TestBed.configureTestingModule({ imports: [DateTimePicker] }).compileComponents();
+        const fixture = TestBed.createComponent(DateTimePicker);
+        fixture.componentRef.setInput('ident', 'test-dtp');
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        // Assert: Sub-picker idents are derived from the provided ident.
+        expect(fixture.componentInstance.dateIdent(), 'dateIdent should be dateId_test-dtp').toBe('dateId_test-dtp');
+        expect(fixture.componentInstance.timeIdent(), 'timeIdent should be timeId_test-dtp').toBe('timeId_test-dtp');
+        expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should mirror ident').toBe('test-dtp');
+      });
+    });
   });
 });

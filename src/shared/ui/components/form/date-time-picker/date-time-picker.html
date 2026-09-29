@@ -6,7 +6,7 @@
   <!-- Hidden button: labelable target for <label for="...">. -->
   <!-- Label activation focuses this button and bubbles its click here; both handlers redirect
         focus to the root so aria-activedescendant stays valid and (blur) works on leaving. -->
-  <button type="button" [id]="ident()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
+  <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
     (focus)="focusRoot()" (click)="focusRoot()"></button>
 
   @if (mode() === 'datetime' || mode() === 'date') {
@@ -15,7 +15,7 @@
       [(value)]="value"
       (touch)="touch.emit()"
 
-      [ident]="`dateId_${ident()}`"
+      [ident]="dateIdent()"
       [label]="label()"
       [canNull]="canNull()"
       [showWeeks]="showWeeks()"
@@ -34,7 +34,7 @@
       [(value)]="value"
       (touch)="touch.emit()"
 
-      [ident]="`timeId_${ident()}`"
+      [ident]="timeIdent()"
       [label]="label()"
       [canNull]="canNull()"
 

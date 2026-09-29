@@ -874,17 +874,43 @@ describe('ComboBox', () => {
         expect(options[2].getAttribute('id'), 'third option id should follow pattern').toBe('my-combo_option_2');
       });
 
-      it('should fall back to default ids when ident is empty', async () => {
-        // Arrange: Create component with empty ident.
+      it('should generate ids following combo-box-N pattern when ident is empty', async () => {
+        // Arrange: Create component with empty ident (same state as ident not provided).
         const fixture = await arrangeComboBox({ ident: '' });
 
-        // Assert: Listbox and option ids use default fallback consistently.
+        // Assert: Generated ident is used consistently for root, listbox and options.
         const root = fixture.nativeElement.querySelector('.combobox');
+        const ident = root.getAttribute('data-testid');
+        expect(ident, 'generated ident should follow combo-box-N pattern').toMatch(/^combo-box-\d+$/);
         const list = fixture.nativeElement.querySelector('.combobox-options');
-        expect(list.getAttribute('id'), 'listbox id should fall back to default_listbox').toBe('default_listbox');
-        expect(root.getAttribute('aria-controls'), 'aria-controls should use default fallback').toBe('default_listbox');
+        expect(list.getAttribute('id'), 'listbox id should be based on generated ident').toBe(`${ident}_listbox`);
+        expect(root.getAttribute('aria-controls'), 'aria-controls should use generated ident').toBe(`${ident}_listbox`);
         const options = fixture.nativeElement.querySelectorAll('.combobox-option');
-        expect(options[0].getAttribute('id'), 'option id should fall back to default_option_0').toBe('default_option_0');
+        expect(options[0].getAttribute('id'), 'option id should be based on generated ident').toBe(`${ident}_option_0`);
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        expect(hiddenButton.getAttribute('id'), 'hidden button id should use generated ident').toBe(ident);
+      });
+
+      it('should generate different ids for components created without ident', async () => {
+        // Arrange: Create two components without ident within same test module.
+        const first = await arrangeComboBox({ ident: '' });
+        const second = TestBed.createComponent(ComboBox);
+        second.componentRef.setInput('options', ['a', 'b', 'c']);
+        second.detectChanges();
+        await second.whenStable();
+
+        // Assert: Each component instance gets its own generated ident.
+        const firstIdent = first.nativeElement.querySelector('.combobox').getAttribute('data-testid');
+        const secondIdent = second.nativeElement.querySelector('.combobox').getAttribute('data-testid');
+        expect(secondIdent, 'second component should get different generated ident').not.toBe(firstIdent);
+      });
+
+      it('should expose provided ident via resolvedIdent', async () => {
+        // Arrange: Create component with custom ident.
+        const fixture = await arrangeComboBox({ ident: 'my-combo' });
+
+        // Assert: resolvedIdent mirrors ident.
+        expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should mirror ident').toBe('my-combo');
       });
 
       it('should have hidden button with id for label association', async () => {
@@ -1077,7 +1103,7 @@ describe('ComboBox', () => {
       });
 
       it('should not prevent default on mousedown when ident is empty', async () => {
-        // Arrange: Create component without ident (empty htmlFor would false-match labels without for).
+        // Arrange: Create component without ident (its generated ident never matches labels without for).
         await arrangeComboBox({ ident: '' });
         const label = document.createElement('label');
         document.body.appendChild(label);
@@ -1085,8 +1111,8 @@ describe('ComboBox', () => {
         // Act: Dispatch mousedown on a label without for attribute.
         const event = dispatchMousedown(label);
 
-        // Assert: Empty ident never matches, defaults preserved.
-        expect(event.defaultPrevented, 'empty ident should not match any label').toBe(false);
+        // Assert: Generated ident never matches empty htmlFor, defaults preserved.
+        expect(event.defaultPrevented, 'generated ident should not match label without for').toBe(false);
 
         // Cleanup: Remove label element.
         label.remove();

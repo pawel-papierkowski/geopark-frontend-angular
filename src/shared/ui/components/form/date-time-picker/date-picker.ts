@@ -21,7 +21,7 @@ import { FormValueControl } from '@angular/forms/signals';
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional.
+ * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Always provided by parent DateTimePicker, this component is not meant to be used alone.
  * - label - For `aria-labelledby`. Optional.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.

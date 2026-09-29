@@ -1,6 +1,7 @@
-import { Component, model, input, output, viewChild, ElementRef } from '@angular/core';
+import { Component, model, input, output, computed, inject, linkedSignal, viewChild, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
+import { IdService } from '@/shared/utils/id/id-service';
 import { enDateTimePickerMode } from '@/shared/ui/other/types';
 
 import { DatePicker } from './date-picker';
@@ -26,7 +27,7 @@ import { TimePicker } from './time-picker';
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional.
+ * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `date-time-picker-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
  * - label - For `aria-labelledby`. Optional.
  * - mode - Mode of operation (both date and time, only date, only time). Optional, default is 'datetime'.
  * - canNull - If true, allow deselecting date. Optional, default is false.
@@ -49,10 +50,15 @@ import { TimePicker } from './time-picker';
   templateUrl: './date-time-picker.html',
 })
 export class DateTimePicker implements FormValueControl<Date | null> {
+  private readonly idService = inject(IdService);
+
   /** Value held by component. */
   value = model<Date | null>(null);
   /** Identifier for this component. */
   ident = input<string>('');
+  /** Resolved identifier: `ident` when provided, otherwise a generated `date-time-picker-N`.
+   * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
+  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('date-time-picker'));
   /** Label reference. */
   label = input<string>('');
   /** Mode of operation (both date and time, only date, only time). */
@@ -81,8 +87,9 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** Reference to time-picker. */
   timePickerRef = viewChild.required<ElementRef<HTMLDivElement>>('timePickerRef');
 
-  dateId = `datepicker_${this.ident()}`;
-  timeId = `timepicker_${this.ident()}`;
+  /** Identifiers of sub-pickers, derived from resolved ident so they follow it when it changes. */
+  dateIdent = computed(() => `dateId_${this.resolvedIdent()}`);
+  timeIdent = computed(() => `timeId_${this.resolvedIdent()}`);
 
   // INTERACTIONS
 
@@ -99,16 +106,17 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /**
    * Handle focus moving between the two pickers.
    * When one input receives focus, the other picker's panel is closed.
+   * TODO: placeholder, will be finished when both date and time pickers exist
    */
   handleFocusIn(e: FocusEvent) {
     const target = e.target as HTMLElement;
 
-    // If time input received focus, close date panel.
-    if (target.id === this.timeId) {
+    // If date input received focus, close time panel.
+    if (target.id === this.dateIdent()) {
       //this.datePickerRef()?.hidePanel(); TODO
     }
-    // If date input received focus, close time panel.
-    if (target.id === this.dateId) {
+    // If time input received focus, close date panel.
+    if (target.id === this.timeIdent()) {
       //this.timePickerRef()?.hidePanel(); // TODO
     }
   }

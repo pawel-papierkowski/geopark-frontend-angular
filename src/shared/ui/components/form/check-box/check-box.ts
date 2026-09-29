@@ -1,5 +1,7 @@
-import { Component, model, input, output, computed } from '@angular/core';
+import { Component, model, input, output, computed, inject, linkedSignal } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
+
+import { IdService } from '@/shared/utils/id/id-service';
 
 /**
  * Custom form component that allows choice between true, false and null (optional). Equivalent of `<input type="checkbox">`.
@@ -16,7 +18,7 @@ import { FormValueControl } from '@angular/forms/signals';
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional.
+ * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional. If omitted, unique `check-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
  * - label - For `aria-labelledby`. Optional.
  * - canNull - If true, can use `null` value when cycling checkbox. Note `canNull` affects only user ability to set `null` value. Component still can have `null` set programmatically.
  *
@@ -35,10 +37,15 @@ import { FormValueControl } from '@angular/forms/signals';
   templateUrl: './check-box.html',
 })
 export class CheckBox implements FormValueControl<boolean | null> {
+  private readonly idService = inject(IdService);
+
   /** Value held by component. */
   value = model<boolean | null>(null);
   /** Identifier for this component. */
   ident = input<string>('');
+  /** Resolved identifier: `ident` when provided, otherwise a generated `check-box-N`.
+   * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
+  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('check-box'));
   /** Label reference. */
   label = input<string>('');
   /** Can use null value? */

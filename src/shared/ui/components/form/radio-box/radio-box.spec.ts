@@ -392,6 +392,28 @@ describe('RadioBox', () => {
         expect(options[2].getAttribute('id'), 'third option ID should follow ident_opt_2 pattern').toBe('my-radio_opt_2');
       });
 
+      it('should generate id following radio-box-N pattern when ident is empty', async () => {
+        // Arrange: Create component with empty ident (same state as ident not provided).
+        const fixture = await arrangeRadioBox({ options: ['x', 'y'], ident: '' });
+
+        // Assert: Generated id is used for hidden button, root testid and options.
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const ident = hiddenButton.getAttribute('id');
+        expect(ident, 'hidden button id should follow radio-box-N pattern').toMatch(/^radio-box-\d+$/);
+        const radio = fixture.nativeElement.querySelector('.radiobox');
+        expect(radio.getAttribute('data-testid'), 'data-testid should use generated id').toBe(ident);
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        expect(options[0].getAttribute('id'), 'option id should be based on generated ident').toBe(`${ident}_opt_0`);
+      });
+
+      it('should expose provided ident via resolvedIdent', async () => {
+        // Arrange: Create component with custom ident.
+        const fixture = await arrangeRadioBox({ options: ['a'], ident: 'my-radio' });
+
+        // Assert: resolvedIdent mirrors ident.
+        expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should mirror ident').toBe('my-radio');
+      });
+
       it('should have tabindex 0 on selected option', async () => {
         // Arrange: Create component with second option selected.
         const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });

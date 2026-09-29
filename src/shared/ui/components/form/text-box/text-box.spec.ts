@@ -196,6 +196,24 @@ describe('TextBox', () => {
         expect(input.getAttribute('id'), 'input id should match ident').toBe('my-input');
       });
 
+      it('should generate id following text-box-N pattern when ident is empty', async () => {
+        // Arrange: Create component with empty ident (same state as ident not provided).
+        const fixture = await arrangeTextBox({ ident: '' });
+
+        // Assert: Input gets generated id, also used as data-testid.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('id'), 'input id should follow text-box-N pattern').toMatch(/^text-box-\d+$/);
+        expect(input.getAttribute('data-testid'), 'data-testid should use generated id').toBe(input.getAttribute('id'));
+      });
+
+      it('should expose provided ident via resolvedIdent', async () => {
+        // Arrange: Create component with custom ident.
+        const fixture = await arrangeTextBox({ ident: 'my-input' });
+
+        // Assert: resolvedIdent mirrors ident.
+        expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should mirror ident').toBe('my-input');
+      });
+
       it('should set required attribute when required is true', async () => {
         // Arrange: Create component with required input.
         const fixture = await arrangeTextBox({ required: true });

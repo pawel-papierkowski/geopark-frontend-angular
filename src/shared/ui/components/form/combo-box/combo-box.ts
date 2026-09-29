@@ -1,9 +1,10 @@
-import { Component, effect, inject, model, input, output, computed, signal, viewChild, ElementRef, DestroyRef, DOCUMENT, Injector } from '@angular/core';
+import { Component, effect, inject, model, input, output, computed, linkedSignal, signal, viewChild, ElementRef, DestroyRef, DOCUMENT, Injector } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 import {TranslateService } from '@ngx-translate/core';
 
 import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
 import { afterRender } from '@/shared/utils/render/after-render';
+import { IdService } from '@/shared/utils/id/id-service';
 
 /**
  * Placement of the options list relative to its anchor - single source of truth for both the
@@ -37,7 +38,7 @@ const panelPlacement: PanelPlacement = {
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional.
+ * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `combo-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
  * - label - For `aria-labelledby`. Optional.
  * - options - Array of options, will be shown after user clicks on component. Can contain null value for 'unselected'.
  * - langPrefix - Prefix, used for auto-translating entries in dropdown list. If empty, options and placeholder will be shown as is without translation.
@@ -66,11 +67,15 @@ export class ComboBox implements FormValueControl<number | string | null> {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
+  private readonly idService = inject(IdService);
 
   /** Value held by component. */
   value = model<number | string | null>(null);
   /** Identifier for this component. */
   ident = input<string>('');
+  /** Resolved identifier: `ident` when provided, otherwise a generated `combo-box-N`.
+   * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
+  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('combo-box'));
   /** Label reference. */
   label = input<string>('');
   /** Array of options. String, number (so also enum) and null allowed. */
@@ -129,7 +134,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
      */
     const preventLabelMousedown = (e: Event) => {
       const target = e.target;
-      const ident = this.ident();
+      const ident = this.resolvedIdent();
       if (ident && target instanceof HTMLLabelElement && target.htmlFor === ident) {
         e.preventDefault();
       }
@@ -144,7 +149,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   arrowClass = computed(() => ({ open: this.isOpen() }));
   /** Compute identifier for listbox used by aria-controls. */
   listboxId = computed(() => {
-    return `${this.ident() || 'default'}_listbox`;
+    return `${this.resolvedIdent()}_listbox`;
   });
 
   // GENERAL FUNCTIONS
@@ -154,7 +159,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * @param index Index of option element.
    */
   optionId(index: number): string {
-    return `${this.ident() || 'default'}_option_${index}`;
+    return `${this.resolvedIdent()}_option_${index}`;
   }
 
   /**

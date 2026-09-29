@@ -1,6 +1,7 @@
-import { Component, model, input, output } from '@angular/core';
+import { Component, inject, model, input, output, linkedSignal } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
+import { IdService } from '@/shared/utils/id/id-service';
 import { enTextBoxType } from '@/shared/ui/other/types';
 
 /** Custom input type="text" implementation. It is just a wrapper for the actual <input>.
@@ -15,7 +16,7 @@ import { enTextBoxType } from '@/shared/ui/other/types';
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
- * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional.
+ * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `text-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
  * - label - For `aria-labelledby`. Optional.
  * - type - Type of input. Optional, default is 'text'.
  * - allowPaste - If false, this input does not allow pasting text into the field. Optional, default is true.
@@ -37,10 +38,15 @@ import { enTextBoxType } from '@/shared/ui/other/types';
   templateUrl: './text-box.html',
 })
 export class TextBox implements FormValueControl<string | null> {
+  private readonly idService = inject(IdService);
+
   /** Value held by component. */
   value = model<string | null>(null);
   /** Identifier for this component. */
   ident = input<string>('');
+  /** Resolved identifier: `ident` when provided, otherwise a generated `text-box-N`.
+   * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
+  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('text-box'));
   /** Label reference. */
   label = input<string>('');
   /** Type of input. */
