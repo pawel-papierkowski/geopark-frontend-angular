@@ -3,9 +3,11 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 /**
  * Locate the checkBox role element on the custom components page.
  * @param page Browser page.
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the checkBox.
  */
-function getCheckBox(page: Page): Locator {
+function getCheckBox(page: Page, wantNullable: boolean = false): Locator {
+  if (wantNullable) return page.getByTestId('cc-checkBoxNull');
   return page.getByTestId('cc-checkBox');
 }
 
@@ -22,9 +24,11 @@ function getModeOption(page: Page, index: number): Locator {
 /**
  * Locate the value display div next to the checkBox using data-testid.
  * @param page Browser page.
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the value display div.
  */
-function getValueDisplay(page: Page): Locator {
+function getValueDisplay(page: Page, wantNullable: boolean = false): Locator {
+  if (wantNullable) return page.getByTestId('cc-checkBoxNull-value');
   return page.getByTestId('cc-checkBox-value');
 }
 
@@ -42,11 +46,37 @@ async function goToComponentsPage(page: Page): Promise<void> {
  */
 test.describe('CheckBox', () => {
   test.describe('clicking', () => {
+    test('should cycle through null → true → false → true on click', async ({ page }) => {
+      // Arrange: Navigate to the custom components page.
+      await goToComponentsPage(page);
+      const checkBox = getCheckBox(page, false);
+      const display = getValueDisplay(page, false);
+
+      // Assert: Initial state is null (mixed).
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
+      await expect(display).toContainText('❓');
+
+      // Act & Assert: null → true.
+      await checkBox.click();
+      await expect(checkBox).toHaveAttribute('aria-checked', 'true');
+      await expect(display).toContainText('✅');
+
+      // Act & Assert: true → false.
+      await checkBox.click();
+      await expect(checkBox).toHaveAttribute('aria-checked', 'false');
+      await expect(display).toContainText('❌');
+
+      // Act & Assert: false → null.
+      await checkBox.click();
+      await expect(checkBox).toHaveAttribute('aria-checked', 'true');
+      await expect(display).toContainText('✅');
+    });
+
     test('should cycle through null → true → false → null on click', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const checkBox = getCheckBox(page);
-      const display = getValueDisplay(page);
+      const checkBox = getCheckBox(page, true);
+      const display = getValueDisplay(page, true);
 
       // Assert: Initial state is null (mixed).
       await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
@@ -74,7 +104,7 @@ test.describe('CheckBox', () => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
       const checkBox = getCheckBox(page);
-      const label = page.locator('label', { hasText: 'CheckBox' });
+      const label = page.getByTestId('cc-checkBox-label');
 
       // Assert: Initial state is null.
       await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');

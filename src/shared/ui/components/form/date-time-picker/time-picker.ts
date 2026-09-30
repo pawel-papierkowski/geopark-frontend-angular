@@ -51,6 +51,7 @@ const fallbackPageStep = 5;
  *   - page up/down: jump a whole visible page, clamping at the list ends and wrapping to the
  *     opposite end only when already standing on the end item
  *   - enter/space (pick hour/minute)
+ *   - delete/backspace: clear the value (only when canNull)
  *   - esc (close panel).
  * - Supports WAI-ARIA.
  *
@@ -589,6 +590,11 @@ export class TimePicker implements FormValueControl<Date | null> {
     } else if (e.key === 'Escape' && this.isClockVisible()) {
       e.preventDefault();
       this.hidePanel();
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      // Default is prevented unconditionally: on a readonly input Backspace must never reach
+      // the browser's legacy history-back handling (Firefox), even when canNull forbids the clear.
+      e.preventDefault();
+      this.keyPressClear();
     }
   }
 
@@ -646,6 +652,11 @@ export class TimePicker implements FormValueControl<Date | null> {
       case ' ':
         e.preventDefault();
         void this.keyPressSelectHour();
+        break;
+      case 'Delete':
+      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors Enter-deselect).
+        e.preventDefault();
+        if (this.keyPressClear()) this.hidePanelAndRefocus();
         break;
       case 'Escape':
         e.preventDefault();
@@ -716,6 +727,11 @@ export class TimePicker implements FormValueControl<Date | null> {
       case ' ':
         e.preventDefault();
         this.keyPressSelectMinute();
+        break;
+      case 'Delete':
+      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors the minute deselect path).
+        e.preventDefault();
+        if (this.keyPressClear()) this.hidePanelAndRefocus();
         break;
       case 'Escape':
         e.preventDefault();
@@ -791,6 +807,20 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     this.selectMinute(this.focusedMinute());
     this.hidePanelAndFocusNext();
+  }
+
+  /**
+   * Clear the value via Delete/Backspace. Guarded by `canNull` (the single switch governing
+   * every user-driven null, same as the same-value toggles in `selectHour`/`selectMinute` -
+   * `required` intentionally does not block clearing, it only reports state) and by an existing
+   * value (clearing null is a no-op). Callers decide what happens afterwards: the input path
+   * keeps focus where it is, the column paths close the panel when this returns true.
+   * @returns True when a value was actually cleared.
+   */
+  private keyPressClear(): boolean {
+    if (this.disabled() || !this.canNull() || this.normalizedValue() === null) return false;
+    this.value.set(null);
+    return true;
   }
 
   // UTILITIES

@@ -130,7 +130,7 @@ test.describe('ComboBox', () => {
     test('should open list when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Combobox' });
+      const label = page.getByTestId('cc-comboBox-label');
 
       // Assert: Initial state is list closed.
       await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'false');
@@ -153,7 +153,7 @@ test.describe('ComboBox', () => {
     test('should focus combobox root when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Combobox' });
+      const label = page.getByTestId('cc-comboBox-label');
 
       // Act: Click the label (activation focuses hidden button, which redirects focus to root).
       await label.click();
@@ -166,7 +166,7 @@ test.describe('ComboBox', () => {
     test('should close list when clicking outside after label activation', async ({ page }) => {
       // Arrange: Navigate and open the list via label click.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Combobox' });
+      const label = page.getByTestId('cc-comboBox-label');
       await label.click();
       await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
 
@@ -181,7 +181,7 @@ test.describe('ComboBox', () => {
     test('should close list and leave component on Tab after label activation', async ({ page }) => {
       // Arrange: Navigate and open the list via label click.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Combobox' });
+      const label = page.getByTestId('cc-comboBox-label');
       await label.click();
       await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
 
@@ -196,7 +196,7 @@ test.describe('ComboBox', () => {
     test('should close list and leave component on Shift+Tab after label activation', async ({ page }) => {
       // Arrange: Navigate and open the list via label click.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Combobox' });
+      const label = page.getByTestId('cc-comboBox-label');
       await label.click();
       await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
 
@@ -211,7 +211,7 @@ test.describe('ComboBox', () => {
     test('should toggle list closed on second label click', async ({ page }) => {
       // Arrange: Navigate and open the list via first label click.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Combobox' });
+      const label = page.getByTestId('cc-comboBox-label');
       await label.click();
       await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
 

@@ -80,7 +80,7 @@ test.describe('TextBox', () => {
     test('should focus input when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Normal input field' });
+      const label = page.getByTestId('cc-textBox-label');
 
       // Act: Click the label.
       await label.click();

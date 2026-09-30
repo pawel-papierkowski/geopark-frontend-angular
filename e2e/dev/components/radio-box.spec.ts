@@ -105,7 +105,7 @@ test.describe('RadioBox', () => {
     test('should select first option when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
-      const label = page.locator('label', { hasText: 'Radiobox' });
+      const label = page.getByTestId('cc-radioBox-label');
 
       // Assert: Initial state is null.
       await expect(getOption(page, 0)).toHaveAttribute('aria-checked', 'true');

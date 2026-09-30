@@ -39,6 +39,11 @@ export type CustomComponentsForm = {
   dateTimePicker: Date | null;
   datePicker: Date | null;
   timePicker: Date | null;
+  /** Versions of components with canNull enabled. */
+  checkBoxNull: boolean | null;
+  dateTimePickerNull: Date | null;
+  datePickerNull: Date | null;
+  timePickerNull: Date | null;
 };
 
 /**
@@ -61,6 +66,10 @@ export class PageCustomComponents {
     dateTimePicker: null,
     datePicker: null,
     timePicker: null,
+    checkBoxNull: null,
+    dateTimePickerNull: null,
+    datePickerNull: null,
+    timePickerNull: null,
   });
 
   /** Custom components form. */
@@ -72,6 +81,10 @@ export class PageCustomComponents {
     this.modeDisabled(schema.dateTimePicker, schema.mode);
     this.modeDisabled(schema.datePicker, schema.mode);
     this.modeDisabled(schema.timePicker, schema.mode);
+    this.modeDisabled(schema.checkBoxNull, schema.mode);
+    this.modeDisabled(schema.dateTimePickerNull, schema.mode);
+    this.modeDisabled(schema.datePickerNull, schema.mode);
+    this.modeDisabled(schema.timePickerNull, schema.mode);
     this.modeInvalid(schema.textBox, schema.mode);
     this.modeInvalid(schema.checkBox, schema.mode);
     this.modeInvalid(schema.comboBox, schema.mode);
@@ -79,6 +92,10 @@ export class PageCustomComponents {
     this.modeInvalid(schema.dateTimePicker, schema.mode);
     this.modeInvalid(schema.datePicker, schema.mode);
     this.modeInvalid(schema.timePicker, schema.mode);
+    this.modeInvalid(schema.checkBoxNull, schema.mode);
+    this.modeInvalid(schema.dateTimePickerNull, schema.mode);
+    this.modeInvalid(schema.datePickerNull, schema.mode);
+    this.modeInvalid(schema.timePickerNull, schema.mode);
   });
 
   /** Mode. */

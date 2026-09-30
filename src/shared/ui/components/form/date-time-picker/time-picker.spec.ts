@@ -846,21 +846,25 @@ describe('TimePicker', () => {
       });
 
       it('should ignore input keyboard events when disabled', async () => {
-        // Arrange: Create disabled component.
-        const fixture = await arrangeTimePicker({ disabled: true });
+        // Arrange: Create disabled but deselectable component carrying a value (so a failed
+        // disabled guard would actually clear it and fail the assertion).
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true, disabled: true });
 
         // Act: Dispatch keydown directly (disabled inputs are not focusable for real keystrokes).
         getInput(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+        getInput(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Panel stays closed.
+        // Assert: Panel stays closed and the clear key is ignored too.
         expect(fixture.componentInstance.isClockVisible(), 'disabled component should not open via keyboard').toBe(false);
+        expect(fixture.componentInstance.value(), 'disabled component should not clear its value via Backspace').not.toBeNull();
       });
 
       it('should ignore hour and minute listbox keyboard events when disabled', async () => {
-        // Arrange: Create disabled component with seeded keyboard focus state.
-        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), disabled: true });
+        // Arrange: Create disabled but deselectable component with seeded keyboard focus state
+        // (canNull enabled so the disabled guard - not canNull - is the only reason nothing clears).
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true, disabled: true });
         fixture.componentInstance.focusedHour.set(3);
         fixture.componentInstance.focusedMinute.set(7);
 
@@ -869,12 +873,15 @@ describe('TimePicker', () => {
         fixture.componentInstance.minuteRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
         fixture.componentInstance.hourRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true, cancelable: true }));
         fixture.componentInstance.minuteRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true, cancelable: true }));
+        fixture.componentInstance.hourRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+        fixture.componentInstance.minuteRef().nativeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Keyboard focus state is untouched.
+        // Assert: Keyboard focus state is untouched and the value is not cleared.
         expect(fixture.componentInstance.focusedHour(), 'disabled component should not move focused hour').toBe(3);
         expect(fixture.componentInstance.focusedMinute(), 'disabled component should not move focused minute').toBe(7);
+        expect(fixture.componentInstance.value(), 'disabled component should not clear its value via Delete/Backspace').not.toBeNull();
       });
 
       it('should close open panel when disabled becomes true', async () => {
@@ -1716,6 +1723,62 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedHour(), 'focused hour should be set').not.toBeNull();
         expect(fixture.componentInstance.focusedMinute(), 'focused minute should be set').not.toBeNull();
       });
+
+      it('should clear value with Backspace and Delete when canNull, keeping focus and panel state', async () => {
+        // Arrange: Deselectable component with value, input focused and panel closed; touch must stay silent.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const input = focusInputWithoutOpening(fixture);
+
+        // Act: Press Backspace.
+        await user.keyboard('{Backspace}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Value cleared; focus and panel untouched (clearing is not a blur).
+        expect(fixture.componentInstance.value(), 'Backspace with canNull should clear the value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'clearing from the input should keep the panel closed').toBe(false);
+        expect(document.activeElement, 'focus should stay on the input').toBe(input);
+        expect(touchSpy, 'clearing without focus movement should not emit touch').not.toHaveBeenCalled();
+
+        // Act: Seed a value again and press Delete.
+        fixture.componentInstance.value.set(utcTime(20, 5));
+        fixture.detectChanges();
+        await user.keyboard('{Delete}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Delete clears exactly like Backspace.
+        expect(fixture.componentInstance.value(), 'Delete with canNull should clear the value').toBeNull();
+
+        // Act: Press Backspace once more on the already-null value.
+        await user.keyboard('{Backspace}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Repeat clear is a harmless no-op.
+        expect(fixture.componentInstance.value(), 'clearing an already-null value should stay null').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'no-op clear should keep the panel closed').toBe(false);
+        expect(touchSpy, 'repeated clearing should still not emit touch').not.toHaveBeenCalled();
+      });
+
+      it('should keep the value on Backspace when canNull is false and still prevent the default', async () => {
+        // Arrange: Component with value but canNull disabled.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: false });
+
+        // Act: Dispatch a cancelable Backspace keydown directly (userEvent does not expose the event object).
+        const event = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+        getInput(fixture).dispatchEvent(event);
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Value untouched, but the key is swallowed anyway - a readonly input must never
+        // hand Backspace to the browser's legacy history-back handling.
+        expect(fixture.componentInstance.value(), 'Backspace without canNull should keep the value').not.toBeNull();
+        expect(event.defaultPrevented, 'Backspace should be default-prevented even when canNull is false').toBe(true);
+      });
     });
 
     describe('keyboard: hour listbox', () => {
@@ -2081,6 +2144,49 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.hourRef().nativeElement.hasAttribute('aria-activedescendant'), 'inactive hour listbox must drop its activedescendant').toBe(false);
         expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-activedescendant'), 'active minute listbox should carry the activedescendant').toBe('test-time_opt_m30');
       });
+
+      it('should clear value with Delete from the hour listbox, close the panel and refocus input when canNull', async () => {
+        // Arrange: Deselectable component with value, panel open with focus in the hour listbox.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        await openPanel(fixture);
+        fixture.componentInstance.focusedHour.set(14);
+
+        // Act: Press Delete.
+        await user.keyboard('{Delete}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Value cleared, interaction completed (panel closed), keyboard focus state reset,
+        // focus moved back to the input INTERNALLY - so no touch is reported.
+        expect(fixture.componentInstance.value(), 'Delete with canNull should clear the value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'clearing should complete the interaction and close the panel').toBe(false);
+        expect(fixture.componentInstance.focusedHour(), 'closing should reset focused hour').toBeNull();
+        expect(fixture.componentInstance.focusedMinute(), 'closing should reset focused minute').toBeNull();
+        expect(document.activeElement, 'focus should return to the input').toBe(getInput(fixture));
+        expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
+      });
+
+      it('should keep value and panel on Delete when canNull is false', async () => {
+        // Arrange: Component with value, canNull disabled, panel open.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: false });
+        await openPanel(fixture);
+        fixture.componentInstance.focusedHour.set(14);
+        const before = fixture.componentInstance.value();
+
+        // Act: Press Delete.
+        await user.keyboard('{Delete}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Nothing was cleared, so the interaction is not complete - panel and focus stay.
+        expect(fixture.componentInstance.value(), 'Delete without canNull should keep the value').toBe(before);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open when nothing was cleared').toBe(true);
+        expect(document.activeElement, 'focus should stay in the hour listbox').toBe(fixture.componentInstance.hourRef().nativeElement);
+      });
     });
 
     describe('keyboard: minute listbox', () => {
@@ -2392,6 +2498,23 @@ describe('TimePicker', () => {
         } finally { // cleanup
           prevControl.remove();
         }
+      });
+
+      it('should clear value with Backspace from the minute listbox, close the panel and refocus input when canNull', async () => {
+        // Arrange: Deselectable component focused in the minute listbox.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute({ canNull: true });
+        fixture.componentInstance.focusedMinute.set(30);
+
+        // Act: Press Backspace.
+        await user.keyboard('{Backspace}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Value cleared, interaction completed, focus moved back internally.
+        expect(fixture.componentInstance.value(), 'Backspace with canNull should clear the value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'clearing should complete the interaction and close the panel').toBe(false);
+        expect(document.activeElement, 'focus should return to the input').toBe(getInput(fixture));
       });
     });
   });

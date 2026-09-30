@@ -6,9 +6,11 @@ import AxeBuilder from '@axe-core/playwright';
  * The page hosts two time-picker instances (datetime row and time row), so the ident prefix
  * `timeId_cc-timePicker` is what distinguishes this instance.
  * @param page Browser page.
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the time-picker input.
  */
-function getTimePicker(page: Page): Locator {
+function getTimePicker(page: Page, wantNullable: boolean = false): Locator {
+  if (wantNullable) return page.getByTestId('timeId_cc-timePickerNull_input');
   return page.getByTestId('timeId_cc-timePicker_input');
 }
 
@@ -43,9 +45,11 @@ function getMinuteColumn(page: Page): Locator {
  * Locate a specific hour option inside the time-picker.
  * @param page Browser page.
  * @param hour Hour value (0-23).
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the hour option.
  */
-function getHour(page: Page, hour: number): Locator {
+function getHour(page: Page, hour: number, wantNullable: boolean = false): Locator {
+  if (wantNullable) return page.getByTestId(`timeId_cc-timePickerNull_h${hour}`);
   return page.getByTestId(`timeId_cc-timePicker_h${hour}`);
 }
 
@@ -82,9 +86,11 @@ function getModeOption(page: Page, index: number): Locator {
 /**
  * Locate the value display div next to the time-picker using data-testid.
  * @param page Browser page.
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the value display div.
  */
-function getValueDisplay(page: Page): Locator {
+function getValueDisplay(page: Page, wantNullable: boolean = false): Locator {
+  if (wantNullable) return page.getByTestId('cc-timePickerNull-value');
   return page.getByTestId('cc-timePicker-value');
 }
 
@@ -550,7 +556,7 @@ test.describe('TimePicker', () => {
       await expect(timePicker).toBeFocused();
     });
 
-    test('should select time via keyboard and move focus to submit button', async ({ page }) => {
+    test('should select time via keyboard and move focus to next component', async ({ page }) => {
       // Arrange: Select a deterministic time with the mouse (minute selection closes the panel
       // and returns focus to the input, so no Escape is needed to get back to it).
       await goToComponentsPage(page);
@@ -584,15 +590,15 @@ test.describe('TimePicker', () => {
       // Act: Confirm minute 30 (closes panel and moves focus to next focusable element).
       await getMinuteColumn(page).press('Enter');
 
-      // Assert: Panel closed, focus on submit button, value propagated through the form.
+      // Assert: Panel closed, focus on next component, value propagated through the form.
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
-      await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
+      await expect(page.getByTestId('cc-checkBoxNull')).toBeFocused();
       await expect(timePicker).toHaveValue('15:30');
       await expect(getValueDisplay(page)).toContainText('T15:30:00');
     });
 
-    test('should navigate from previous picker to time-picker to submit on Tab presses', async ({ page }) => {
-      // Arrange: Start keyboard modality on the previous picker (datetime row's time input).
+    test('should navigate from previous component to time-picker to next component on Tab presses', async ({ page }) => {
+      // Arrange: Start keyboard modality on the previous component (datetime row's time input).
       await goToComponentsPage(page);
       await page.getByTestId('timeId_cc-dateTimePicker_input').focus();
 
@@ -618,15 +624,15 @@ test.describe('TimePicker', () => {
       // Act: Tab again — one press must close panel AND move focus out.
       await page.keyboard.press('Tab');
 
-      // Assert: Focus moved to submit button; panel closed.
-      await expect(page.getByRole('button', { name: 'Submit' })).toBeFocused();
+      // Assert: Focus moved to next component; panel closed.
+      await expect(page.getByTestId('cc-checkBoxNull')).toBeFocused();
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
     });
 
-    test('should navigate backwards from submit to time-picker to previous picker on Shift+Tab presses', async ({ page }) => {
-      // Arrange: Start keyboard modality on the submit button (the element after the time-picker).
+    test('should navigate backwards from next component to time-picker to previous component on Shift+Tab presses', async ({ page }) => {
+      // Arrange: Start keyboard modality on the next component (the element after the time-picker).
       await goToComponentsPage(page);
-      await page.getByRole('button', { name: 'Submit' }).focus();
+      await page.getByTestId('cc-checkBoxNull').focus();
 
       // Act: Shift+Tab into the time-picker.
       await page.keyboard.press('Shift+Tab');
@@ -640,12 +646,51 @@ test.describe('TimePicker', () => {
       // Act: Shift+Tab again — one press must close panel AND move focus out backwards.
       await page.keyboard.press('Shift+Tab');
 
-      // Assert: Focus moved to previous picker (datetime row's time input, which auto-opens on
+      // Assert: Focus moved to previous component (datetime row's time input, which auto-opens on
       // focus); our panel closed and our input no longer holds focus.
       const previousPicker = page.getByTestId('timeId_cc-dateTimePicker_input');
       await expect(previousPicker).toHaveAttribute('aria-expanded', 'true');
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
       await expect(timePicker).not.toBeFocused();
+    });
+
+    test('should clear the value with Delete and Backspace when canNull', async ({ page }) => {
+      // Arrange: Navigate to the custom components page and check the canNull variant starts empty.
+      await goToComponentsPage(page);
+      const timePicker = getTimePicker(page, true);
+      const valueDisplay = getValueDisplay(page, true);
+      await expect(valueDisplay, 'value should start empty').toContainText('❓');
+
+      // Act: Pick hour 14 (hour clicks keep the panel open for the minute).
+      await timePicker.click();
+      await getHour(page, 14, true).click();
+      await expect(valueDisplay, 'hour pick should set a partial time value').toContainText('T14:');
+      await expect(timePicker, 'panel should stay open after the hour pick').toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Delete while the hour listbox holds focus.
+      await page.keyboard.press('Delete');
+
+      // Assert: Value cleared, interaction completed - panel closed, focus back on the input.
+      await expect(valueDisplay, 'Delete should clear the value').toContainText('❓');
+      await expect(timePicker, 'panel should close after clearing from the listbox').toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker, 'focus should return to the input after clearing').toBeFocused();
+
+      // Act: Reopen, pick hour 14 again (from null this sets, never deselects), Escape to the input.
+      await page.keyboard.press('Enter');
+      await getHour(page, 14, true).click();
+      await expect(valueDisplay, 'hour pick should set the value again').toContainText('T14:');
+      await page.keyboard.press('Escape');
+      await expect(timePicker, 'Escape should close the panel and keep the value').toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker, 'Escape should park focus on the input').toBeFocused();
+
+      // Act: Backspace on the input.
+      await page.keyboard.press('Backspace');
+
+      // Assert: Value and input cleared; the key closes nothing (panel already closed) and focus stays.
+      await expect(valueDisplay, 'Backspace should clear the value').toContainText('❓');
+      await expect(timePicker, 'input should show no residual value').toHaveValue('');
+      await expect(timePicker, 'clearing from the input should keep the panel closed').toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker, 'focus should stay on the input').toBeFocused();
     });
   });
 

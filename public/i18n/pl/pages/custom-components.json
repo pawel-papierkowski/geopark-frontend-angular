@@ -18,7 +18,8 @@
         "placeholder": "Wpisz jakiś tekst"
       },
       "checkBox": {
-        "label":  "Wybór tak/nie"
+        "label":  "Wybór tak/nie",
+        "labelNull":  "Wybór tak/nie null"
       },
       "comboBox": {
         "label":  "Lista rozwijana",
@@ -34,13 +35,16 @@
         "b": "Druga opcja"
       },
       "dateTimePicker": {
-        "label": "Wybór daty/czasu (UTC)"
+        "label": "Wybór daty/czasu (UTC)",
+        "labelNull": "Wybór daty/czasu null (UTC)"
       },
       "datePicker": {
-        "label": "Wybór daty (UTC)"
+        "label": "Wybór daty (UTC)",
+        "labelNull": "Wybór daty null (UTC)"
       },
       "timePicker": {
-        "label": "Wybór czasu (UTC)"
+        "label": "Wybór czasu (UTC)",
+        "labelNull": "Wybór czasu null (UTC)"
       }
     }
   }

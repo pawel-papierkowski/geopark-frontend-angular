@@ -18,7 +18,8 @@
         "placeholder": "Enter some text"
       },
       "checkBox": {
-        "label":  "Checkbox"
+        "label":  "Checkbox",
+        "labelNull":  "Checkbox null"
       },
       "comboBox": {
         "label":  "Combobox",
@@ -34,13 +35,16 @@
         "b": "Second option"
       },
       "dateTimePicker": {
-        "label": "Date/time picker (UTC)"
+        "label": "Date/time picker (UTC)",
+        "labelNull": "Date/time picker null (UTC)"
       },
       "datePicker": {
-        "label": "Date picker (UTC)"
+        "label": "Date picker (UTC)",
+        "labelNull": "Date picker null (UTC)"
       },
       "timePicker": {
-        "label": "Time picker (UTC)"
+        "label": "Time picker (UTC)",
+        "labelNull": "Time picker null (UTC)"
       }
     }
   }
