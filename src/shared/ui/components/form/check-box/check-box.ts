@@ -45,7 +45,7 @@ export class CheckBox implements FormValueControl<boolean | null> {
   ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `check-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('check-box'));
+  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'check-box'));
   /** Label reference. */
   label = input<string>('');
   /** Can use null value? */

@@ -46,7 +46,7 @@ export class TextBox implements FormValueControl<string | null> {
   ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `text-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('text-box'));
+  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'text-box'));
   /** Label reference. */
   label = input<string>('');
   /** Type of input. */

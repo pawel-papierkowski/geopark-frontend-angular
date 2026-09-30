@@ -15,12 +15,26 @@ export class IdService {
 
   /**
    * Generate next unique identifier for given prefix.
+   * @param ident Ident. If invalid, generate custom identifier.
    * @param prefix Component-specific prefix, kebab-case component name (e.g. `text-box`).
-   * @returns Identifier in form `<prefix>-<number>`, e.g. `text-box-1`.
+   * @returns Original identifier if valid or generate identifier in form `<prefix>-<number>`, e.g. `text-box-1`.
    */
-  next(prefix: string): string {
+  public next(ident: unknown, prefix: string): string {
+    if (this.isValid(ident)) return ident as string;
+
     const value = (this.counters.get(prefix) ?? 0) + 1;
     this.counters.set(prefix, value);
     return `${prefix}-${value}`;
+  }
+
+  /**
+   * Check if given ident is valid value.
+   * @param ident Ident to verify.
+   * @returns True if ident is valid, otherwise false.
+   */
+  private isValid(ident: unknown): boolean {
+    if (typeof ident === 'string' && ident.trim() === '') return false;
+    if (ident) return true;
+    return false;
   }
 }

@@ -63,7 +63,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `date-time-picker-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('date-time-picker'));
+  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'date-time-picker'));
   /** Label reference. */
   label = input<string>('');
   /** Mode of operation (both date and time, only date, only time). */

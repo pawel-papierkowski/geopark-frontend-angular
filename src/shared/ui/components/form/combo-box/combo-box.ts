@@ -78,7 +78,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `combo-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.ident() || this.idService.next('combo-box'));
+  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'combo-box'));
   /** Label reference. */
   label = input<string>('');
   /** Array of options. String, number (so also enum) and null allowed. */
