@@ -1,4 +1,4 @@
-import { Component, model, input, output, computed, inject, linkedSignal, signal, viewChild, DestroyRef, DOCUMENT } from '@angular/core';
+import { Component, model, input, output, computed, inject, linkedSignal, signal, viewChild, DestroyRef, DOCUMENT, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
@@ -94,6 +94,9 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   datePicker = viewChild(DatePicker);
   /** Time sub-picker component. Absent when `mode` does not render it, hence not `required`. */
   timePicker = viewChild(TimePicker);
+  /** Root element of the wrapper - the containment boundary deciding whether a pointer press
+   * landed "outside" the component (see the outside-press close in the constructor). */
+  rootRef = viewChild.required<ElementRef<HTMLDivElement>>('rootRef');
 
   /** Identifiers of sub-pickers, derived from resolved ident so they follow it when it changes. */
   dateIdent = computed(() => `dateId_${this.resolvedIdent()}`);
@@ -108,19 +111,36 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     // because canceling pointerdown would also suppress the click and break label activation.
 
     /**
-     * Begin a fresh pointer interaction and cancel focus steal when pointer down lands on this
-     * component's associated label.
+     * Begin a fresh pointer interaction: cancel focus steal when the press lands on this
+     * component's associated label, and close the open time panel when the press lands
+     * outside the wrapper entirely.
      * Resetting `focusOpened` handles a focus-only activation that never received its click -
      * without it, that stale marker would swallow the next activation's toggle. Reset happens
      * before label activation's focus (and its marker) of the interaction that follows.
+     *
+     * The outside-press close exists because focusout alone does not cover pointer presses:
+     * WebKit does not reliably move focus on an outside press (buttons and other non-text
+     * controls are not click-focused on macOS, and pressing non-focusable content does not
+     * necessarily blur the focused element), so the focusout-only close leaves the panel open
+     * there. The press handler closes unconditionally of focus - the focusout path stays for
+     * Tab and other programmatic focus moves, and it (not this handler) reports `touch`.
      * @param e Mousedown event.
      */
     const handleDocumentMousedown = (e: Event) => {
       this.focusOpened.set(false);
       const target = e.target;
       const ident = this.resolvedIdent();
-      if (ident && target instanceof HTMLLabelElement && target.htmlFor === ident) {
+      const isOwnLabel = ident !== '' && target instanceof HTMLLabelElement && target.htmlFor === ident;
+
+      // Prevent reopening panel when you click outside panel, but on label.
+      if (isOwnLabel) {
         e.preventDefault();
+        return;
+      }
+
+      const timePicker = this.timePicker();
+      if (timePicker !== undefined && target instanceof Node && !this.rootRef().nativeElement.contains(target)) {
+        timePicker.hidePanel();
       }
     };
     this.document.addEventListener('mousedown', handleDocumentMousedown, true);

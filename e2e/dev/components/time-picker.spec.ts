@@ -334,6 +334,25 @@ test.describe('TimePicker', () => {
       await expect(getValueDisplay(page)).toContainText('T14:30:00');
     });
 
+    test('should close panel when clicking an outside button', async ({ page }) => {
+      // Arrange: Navigate, select a deterministic time, then reopen the panel.
+      await goToComponentsPage(page);
+      await selectTimeViaMouse(page);
+      await expect(getValueDisplay(page)).toContainText('T14:30:00');
+      await getTimePicker(page).click();
+      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Click the Submit button outside the picker. Buttons are not click-focused on
+      // macOS WebKit and pressing one does not reliably blur the focused listbox, so the
+      // focusout-only close never fired there - the document-level mousedown guard is what
+      // has to close the panel (regression guard for the outside-press fix).
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      // Assert: Panel closed by the press itself, selected value retained.
+      await expect(getTimePicker(page)).toHaveAttribute('aria-expanded', 'false');
+      await expect(getValueDisplay(page)).toContainText('T14:30:00');
+    });
+
     test('should keep panel open and focus inside when clicking its padding or border', async ({ page }) => {
       // Arrange: Navigate and open the panel (focus lands in the hour column after opening).
       await goToComponentsPage(page);
