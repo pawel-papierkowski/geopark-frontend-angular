@@ -190,11 +190,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     const target = e.target as HTMLElement;
 
     // If date input received focus, close time panel.
-    if (target.id === this.dateIdent()) {
+    if (target.id === `${this.dateIdent()}_input`) {
       //this.datePicker()?.hidePanel(); TODO
     }
     // If time input received focus, close date panel.
-    if (target.id === this.timeIdent()) {
+    if (target.id === `${this.timeIdent()}_input`) {
       //this.timePicker()?.hidePanel(); // TODO
     }
   }

@@ -1,4 +1,4 @@
-import { Component, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef } from '@angular/core';
+import { Component, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
@@ -79,6 +79,8 @@ const fallbackPageStep = 5;
 export class TimePicker implements FormValueControl<Date | null> {
   private injector = inject(Injector);
   private readonly translateService = inject(TranslateService);
+  /** Injectable document, used for the global focus check in `handleMousedown`. */
+  private readonly document = inject(DOCUMENT);
 
   /** Value held by component. */
   value = model<Date | null>(null);
@@ -107,6 +109,8 @@ export class TimePicker implements FormValueControl<Date | null> {
   hourRef = viewChild.required<ElementRef<HTMLDivElement>>('hourRef');
   /** Reference to minute listbox. */
   minuteRef = viewChild.required<ElementRef<HTMLDivElement>>('minuteRef');
+  /** Reference to the text input. */
+  inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
 
   /** Keyboard-focus hour index. Set when panel opens, updated via arrow navigation. */
   focusedHour = signal<number | null>(null);
@@ -376,7 +380,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     await forRender(this.injector);
 
     const column = this.hourRef().nativeElement;
-    const el = document.getElementById(`${this.ident()}_opt_h${h}`);
+    const el = column.querySelector<HTMLElement>(`[id="${this.ident()}_opt_h${h}"]`);
     if (el) this.centerOptionInColumn(column, el);
   }
 
@@ -389,7 +393,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     await forRender(this.injector);
 
     const column = this.minuteRef().nativeElement;
-    const el = document.getElementById(`${this.ident()}_opt_m${m}`);
+    const el = column.querySelector<HTMLElement>(`[id="${this.ident()}_opt_m${m}"]`);
     if (el) this.centerOptionInColumn(column, el);
   }
 
@@ -471,7 +475,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * @param e Mouse event.
    */
   public handleMousedown(e: MouseEvent) {
-    this.focusFromClick = document.activeElement !== e.currentTarget;
+    this.focusFromClick = this.document.activeElement !== e.currentTarget;
   }
 
   /**
@@ -789,11 +793,11 @@ export class TimePicker implements FormValueControl<Date | null> {
    * has to redirect `<label for>` clicks into the sub-picker that actually owns the combobox.
    * Focusing the input auto-opens the panel (see `handleInputFocus`), so focus then continues
    * into the hour listbox like it does on Tab.
-   * @returns The input that took focus, or null when there is none (e.g. disabled input).
+   * @returns The input that took focus, or null when the input is disabled.
    */
   public focusInput(): HTMLElement | null {
-    const inputEl = document.getElementById(`${this.ident()}_input`);
-    if (inputEl === null || (inputEl instanceof HTMLInputElement && inputEl.disabled)) return null;
+    const inputEl = this.inputRef().nativeElement;
+    if (inputEl.disabled) return null;
     inputEl.focus();
     return inputEl;
   }
@@ -805,9 +809,8 @@ export class TimePicker implements FormValueControl<Date | null> {
    * so no touch is reported. The refocus is programmatic, so auto-open on focus is suppressed too.
    */
   public hidePanelAndRefocus() {
-    const inputEl = document.getElementById(`${this.ident()}_input`);
     this.suppressFocusOpen = true;
-    inputEl?.focus(); // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
+    this.inputRef().nativeElement.focus(); // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
     this.suppressFocusOpen = false;
     this.hidePanel();
   }
@@ -818,8 +821,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * focus leaving the component, closes the panel and reports touch.
    */
   private hidePanelAndFocusNext() {
-    const inputEl = document.getElementById(`${this.ident()}_input`);
-    NavUtils.FocusNext(inputEl);
+    NavUtils.FocusNext(this.inputRef().nativeElement);
     this.hidePanel();
   }
 
@@ -829,8 +831,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * focus leaving the component, closes the panel and reports touch.
    */
   private hidePanelAndFocusPrev() {
-    const inputEl = document.getElementById(`${this.ident()}_input`);
-    NavUtils.FocusPrev(inputEl);
+    NavUtils.FocusPrev(this.inputRef().nativeElement);
     this.hidePanel();
   }
 

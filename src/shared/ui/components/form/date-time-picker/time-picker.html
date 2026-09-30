@@ -7,6 +7,7 @@
   <!-- Input: aria-label is a FALLBACK name applied only when no label is given - aria-labelledby
        (label input) and a native <label> must take precedence over it (accname order). -->
   <input
+    #inputRef
     [id]="`${ident()}_input`"
     [attr.data-testid]="`${ident()}_input`"
     type="text"
