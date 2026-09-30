@@ -103,6 +103,27 @@ test.describe('ComboBox', () => {
       await expect(comboBox).toHaveAttribute('aria-expanded', 'false');
       await expect(getValueDisplay(page)).toContainText('❓');
     });
+
+    test('should close list when clicking an outside button', async ({ page }) => {
+      // Arrange: Navigate, select an option, then reopen the list.
+      await goToComponentsPage(page);
+      const comboBox = getComboBox(page);
+      await comboBox.click();
+      await getOption(page, 1).click();
+      await expect(getValueDisplay(page)).toContainText('OPT1');
+      await comboBox.click();
+      await expect(comboBox).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Click the Submit button outside the combobox. Buttons are not click-focused on
+      // macOS WebKit and pressing one does not reliably blur the focused root, so the
+      // blur-only close never fired there - the document-level mousedown guard is what has
+      // to close the list (regression guard for the outside-press fix).
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      // Assert: List closed by the press itself, selected value retained.
+      await expect(comboBox).toHaveAttribute('aria-expanded', 'false');
+      await expect(getValueDisplay(page)).toContainText('OPT1');
+    });
   });
 
   test.describe('label', () => {

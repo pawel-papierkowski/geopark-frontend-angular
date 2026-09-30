@@ -132,18 +132,35 @@ export class ComboBox implements FormValueControl<number | string | null> {
     // canceling pointerdown would also suppress the click and break label activation entirely.
 
     /**
-     * Cancel focus steal when pointer down lands on this component's associated label.
+     * Handle document-level mousedown: cancel focus steal when the press lands on this
+     * component's associated label, and close the open options list when the press lands
+     * outside the component entirely.
+     *
+     * The outside-press close exists because blur alone does not cover pointer presses:
+     * WebKit does not reliably move focus on an outside press (buttons and other non-text
+     * controls are not click-focused on macOS, and pressing non-focusable content does not
+     * necessarily blur the focused element), so the blur-only close leaves the list open
+     * there. The press handler closes independently of focus - the blur path stays for Tab
+     * and other programmatic focus moves, and it (not this handler) reports `touch`.
      * @param e Mousedown event.
      */
-    const preventLabelMousedown = (e: Event) => {
+    const handleDocumentMousedown = (e: Event) => {
       const target = e.target;
       const ident = this.resolvedIdent();
-      if (ident && target instanceof HTMLLabelElement && target.htmlFor === ident) {
+      const isOwnLabel = ident !== '' && target instanceof HTMLLabelElement && target.htmlFor === ident;
+
+      // Prevent reopening panel when you click outside panel, but on label.
+      if (isOwnLabel) {
         e.preventDefault();
+        return;
+      }
+
+      if (this.isOpen() && target instanceof Node && !this.comboRef().nativeElement.contains(target)) {
+        this.hidePanel();
       }
     };
-    this.document.addEventListener('mousedown', preventLabelMousedown, true);
-    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', preventLabelMousedown, true));
+    this.document.addEventListener('mousedown', handleDocumentMousedown, true);
+    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', handleDocumentMousedown, true));
   }
 
   // COMPUTED
