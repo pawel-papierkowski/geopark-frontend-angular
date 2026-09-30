@@ -64,6 +64,13 @@ GeoPark handles all things related to city parking system: parking meters, zonin
   - Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services (Angular v22+).
   - Use the `inject()` function instead of constructor injection.
 
+### Design
+- **Custom components:**
+  - Should implement `FormValueControl` with appropriate type and `null`.
+  - Should have basic inputs: `ident`, `label`, `required`, `disabled`, `invalid` plus any specific to given component.
+- **Forms:**
+  - For components, identifiers (`ident` for custom components) must be present and must be unique, like `formName_fieldName`.
+
 ### Testing
 
 We use **Vitest** for unit tests and **Playwright** for e2e tests.
@@ -80,9 +87,8 @@ We use **Vitest** for unit tests and **Playwright** for e2e tests.
 - Playwright:
   - Minimize overlap between unit tests and e2e tests. E2e should be for things that are hard or impossible to test in unit test. Also for interactions between components etc.
 
-
 ### Other
-- Do NOT ever commit or push unless explicitly instructed to do so.
+- Do not ever commit or push unless explicitly instructed to do so.
 - Do not install new packages unless explicitly permitted or requested.
 - Avoid deep dives into framework code unless absolutely neccessary and all else fails.
 - Ignore `TODO.md`, unless explicitly referred.

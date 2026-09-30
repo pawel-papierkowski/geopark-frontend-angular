@@ -145,12 +145,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** Currently selected minute. */
   selectedMinute = computed(() => this.normalizedValue()?.getUTCMinutes() ?? null);
 
-  /**
-   * `value` when it carries a real time. An `Invalid Date` fed by the parent (e.g. failed
-   * parsing of backend data) counts as "no time set": every UTC accessor on it returns `NaN`,
-   * which would print `NaN:NaN`, seed a `NaN` keyboard cursor and propagate through selections.
-   * Never mutates the model - the parent owns that value; interacting with the picker heals it.
-   */
+  /** `value` when it carries a real time, otherwise null. Prevents showing NaN on invalid Date and similar bugs. */
   normalizedValue = computed<Date | null>(() => {
     const value = this.value();
     return value !== null && !Number.isNaN(value.getTime()) ? value : null;

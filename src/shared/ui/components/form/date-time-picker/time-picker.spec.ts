@@ -1,23 +1,9 @@
-import { Component, DebugElement } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
 import userEvent from '@testing-library/user-event';
 import { TranslateService, type TranslationObject } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { TimePicker } from './time-picker';
-
-/**
- * Host rendering TWO TimePickers that share one ident - the collision a consumer creates by
- * passing the same explicit `ident` to two pickers (IdService-generated idents cannot collide).
- * Both inputs reach the document with the SAME id, so any lookup searching the whole document
- * instead of the component's own template resolves to whichever input comes first in it.
- */
-@Component({
-  template: '<time-picker ident="dup-time" /><time-picker ident="dup-time" />',
-  imports: [TimePicker],
-})
-class DuplicateIdentHostComponent { }
 
 /**
  * Unit tests of time-picker component.
@@ -2400,90 +2386,6 @@ describe('TimePicker', () => {
       // Assert: scrollTop centers the option: current scroll 0 + option offset (250-100)
       // + half option height (10) - half column height (100) = 60.
       expect(hourColumn.scrollTop, 'selected hour should be vertically centered in its clock column').toBe(60);
-    });
-  });
-
-  describe('duplicate ident safety', () => {
-    /** Ident shared by both pickers of `DuplicateIdentHostComponent`. */
-    const sharedIdent = 'dup-time';
-
-    /**
-     * Get the input of the given picker element (both pickers of the host render the same
-     * testid, so the lookup has to stay scoped to the picker element).
-     * @param picker Debug element of a `time-picker` host child.
-     * @returns Input element of that picker.
-     */
-    function getPickerInput(picker: DebugElement): HTMLInputElement {
-      return picker.query(By.css(`[data-testid="${sharedIdent}_input"]`)).nativeElement;
-    }
-
-    /**
-     * Arrange the host with two pickers colliding on one ident, asserting the collision really
-     * reaches the document (that is the precondition of every test in this suite).
-     * @returns Host fixture, the SECOND picker and both colliding inputs.
-     */
-    async function arrangeDuplicateIdents(): Promise<{
-      fixture: ComponentFixture<DuplicateIdentHostComponent>;
-      secondPicker: TimePicker;
-      secondInput: HTMLInputElement;
-      firstInput: HTMLInputElement;
-    }> {
-      await TestBed.configureTestingModule({
-        imports: [DuplicateIdentHostComponent],
-      }).compileComponents();
-
-      const fixture = TestBed.createComponent(DuplicateIdentHostComponent);
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      const pickers = fixture.debugElement.queryAll(By.directive(TimePicker));
-      expect(pickers, 'host should render both pickers').toHaveLength(2);
-
-      const firstInput = getPickerInput(pickers[0]);
-      const secondInput = getPickerInput(pickers[1]);
-      const secondPicker = pickers[1].componentInstance as TimePicker;
-
-      expect(secondInput, 'inputs of both pickers should be distinct elements').not.toBe(firstInput);
-      expect(secondInput.id, 'precondition: both inputs collide on the same DOM id').toBe(firstInput.id);
-      expect(document.body.contains(firstInput), 'precondition: first input is part of the document').toBe(true);
-      expect(document.body.contains(secondInput), 'precondition: second input is part of the document').toBe(true);
-
-      return { fixture, secondPicker, secondInput, firstInput };
-    }
-
-    it('should focus its OWN input via focusInput despite a colliding ident', async () => {
-      // Arrange: Host with two pickers sharing one ident. `firstInput` is the element a
-      // document-wide lookup wrongly resolves to (it comes first in the document).
-      const { fixture, secondPicker, secondInput, firstInput } = await arrangeDuplicateIdents();
-
-      // Act: Ask the SECOND picker to focus its input.
-      const returned = secondPicker.focusInput();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: The lookup must stay inside the component instead of resolving to the first
-      // picker's ident-matching input, and focus must end inside the second picker.
-      expect(returned, 'focusInput should resolve the component own input').toBe(secondInput);
-      expect(document.activeElement, 'focusInput must not steal focus to the other picker').not.toBe(firstInput);
-      expect(secondPicker.pickerRef().nativeElement.contains(document.activeElement), 'focusInput should move focus into the component own picker').toBe(true);
-    });
-
-    it('should refocus its OWN input via hidePanelAndRefocus despite a colliding ident', async () => {
-      // Arrange: Host with two pickers sharing one ident, focus sitting on the SECOND picker's
-      // input (focusFromClick set so the focus does not auto-open the panel).
-      const { fixture, secondPicker, secondInput } = await arrangeDuplicateIdents();
-      secondPicker.focusFromClick = true;
-      secondInput.focus();
-      fixture.detectChanges();
-
-      // Act: Close the second picker the way Escape and minute-click do.
-      secondPicker.hidePanelAndRefocus();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: Focus stays on the second picker's own input instead of jumping to the
-      // ident-matching input of the first picker.
-      expect(document.activeElement, 'hidePanelAndRefocus should refocus the component own input').toBe(secondInput);
     });
   });
 });
