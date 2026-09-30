@@ -12,6 +12,9 @@ import { IdService } from '@/shared/utils/id/id-service';
  * Baseline stretches the list to the anchor width (`left: 0; right: 0`), matching the CSS.
  * `flipY` anchors the list's BOTTOM to the anchor's TOP (`bottom: 100%`), NOT `bottom: 0`:
  * `bottom: 0` would pin it to the anchor's bottom, so the list would cover the combobox.
+ * The anchor is the combobox root - it is the positioned ancestor the list's `top/bottom`
+ * percentages resolve against. When the list fits on neither side of the root, it stays
+ * below (baseline) so the user can scroll down to it.
  * Note: both flips rely on `.combobox-options` having zero right/bottom margins.
  */
 const panelPlacement: PanelPlacement = {
@@ -199,7 +202,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     await forRender(this.injector);
 
     if (session !== this.positionSession || !this.isOpen()) return;
-    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.optionsRef().nativeElement, panelPlacement));
+    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.comboRef().nativeElement, this.optionsRef().nativeElement, panelPlacement));
   }
 
   /**

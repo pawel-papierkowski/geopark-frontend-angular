@@ -1101,18 +1101,37 @@ describe('TimePicker', () => {
     });
 
     describe('positioning', () => {
+      /** Height assumed for the panel, so the "fits above the anchor" comparisons have a value. */
+      const PANEL_HEIGHT = 200;
+      /** Anchor top with room for a `PANEL_HEIGHT`-tall panel above it. */
+      const ANCHOR_TOP_WITH_ROOM = 400;
+      /** Anchor top without room for a `PANEL_HEIGHT`-tall panel above it. */
+      const ANCHOR_TOP_NO_ROOM = 100;
+
       /**
        * Build the panel rect parts read by the positioning logic.
        * Defaults model a panel that fits into the viewport on both axes.
        * @param overrides Rect parts to override the fitting defaults.
-       * @returns DOMRect containing (at least) `right` and `bottom`.
+       * @returns DOMRect containing (at least) `right`, `bottom` and `height`.
        */
       function panelRect(overrides: Partial<DOMRect> = {}): DOMRect {
         return {
           right: VIEWPORT_WIDTH - 100,
           bottom: VIEWPORT_HEIGHT - 100,
+          height: PANEL_HEIGHT,
           ...overrides,
         } as DOMRect;
+      }
+
+      /**
+       * Stub the picker root geometry - it is the panel's containing block, so its top edge
+       * is the space available above the anchor for an upward flip.
+       * @param fixture Fixture of the component.
+       * @param top Distance of the anchor's top edge from the viewport top.
+       */
+      function stubAnchorGeometry(fixture: ComponentFixture<TimePicker>, top: number): void {
+        const anchor = fixture.nativeElement.querySelector('.picker-time');
+        vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({ top } as DOMRect);
       }
 
       /**
@@ -1186,10 +1205,12 @@ describe('TimePicker', () => {
       });
 
       it('should flip panel above the input when it would overflow the viewport bottom', async () => {
-        // Arrange: Geometry fits horizontally but pokes out below the viewport.
+        // Arrange: Geometry fits horizontally but pokes out below the viewport, with room
+        // above the input for the flipped panel.
         const fixture = await arrangeTimePicker();
         const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
         vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+        stubAnchorGeometry(fixture, ANCHOR_TOP_WITH_ROOM);
 
         // Act: Open the panel.
         await openPanel(fixture);
@@ -1201,11 +1222,28 @@ describe('TimePicker', () => {
         expect(panel.style.right, 'panel should stay left-aligned when it fits horizontally').toBe('auto');
       });
 
+      it('should keep panel below the input when it fits on neither side', async () => {
+        // Arrange: Panel overflows the viewport bottom and is taller than the space above the input.
+        const fixture = await arrangeTimePicker();
+        const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
+        vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+        stubAnchorGeometry(fixture, ANCHOR_TOP_NO_ROOM);
+
+        // Act: Open the panel.
+        await openPanel(fixture);
+
+        // Assert: Panel stays below the input so the user can scroll down, instead of being
+        // pushed off the top of the viewport.
+        expect(panel.style.top, 'panel should stay below the input when there is no room above').toBe('100%');
+        expect(panel.style.bottom, 'panel should not flip above the input without room above').toBe('auto');
+      });
+
       it('should restore placement below the input when it fits again', async () => {
         // Arrange: Open with vertical overflow first to get into flipped-above state.
         const fixture = await arrangeTimePicker();
         const panel = fixture.nativeElement.querySelector('[data-testid="test-time_panel"]');
         const geometrySpy = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+        stubAnchorGeometry(fixture, ANCHOR_TOP_WITH_ROOM);
         await openPanel(fixture);
         expect(panel.style.bottom, 'panel should start flipped above on vertical overflow').toBe('100%');
 

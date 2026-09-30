@@ -14,6 +14,9 @@ import { forRender } from '@/shared/utils/render/after-render';
  * `flipY` anchors the panel's BOTTOM to the input's TOP (`bottom: 100%`), NOT `bottom: 0`:
  * `bottom: 0` would pin the panel's bottom to the input's bottom, so the panel would sit
  * ON TOP of the input and intercept its clicks.
+ * The anchor is the picker root - it is the positioned ancestor the panel's `top/bottom`
+ * percentages resolve against. When the panel fits on neither side of the root, it stays
+ * below (baseline) so the user can scroll down to it.
  * Note: both flips rely on `.clock-container` having zero right/bottom margins
  * (`--datetimepicker-clock-offset` in styles/var/components-custom.css).
  */
@@ -217,9 +220,10 @@ export class TimePicker implements FormValueControl<Date | null> {
       await forRender(this.injector);
 
       // Move keyboard focus into the panel (hour column) so user can navigate immediately.
-      // preventScroll: placement guarantees the panel fits the viewport when either side
-      // does, so there is nothing to reveal - and any focus-triggered page scroll would
-      // race with the user's mouse.
+      // preventScroll: whenever the panel fits on either side, placement puts it inside the
+      // viewport, so there is nothing to reveal - and a focus-triggered page scroll would race
+      // with the user's mouse. When it fits on neither side, the panel deliberately stays below
+      // the fold (the user scrolls down to it), so we still must not yank the page around.
       this.hourRef().nativeElement.focus({ preventScroll: true });
     }
   }
@@ -230,7 +234,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
    */
   private positionPanel(): void {
-    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.clockPanelRef().nativeElement, panelPlacement));
+    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.pickerRef().nativeElement, this.clockPanelRef().nativeElement, panelPlacement));
   }
 
   /**

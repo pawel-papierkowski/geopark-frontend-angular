@@ -624,16 +624,24 @@ describe('ComboBox', () => {
     });
 
     describe('positioning', () => {
+      /** Height assumed for the list, so the "fits above the anchor" comparisons have a value. */
+      const LIST_HEIGHT = 200;
+      /** Anchor top with room for a `LIST_HEIGHT`-tall list above it. */
+      const ANCHOR_TOP_WITH_ROOM = 400;
+      /** Anchor top without room for a `LIST_HEIGHT`-tall list above it. */
+      const ANCHOR_TOP_NO_ROOM = 100;
+
       /**
        * Build the list rect parts read by the positioning logic.
        * Defaults model a list that fits into the viewport on both axes.
        * @param overrides Rect parts to override the fitting defaults.
-       * @returns DOMRect containing (at least) `right` and `bottom`.
+       * @returns DOMRect containing (at least) `right`, `bottom` and `height`.
        */
       function panelRect(overrides: Partial<DOMRect> = {}): DOMRect {
         return {
           right: VIEWPORT_WIDTH - 100,
           bottom: VIEWPORT_HEIGHT - 100,
+          height: LIST_HEIGHT,
           ...overrides,
         } as DOMRect;
       }
@@ -645,6 +653,17 @@ describe('ComboBox', () => {
        */
       function getList(fixture: ComponentFixture<ComboBox>): HTMLElement {
         return fixture.nativeElement.querySelector('.combobox-options');
+      }
+
+      /**
+       * Stub the combobox root geometry - it is the list's containing block, so its top edge
+       * is the space available above the anchor for an upward flip.
+       * @param fixture Fixture of the component.
+       * @param top Distance of the anchor's top edge from the viewport top.
+       */
+      function stubAnchorGeometry(fixture: ComponentFixture<ComboBox>, top: number): void {
+        const anchor = fixture.nativeElement.querySelector('.combobox');
+        vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({ top } as DOMRect);
       }
 
       /**
@@ -692,10 +711,12 @@ describe('ComboBox', () => {
       });
 
       it('should flip list above the anchor when it would overflow the viewport bottom', async () => {
-        // Arrange: Create component and stub list geometry to report vertical overflow only.
+        // Arrange: Create component, stub list geometry to report vertical overflow only and
+        // leave room above the anchor for the flipped list.
         const fixture = await arrangeComboBox();
         const list = getList(fixture);
         vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+        stubAnchorGeometry(fixture, ANCHOR_TOP_WITH_ROOM);
 
         // Act: Open the list.
         await toggleList(fixture);
@@ -706,6 +727,22 @@ describe('ComboBox', () => {
         expect(list.style.bottom, 'list should sit above the anchor on vertical overflow').toBe('100%');
         expect(list.style.left, 'list should stay stretched to the anchor when it fits horizontally').toBe('0px');
         expect(list.style.right, 'list should stay stretched to the anchor when it fits horizontally').toBe('0px');
+      });
+
+      it('should keep list below the anchor when it fits on neither side', async () => {
+        // Arrange: List overflows the viewport bottom and is taller than the space above the anchor.
+        const fixture = await arrangeComboBox();
+        const list = getList(fixture);
+        vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(panelRect({ bottom: VIEWPORT_HEIGHT + 50 }));
+        stubAnchorGeometry(fixture, ANCHOR_TOP_NO_ROOM);
+
+        // Act: Open the list.
+        await toggleList(fixture);
+
+        // Assert: List stays below the anchor so the user can scroll down, instead of being
+        // pushed off the top of the viewport.
+        expect(list.style.top, 'list should stay below the anchor when there is no room above').toBe('100%');
+        expect(list.style.bottom, 'list should not flip above the anchor without room above').toBe('auto');
       });
 
       it('should keep right alignment on reopen while the list still overflows', async () => {
