@@ -532,11 +532,14 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedHour(), 'ArrowDown should advance from clicked hour 5 to 6').toBe(6);
       });
 
-      it('should keep keyboard cursor on clicked hour when the click deselects the value', async () => {
-        // Arrange: Create deselectable component with value 14:30, open panel and move the
-        // cursor away from the selected hour, so a stale cursor is observable after the click.
+      it('should deselect, close panel and refocus input when the click deselects the value', async () => {
+        // Arrange: Create deselectable component with value 14:30, open panel, move the cursor
+        // away from the selected hour (so only a click on hour 14 itself can deselect) and spy
+        // on touch output.
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
         await openPanel(fixture);
         await user.keyboard('{ArrowDown}');
         await fixture.whenStable();
@@ -547,9 +550,14 @@ describe('TimePicker', () => {
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is deselected while the cursor lands on the option the user clicked.
+        // Assert: Deselect completes the interaction - the mouse path must close the panel just
+        // like the keyboard path and every minute click, and focus returns to the input without
+        // reporting a touch (internal move).
         expect(fixture.componentInstance.value(), 're-clicking selected hour with canNull should clear value').toBeNull();
-        expect(fixture.componentInstance.focusedHour(), 'cursor should follow the clicked hour 14').toBe(14);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should close after deselecting with the mouse').toBe(false);
+        expect(document.activeElement, 'focus should return to input after deselect').toBe(getInput(fixture));
+        expect(fixture.componentInstance.focusedHour(), 'closing the panel should clear the keyboard cursor').toBeNull();
+        expect(touchSpy, 'refocusing the input should not emit touch').not.toHaveBeenCalled();
       });
 
       it('should move keyboard cursor to the minute pressed with mouse before the click lands', async () => {
@@ -740,8 +748,10 @@ describe('TimePicker', () => {
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is untouched (same instance proves early return).
+        // Assert: Value is untouched (same instance proves early return) and the panel stays
+        // open so the minute can still be picked.
         expect(fixture.componentInstance.value(), 're-clicking selected hour should keep value').toBe(before);
+        expect(fixture.componentInstance.isClockVisible(), 'non-deselect hour click should keep panel open').toBe(true);
       });
 
       it('should deselect value when same hour is clicked again and canNull is true', async () => {
@@ -753,8 +763,9 @@ describe('TimePicker', () => {
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is deselected.
+        // Assert: Value is deselected and the interaction is complete.
         expect(fixture.componentInstance.value(), 're-clicking selected hour with canNull should clear value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'panel should close after deselecting').toBe(false);
       });
 
       it('should keep value when same minute is clicked again and canNull is false', async () => {

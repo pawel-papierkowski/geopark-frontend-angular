@@ -93,7 +93,7 @@
               [attr.aria-current]="viewHour() === h ? 'time' : null"
               [attr.aria-label]="`${h} ${'dateTimePicker.hour' | translate}`"
               (mousedown)="handleMousedownOption('hour', h)"
-              (click)="selectHour(h)">
+              (click)="handleHourClick(h)">
               {{ h.toString().padStart(2, '0') }}
             </div>
           }

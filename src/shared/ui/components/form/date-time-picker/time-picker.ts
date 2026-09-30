@@ -215,6 +215,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
       // Adjust picker position if needed to prevent window overflow (measured under baseline).
       this.positionPanel();
+
       // Let the placement reach the DOM before focusing: focus() scrolls the focused
       // element into view, so focusing while the panel still renders at its baseline
       // (possibly below-the-fold) position makes the browser scroll the page to a spot
@@ -511,9 +512,29 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
+   * Handle click on an hour option: apply the selection and close the clock panel ONLY when
+   * the click deselected the time (canNull same-hour toggle). A normal hour click keeps the
+   * panel open because the minute still has to be picked - but a deselect clears the whole
+   * time, so the interaction is complete, exactly like the keyboard path in
+   * `keyPressSelectHour` and every minute click in `handleMinuteClick`. Focus returns to the
+   * input (the panel's focus owner) before the panel is hidden, so the resulting focusout
+   * stays internal and no touch is reported - touch fires only when focus really leaves the
+   * component, same as on Escape.
+   * @param h Clicked hour.
+   */
+  public handleHourClick(h: number) {
+    if (this.disabled()) return;
+    this.selectHour(h);
+    // Null after the click <=> the click deselected: a non-deselect click always leaves a Date
+    // (guard above also keeps a disabled component from closing on a null value).
+    if (this.normalizedValue() === null) this.hidePanelAndRefocus();
+  }
+
+  /**
    * Handle click on a minute option: apply the selection and close the clock panel - picking a
    * minute completes the time, so the interaction ends here (hour clicks keep the panel open
-   * because the minute still has to be picked). Focus returns to the input (the panel's focus
+   * because the minute still has to be picked, unless the hour click deselected the time - see
+   * `handleHourClick`). Focus returns to the input (the panel's focus
    * owner), so the resulting focusout stays internal and no touch is reported - touch fires only
    * when focus really leaves the component, same as on Escape. The panel also closes when the
    * click deselected the time (canNull toggle): either way the interaction is complete.
