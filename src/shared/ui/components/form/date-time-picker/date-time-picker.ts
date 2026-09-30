@@ -137,7 +137,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * so the click label activation forwards right afterwards is swallowed instead of toggling
    * the panel back closed within the same activation.
    */
-  handleLabelFocus() {
+  public handleLabelFocus() {
     if (this.disabled()) return;
     const timePicker = this.timePicker();
     // TODO: once DatePicker is a real picker, account for its panel state here as well.
@@ -153,7 +153,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * Every later activation toggles: when open, close via `hidePanelAndRefocus()` so focus parks
    * on the input without re-triggering auto-open; when closed, redirect focus to reopen.
    */
-  handleLabelClick() {
+  public handleLabelClick() {
     if (this.disabled()) return;
     if (this.focusOpened()) {
       this.focusOpened.set(false);
@@ -186,7 +186,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * When one input receives focus, the other picker's panel is closed.
    * TODO: placeholder, will be finished when both date and time pickers exist
    */
-  handleFocusIn(e: FocusEvent) {
+  public handleFocusIn(e: FocusEvent) {
     const target = e.target as HTMLElement;
 
     // If date input received focus, close time panel.

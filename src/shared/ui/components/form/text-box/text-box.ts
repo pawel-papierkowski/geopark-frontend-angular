@@ -72,7 +72,7 @@ export class TextBox implements FormValueControl<string | null> {
    * Handle paste event.
    * @param event Event data.
    */
-  onPaste(event: ClipboardEvent) {
+  public onPaste(event: ClipboardEvent) {
     if (!this.allowPaste()) event.preventDefault();
   }
 }

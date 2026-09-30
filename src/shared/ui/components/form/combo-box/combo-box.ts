@@ -3,7 +3,7 @@ import { FormValueControl } from '@angular/forms/signals';
 import {TranslateService } from '@ngx-translate/core';
 
 import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
-import { afterRender } from '@/shared/utils/render/after-render';
+import { forRender } from '@/shared/utils/render/after-render';
 import { IdService } from '@/shared/utils/id/id-service';
 
 /**
@@ -158,7 +158,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * Get option element ID for aria-activedescendant.
    * @param index Index of option element.
    */
-  optionId(index: number): string {
+  public optionId(index: number): string {
     return `${this.resolvedIdent()}_option_${index}`;
   }
 
@@ -166,7 +166,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * Open list.
    * @param top If true, set highlight on top, false on bottom, null do not change highlight. Ignored if highlight already set.
    */
-  openList(top: boolean | null = null) {
+  private openList(top: boolean | null = null) {
     // Reset placement to the baseline (below the anchor, stretched) BEFORE the list renders,
     // so the measurement below always runs under this known alignment - measuring the list
     // as left over from the previous open would judge alignment by the OLD placement.
@@ -196,7 +196,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * @param session Placement session captured when the list was opened.
    */
   private async positionOptionsPanel(session: number): Promise<void> {
-    await afterRender(this.injector);
+    await forRender(this.injector);
 
     if (session !== this.positionSession || !this.isOpen()) return;
     this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.optionsRef().nativeElement, panelPlacement));
@@ -206,7 +206,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * User clicked on combobox option.
    * @param option Clicked option.
    */
-  selectOption(option: number | string | null) {
+  public selectOption(option: number | string | null) {
     if (this.disabled()) return;
 
     this.value.set(option);
@@ -221,7 +221,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * @param option Option to show.
    * @returns Value of option.
    */
-  showOption(option: number | string | null): number | string | null {
+  public showOption(option: number | string | null): number | string | null {
     // When to show placeholder text? Note that if null IS in list of options, placeholder text is never used.
     if (option === null && !this.options().includes(option)) {
       if (this.langPrefix()) return this.translateService.instant(this.placeholder());
@@ -235,12 +235,12 @@ export class ComboBox implements FormValueControl<number | string | null> {
   // EVENTS
 
   /** Track new pointer interaction: cancel any pending focus-open so click can toggle. */
-  handleMousedown() {
+  public handleMousedown() {
     this.resetInteractionState();
   }
 
   /** Handle focus: handles direct clicks, label clicks, and Tab. */
-  handleFocus() {
+  public handleFocus() {
     if (this.disabled()) return;
     if (!this.isOpen()) {
       this.openList();
@@ -253,7 +253,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * button; redirecting keeps DOM focus on the element that owns aria-activedescendant and makes
    * the root's (blur) fire when the user later leaves the component.
    */
-  focusRoot() {
+  public focusRoot() {
     if (this.disabled()) return;
     this.comboRef().nativeElement.focus();
   }
@@ -263,7 +263,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * a real blur, so they must neither close the list nor emit touch.
    * @param e Focus event carrying the element focus moved to.
    */
-  handleBlur(e: FocusEvent) {
+  public handleBlur(e: FocusEvent) {
     const next = e.relatedTarget;
     if (next instanceof Node && this.comboRef().nativeElement.contains(next)) return;
     this.hidePanel();
@@ -271,7 +271,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   }
 
   /** Handle click: both from normal mouse click and label click. */
-  handleClick() {
+  public handleClick() {
     if (this.disabled()) return;
 
     if (this.focusOpened()) {
@@ -292,7 +292,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * Arrow keys navigate options, Enter/Space select, Escape closes.
    * @param e Keyboard event.
    */
-  handleKeydown(e: KeyboardEvent) {
+  public handleKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
 
     switch (e.key) {
@@ -367,14 +367,14 @@ export class ComboBox implements FormValueControl<number | string | null> {
   // UTILITIES
 
   /** Reset interaction state (must be called when any interaction completes). */
-  resetInteractionState() {
+  private resetInteractionState() {
     this.focusOpened.set(false);
   }
 
   /**
    * Hide panel with list of options.
    */
-  hidePanel() {
+  public hidePanel() {
     if (!this.isOpen()) return; // already hidden
 
     this.isOpen.set(false);

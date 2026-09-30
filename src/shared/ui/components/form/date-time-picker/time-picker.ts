@@ -6,7 +6,7 @@ import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { TimeUtils } from '@/core/utils/TimeUtils';
 import { NavUtils } from '@/core/utils/NavUtils';
 import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
-import { afterRender } from '@/shared/utils/render/after-render';
+import { forRender } from '@/shared/utils/render/after-render';
 
 /**
  * Placement of the clock panel relative to its input - single source of truth for both the
@@ -188,7 +188,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   // GENERAL
 
   /** Toggle visibility of time picker panel. */
-  async toggleTimePickerVisibility() {
+  private async toggleTimePickerVisibility() {
     if (this.isClockVisible()) {
       this.hidePanel();
     } else {
@@ -204,7 +204,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       this.setupFocus(true);
       this.activeColumn.set('hour');
 
-      await afterRender(this.injector);
+      await forRender(this.injector);
 
       // Adjust picker position if needed to prevent window overflow (measured under baseline).
       this.positionPanel();
@@ -214,7 +214,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       // the panel is about to leave. That scroll moves the page under the user's cursor
       // and their next click can miss the label entirely (the click is retargeted to a
       // common ancestor, so the toggle is silently lost).
-      await afterRender(this.injector);
+      await forRender(this.injector);
 
       // Move keyboard focus into the panel (hour column) so user can navigate immediately.
       // preventScroll: placement guarantees the panel fits the viewport when either side
@@ -239,7 +239,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * keyboard focus seed, so opening the picker without a value pre-selects local time.
    * Values themselves stay timezone-agnostic (UTC-carried), see class doc.
    */
-  findViewTime() {
+  private findViewTime() {
     const date = new Date();
     this.viewHour.set(date.getHours());
     this.viewMinute.set(date.getMinutes());
@@ -248,7 +248,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   //
 
   /** Select hour. */
-  selectHour(h: number | null) {
+  public selectHour(h: number | null) {
     if (this.disabled() || h === null) return;
 
     // Selection and the keyboard cursor must agree.
@@ -272,7 +272,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /** Select minute. */
-  selectMinute(m: number | null) {
+  public selectMinute(m: number | null) {
     if (this.disabled() || m === null) return;
 
     // Selection and the keyboard cursor must agree (mirrors `selectHour`; also covers clicks
@@ -352,8 +352,8 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /** Scroll to selected hour and minute. */
-  async scrollToSelected() {
-    await afterRender(this.injector);
+  private async scrollToSelected() {
+    await forRender(this.injector);
 
     // If time is not selected, use current time as scroll target.
     const targetClass = this.normalizedValue() === null ? '.curr' : '.selected';
@@ -367,9 +367,9 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Scroll hour listbox so given hour is visible.
    * @param h Hour to reveal, or null to do nothing.
    */
-  async scrollHourIntoView(h: number | null) {
+  private async scrollHourIntoView(h: number | null) {
     if (h === null) return;
-    await afterRender(this.injector);
+    await forRender(this.injector);
 
     const column = this.hourRef().nativeElement;
     const el = document.getElementById(`${this.ident()}_opt_h${h}`);
@@ -380,9 +380,9 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Scroll minute listbox so given minute is visible.
    * @param m Minute to reveal, or null to do nothing.
    */
-  async scrollMinuteIntoView(m: number | null) {
+  private async scrollMinuteIntoView(m: number | null) {
     if (m === null) return;
-    await afterRender(this.injector);
+    await forRender(this.injector);
 
     const column = this.minuteRef().nativeElement;
     const el = document.getElementById(`${this.ident()}_opt_m${m}`);
@@ -434,7 +434,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   // EVENTS
 
   /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). Set only when a click-caused focus event is actually coming. */
-  focusFromClick = false;
+  public focusFromClick = false;
 
   /** True while a programmatic refocus (e.g. after closing the panel) must not auto-open the panel. */
   private suppressFocusOpen = false;
@@ -449,7 +449,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * @param column Which column the option belongs to.
    * @param value Hour or minute value of the pressed option.
    */
-  handleMousedownOption(column: 'hour' | 'minute', value: number): void {
+  public handleMousedownOption(column: 'hour' | 'minute', value: number): void {
     if (this.disabled()) return;
     this.activeColumn.set(column);
     if (column === 'hour') {
@@ -466,7 +466,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * the auto-open of the next Tab into the input).
    * @param e Mouse event.
    */
-  handleMousedown(e: MouseEvent) {
+  public handleMousedown(e: MouseEvent) {
     this.focusFromClick = document.activeElement !== e.currentTarget;
   }
 
@@ -479,14 +479,14 @@ export class TimePicker implements FormValueControl<Date | null> {
    * component) and must keep native scrollbar/text-drag behaviour.
    * @param e Mouse event.
    */
-  handlePanelMousedown(e: MouseEvent) {
+  public handlePanelMousedown(e: MouseEvent) {
     const target = e.target;
     if (target instanceof Element && target.closest('.clock-column') !== null) return;
     e.preventDefault();
   }
 
   /** Handle focus arriving on the input (e.g. via Tab). */
-  async handleInputFocus() {
+  public async handleInputFocus() {
     if (!this.focusFromClick && !this.suppressFocusOpen && !this.isClockVisible() && !this.disabled()) {
       await this.toggleTimePickerVisibility();
     }
@@ -494,11 +494,11 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /** Handle click on the input. */
-  async handleClick() {
+  public async handleClick() {
     if (this.disabled()) return;
     this.focusFromClick = false; // Any click-caused focus already happened (focus precedes click) - never leave a stale flag behind.
     await this.toggleTimePickerVisibility();
-  };
+  }
 
   /**
    * Handle click on a minute option: apply the selection and close the clock panel - picking a
@@ -509,7 +509,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * click deselected the time (canNull toggle): either way the interaction is complete.
    * @param m Clicked minute.
    */
-  handleMinuteClick(m: number) {
+  public handleMinuteClick(m: number) {
     if (this.disabled()) return;
     this.selectMinute(m);
     this.hidePanelAndRefocus(); // Focus moves to the input BEFORE the panel is hidden, so the focusout reads as an internal move.
@@ -522,7 +522,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * or after focus moves, so a closed panel must still report touch when focus really left.
    * @param e Focus event.
    */
-  handleFocusOut(e: FocusEvent) {
+  public handleFocusOut(e: FocusEvent) {
     const next = e.relatedTarget;
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
     // The wrapper's hidden label target (`.hidden-label-button`) is a sibling of this component -
@@ -541,7 +541,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Handle keyboard on the input element.
    * @param e Keyboard event.
    */
-  async onInputKeydown(e: KeyboardEvent) {
+  public async onInputKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
 
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
@@ -557,7 +557,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Handle keyboard on the hour listbox.
    * @param e Keyboard event.
    */
-  async onHourKeydown(e: KeyboardEvent) {
+  public async onHourKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
 
     switch (e.key) {
@@ -627,7 +627,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Handle keyboard on the minute listbox.
    * @param e Keyboard event.
    */
-  async onMinuteKeydown(e: KeyboardEvent) {
+  public async onMinuteKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
 
     switch (e.key) {
@@ -696,7 +696,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   //
 
   /** React to column change via key press. */
-  async keyPressSwitchColumn() {
+  private async keyPressSwitchColumn() {
     if (this.focusedHour() === null || this.focusedMinute() === null) {
       // Just show focus without switching column.
       this.setupFocus(false);
@@ -706,18 +706,18 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (this.activeColumn() === 'minute') {
       // Switch focus to hour column.
       this.activeColumn.set('hour');
-      await afterRender(this.injector);
+      await forRender(this.injector);
       this.hourRef().nativeElement.focus();
     } else {
       // Switch focus to minute column.
       this.activeColumn.set('minute');
-      await afterRender(this.injector);
+      await forRender(this.injector);
       this.minuteRef().nativeElement.focus();
     }
   }
 
   /** React to selecting hour via key press. */
-  async keyPressSelectHour() {
+  private async keyPressSelectHour() {
     if (this.focusedHour() === null) {
       // Just show focus without selecting anything.
       this.setupFocus(false);
@@ -725,7 +725,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     }
 
     this.selectHour(this.focusedHour());
-    await afterRender(this.injector);
+    await forRender(this.injector);
 
     // If time was deselected (canNull same-hour toggle), close panel.
     // Otherwise move focus to minute column.
@@ -737,13 +737,13 @@ export class TimePicker implements FormValueControl<Date | null> {
         const val = this.normalizedValue()?.getUTCMinutes() ?? this.viewMinute();
         this.focusedMinute.set(val ?? null);
       }
-      await afterRender(this.injector);
+      await forRender(this.injector);
       this.minuteRef().nativeElement.focus();
     }
   }
 
   /** React to selecting minute via key press. */
-  keyPressSelectMinute() {
+  private keyPressSelectMinute() {
     if (this.focusedMinute() === null) {
       // Just show focus without selecting anything.
       this.setupFocus(false);
@@ -762,7 +762,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * functional. User-driven opens go through focus/click handlers instead.
    * Does nothing while disabled: opening would move focus into a disabled control's listbox.
    */
-  async showPanel() {
+  public async showPanel() {
     if (this.disabled()) return;
     if (!this.isClockVisible()) await this.toggleTimePickerVisibility();
   }
@@ -770,7 +770,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   /**
    * Hide clock panel with hours and minutes.
    */
-  hidePanel() {
+  public hidePanel() {
     if (!this.isClockVisible()) return; // already hidden
 
     this.isClockVisible.set(false);
@@ -785,7 +785,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * into the hour listbox like it does on Tab.
    * @returns The input that took focus, or null when there is none (e.g. disabled input).
    */
-  focusInput(): HTMLElement | null {
+  public focusInput(): HTMLElement | null {
     const inputEl = document.getElementById(`${this.ident()}_input`);
     if (inputEl === null || (inputEl instanceof HTMLInputElement && inputEl.disabled)) return null;
     inputEl.focus();
@@ -798,7 +798,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * (relatedTarget is the input) instead of a leaving blur - focus must stay inside the component,
    * so no touch is reported. The refocus is programmatic, so auto-open on focus is suppressed too.
    */
-  hidePanelAndRefocus() {
+  public hidePanelAndRefocus() {
     const inputEl = document.getElementById(`${this.ident()}_input`);
     this.suppressFocusOpen = true;
     inputEl?.focus(); // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
@@ -811,7 +811,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
    * focus leaving the component, closes the panel and reports touch.
    */
-  hidePanelAndFocusNext() {
+  private hidePanelAndFocusNext() {
     const inputEl = document.getElementById(`${this.ident()}_input`);
     NavUtils.FocusNext(inputEl);
     this.hidePanel();
@@ -822,7 +822,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
    * focus leaving the component, closes the panel and reports touch.
    */
-  hidePanelAndFocusPrev() {
+  private hidePanelAndFocusPrev() {
     const inputEl = document.getElementById(`${this.ident()}_input`);
     NavUtils.FocusPrev(inputEl);
     this.hidePanel();
@@ -832,7 +832,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Set up focus values.
    * @param force If true, will override focused values. If false, will set focused values only if these are null.
    */
-  setupFocus(force: boolean) {
+  private setupFocus(force: boolean) {
     if (force || this.focusedHour() === null) {
       const val = this.normalizedValue()?.getUTCHours() ?? this.viewHour();
       this.focusedHour.set(val ?? null);
@@ -847,7 +847,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Resolve class of hour item.
    * @param h Hour.
    */
-  resolveHourClass(h: number) {
+  public resolveHourClass(h: number) {
     return {
       selected: this.selectedHour() === h,
       curr: this.viewHour() === h,
@@ -859,7 +859,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Resolve class of minute item.
    * @param m Minute.
    */
-  resolveMinuteClass(m: number) {
+  public resolveMinuteClass(m: number) {
     return {
       selected: this.selectedMinute() === m,
       curr: this.viewMinute() === m,

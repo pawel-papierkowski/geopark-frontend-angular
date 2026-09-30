@@ -82,7 +82,7 @@ export class CheckBox implements FormValueControl<boolean | null> {
   /**
    * Toggle value of checkbox.
    */
-  toggle() {
+  public toggle() {
     if (this.disabled()) return;
     this.value.update(v => this.resolveValue(v));
   }

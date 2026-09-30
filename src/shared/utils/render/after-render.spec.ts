@@ -1,7 +1,7 @@
 import { Component, inject, Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { afterRender } from './after-render';
+import { forRender } from './after-render';
 
 /** Host component providing an injector and simple DOM for render tests. */
 @Component({
@@ -13,9 +13,9 @@ class HostComponent {
 }
 
 /**
- * Unit tests of afterRender utility.
+ * Unit tests of forRender utility.
  */
-describe('afterRender', () => {
+describe('forRender', () => {
   it('should resolve after next render pass', async () => {
     // Arrange: Create host component and track promise resolution.
     const fixture = TestBed.createComponent(HostComponent);
@@ -23,7 +23,7 @@ describe('afterRender', () => {
     let resolved = false;
 
     // Act: Register render hook, then run change detection.
-    const promise = afterRender(fixture.componentInstance.injector).then(() => {
+    const promise = forRender(fixture.componentInstance.injector).then(() => {
       resolved = true;
     });
     fixture.detectChanges();
@@ -40,7 +40,7 @@ describe('afterRender', () => {
     let resolved = false;
 
     // Act: Register render hook only - its registration schedules render itself.
-    const promise = afterRender(fixture.componentInstance.injector).then(() => {
+    const promise = forRender(fixture.componentInstance.injector).then(() => {
       resolved = true;
     });
     await promise;
@@ -56,7 +56,7 @@ describe('afterRender', () => {
     let resolved = false;
 
     // Act: Register render hook without running change detection yet.
-    const promise = afterRender(fixture.componentInstance.injector).then(() => {
+    const promise = forRender(fixture.componentInstance.injector).then(() => {
       resolved = true;
     });
 

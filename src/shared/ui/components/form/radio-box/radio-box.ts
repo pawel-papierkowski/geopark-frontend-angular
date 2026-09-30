@@ -68,7 +68,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
   /** Informs that user blurred out of component. */
   touch = output<void>();
 
-  optionId(index: number): string {
+  public optionId(index: number): string {
     return this.resolvedIdent() + '_opt_' + index;
   }
 
@@ -77,7 +77,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
    * @param option Current option.
    * @returns Text of option, possibly translated.
    */
-  showOption(option: number | string | null): number | string | null {
+  public showOption(option: number | string | null): number | string | null {
     if (this.langPrefix()) {
       const translationKey = this.langPrefix() + '.' + option;
       return this.translateService.instant(translationKey);
@@ -90,7 +90,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
    * @param option Option to select.
    * @param index Index of the option for focus management.
    */
-  selectOption(option: number | string | null, index: number) {
+  public selectOption(option: number | string | null, index: number) {
     if (this.disabled()) return;
     this.value.update(() => option);
 
@@ -105,7 +105,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
    * Arrow keys selects next/previous options, Space/Enter moves to next focusable component (so user can leave this component).
    * @param e Keyboard event.
    */
-  handleKeydown(e: KeyboardEvent): void {
+  public handleKeydown(e: KeyboardEvent): void {
     if (this.disabled()) return;
 
     const currentIndex = this.options().findIndex((o) => o === this.value());
@@ -144,14 +144,14 @@ export class RadioBox implements FormValueControl<number | string | null> {
    * Returns selected element or first element if nothing is selected.
    * @returns Active element or null if could not find element.
    */
-  findActiveElement = (): HTMLElement | null => {
+  private findActiveElement(): HTMLElement | null {
     const selectedIndex = this.options().findIndex((o) => o === this.value());
     const targetIndex = selectedIndex >= 0 ? selectedIndex : 0;
     return this.hostEl.nativeElement.querySelector<HTMLElement>(`#${this.optionId(targetIndex)}`);
   };
 
   /** Move focus to the next focusable element on the page. */
-  focusNext() {
+  public focusNext() {
     const el = this.findActiveElement();
     NavUtils.FocusNext(el);
     this.touch.emit();

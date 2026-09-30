@@ -8,7 +8,7 @@ import { TimePicker } from './time-picker';
 /**
  * Unit tests of time-picker component.
  * Note: the component moves keyboard focus into the clock panel after opening and uses
- * `afterRender` twice (baseline measure, then flip applied before focus), so interaction
+ * `forRender` twice (baseline measure, then flip applied before focus), so interaction
  * tests always flush with `whenStable` + `detectChanges` - twice for focus-open flows.
  */
 describe('TimePicker', () => {
@@ -97,7 +97,7 @@ describe('TimePicker', () => {
 
   /**
    * Open the clock panel with a mouse click on the input and flush pending component work.
-   * Panel opening awaits `afterRender` internally, hence the stability flushes.
+   * Panel opening awaits `forRender` internally, hence the stability flushes.
    * @param fixture Fixture of the component.
    */
   async function openPanel(fixture: ComponentFixture<TimePicker>): Promise<void> {
@@ -372,7 +372,7 @@ describe('TimePicker', () => {
 
         // Act: Focus the input (e.g. via Tab).
         getInput(fixture).focus();
-        // The open spans two afterRender rounds (measure under baseline, apply flip, then
+        // The open spans two forRender rounds (measure under baseline, apply flip, then
         // focus), so a single whenStable + detectChanges pair cannot cover it yet.
         fixture.detectChanges();
         await fixture.whenStable();

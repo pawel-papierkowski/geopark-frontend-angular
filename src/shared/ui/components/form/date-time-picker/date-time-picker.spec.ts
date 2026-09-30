@@ -70,7 +70,7 @@ describe('DateTimePicker', () => {
   }
 
   /**
-   * Flush pending component work: panel opening awaits `afterRender` internally, so
+   * Flush pending component work: panel opening awaits `forRender` internally, so
    * interaction tests need stability flushes before asserting focus and panel state.
    * @param fixture Fixture of the component.
    */
