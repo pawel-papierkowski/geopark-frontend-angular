@@ -31,6 +31,20 @@ export default defineConfig([
   {
     files: ['**/*.ts'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
+    languageOptions: {
+      parserOptions: {
+        // Type-aware linting: required by rules that need type information
+        // (e.g. @typescript-eslint/no-floating-promises).
+        projectService: {
+          // Files not covered by any tsconfig (root tsconfig only has references).
+          allowDefaultProject: ['vitest.config.ts'],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+    },
   },
   {
     files: ['src/**/*.ts'],

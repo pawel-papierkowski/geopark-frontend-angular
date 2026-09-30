@@ -95,7 +95,7 @@ export class PageCustomComponents {
    * @param value Value to show.
    * @returns Value as string.
    */
-  show(value: Date | string | boolean | null): string {
+  public show(value: Date | string | boolean | null): string {
     if (value === null) return '❓';
     if (typeof value === 'boolean') return value ? '✅' : '❌';
     if (value instanceof Date) return TimeUtils.cnvFull(value) || '';
@@ -105,9 +105,9 @@ export class PageCustomComponents {
   /**
    * React on submit button press.
    */
-  async handleSubmit(event: Event) {
+  public handleSubmit(event: Event) {
     event.preventDefault();
-    await submit(this.compForm, async (formData) => {
+    void submit(this.compForm, async (formData) => {
       // TODO: in future we will show formData values visible in browser as feedback for user
       console.log('Derp: ' + formData.radioBox().value());
     });
@@ -120,7 +120,7 @@ export class PageCustomComponents {
    * @param field Schema for current field.
    * @param mode Schema for mode.
    */
-  modeDisabled(field: SchemaPath<unknown>, mode: SchemaPath<EnInputMode | null>) {
+  private modeDisabled(field: SchemaPath<unknown>, mode: SchemaPath<EnInputMode | null>) {
     disabled(field, {
       when: ({valueOf}) => valueOf(mode) === EnInputMode.Disabled || valueOf(mode) === EnInputMode.DisabledError
     });
@@ -131,7 +131,7 @@ export class PageCustomComponents {
    * @param field Schema for current field.
    * @param mode Schema for mode.
    */
-  modeInvalid(field: SchemaPath<unknown>, mode: SchemaPath<EnInputMode | null>) {
+  private modeInvalid(field: SchemaPath<unknown>, mode: SchemaPath<EnInputMode | null>) {
     validate(field, ({valueOf}) => {
       if (valueOf(mode) === EnInputMode.Error || valueOf(mode) === EnInputMode.DisabledError)
         return {kind: 'alwaysInvalid', message: 'Deliberately invalid.'};
