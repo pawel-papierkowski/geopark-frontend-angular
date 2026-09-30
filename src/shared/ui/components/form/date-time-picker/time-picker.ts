@@ -181,7 +181,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     // Watch `isClockVisible` field: react on panel opening.
     effect(() => {
-      if ( this.isClockVisible()) this.scrollToSelected();
+      if ( this.isClockVisible()) void this.scrollToSelected();
     });
   }
 
@@ -486,18 +486,20 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /** Handle focus arriving on the input (e.g. via Tab). */
-  public async handleInputFocus() {
+  public handleInputFocus() {
     if (!this.focusFromClick && !this.suppressFocusOpen && !this.isClockVisible() && !this.disabled()) {
-      await this.toggleTimePickerVisibility();
+      // Panel opening waits for renders internally; template event bindings never await the
+      // handler, so the work is deliberately fire-and-forget (`void` marks it as such).
+      void this.toggleTimePickerVisibility();
     }
     this.focusFromClick = false;
   }
 
   /** Handle click on the input. */
-  public async handleClick() {
+  public handleClick() {
     if (this.disabled()) return;
     this.focusFromClick = false; // Any click-caused focus already happened (focus precedes click) - never leave a stale flag behind.
-    await this.toggleTimePickerVisibility();
+    void this.toggleTimePickerVisibility();
   }
 
   /**
@@ -541,12 +543,12 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Handle keyboard on the input element.
    * @param e Keyboard event.
    */
-  public async onInputKeydown(e: KeyboardEvent) {
+  public onInputKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
 
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
       e.preventDefault();
-      if (!this.isClockVisible()) await this.toggleTimePickerVisibility();
+      if (!this.isClockVisible()) void this.toggleTimePickerVisibility();
     } else if (e.key === 'Escape' && this.isClockVisible()) {
       e.preventDefault();
       this.hidePanel();
@@ -557,7 +559,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Handle keyboard on the hour listbox.
    * @param e Keyboard event.
    */
-  public async onHourKeydown(e: KeyboardEvent) {
+  public onHourKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
 
     switch (e.key) {
@@ -567,7 +569,7 @@ export class TimePicker implements FormValueControl<Date | null> {
           if (currVal !== null) return currVal > 0 ? currVal - 1 : 23;
           return this.selectedHour() ?? this.viewHour() ?? 0;
         });
-        this.scrollHourIntoView(this.focusedHour());
+        void this.scrollHourIntoView(this.focusedHour());
         break;
       case 'ArrowDown':
         e.preventDefault();
@@ -575,38 +577,38 @@ export class TimePicker implements FormValueControl<Date | null> {
           if (currVal !== null) return currVal < 23 ? currVal + 1 : 0;
           return this.selectedHour() ?? this.viewHour() ?? 0;
         });
-        this.scrollHourIntoView(this.focusedHour());
+        void this.scrollHourIntoView(this.focusedHour());
         break;
       case 'ArrowRight':
         e.preventDefault();
-        this.keyPressSwitchColumn();
+        void this.keyPressSwitchColumn();
         break;
       case 'Home': // Jump to start of list.
         e.preventDefault();
         this.focusedHour.set(0);
-        this.scrollHourIntoView(0);
+        void this.scrollHourIntoView(0);
         break;
       case 'End': // Jump to end of list.
         e.preventDefault();
         this.focusedHour.set(23);
-        this.scrollHourIntoView(23);
+        void this.scrollHourIntoView(23);
         break;
       case 'PageDown': // Page forward; wraps to the top only when already standing on the last hour.
         e.preventDefault(); // Without it the browser scrolls the column natively, leaving the cursor behind.
         this.focusedHour.set(this.pageMove(this.focusedHour(), 1, 23,
           this.pageStep(this.hourRef().nativeElement), this.selectedHour() ?? this.viewHour() ?? 0));
-        this.scrollHourIntoView(this.focusedHour());
+        void this.scrollHourIntoView(this.focusedHour());
         break;
       case 'PageUp': // Page backward; wraps to the bottom only when already standing on the first hour.
         e.preventDefault();
         this.focusedHour.set(this.pageMove(this.focusedHour(), -1, 23,
           this.pageStep(this.hourRef().nativeElement), this.selectedHour() ?? this.viewHour() ?? 0));
-        this.scrollHourIntoView(this.focusedHour());
+        void this.scrollHourIntoView(this.focusedHour());
         break;
       case 'Enter':
       case ' ':
         e.preventDefault();
-        this.keyPressSelectHour();
+        void this.keyPressSelectHour();
         break;
       case 'Escape':
         e.preventDefault();
@@ -627,7 +629,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Handle keyboard on the minute listbox.
    * @param e Keyboard event.
    */
-  public async onMinuteKeydown(e: KeyboardEvent) {
+  public onMinuteKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
 
     switch (e.key) {
@@ -637,7 +639,7 @@ export class TimePicker implements FormValueControl<Date | null> {
           if (currVal !== null) return currVal > 0 ? currVal - 1 : 59;
           return this.selectedMinute() ?? this.viewMinute() ?? 0;
         });
-        this.scrollMinuteIntoView(this.focusedMinute());
+        void this.scrollMinuteIntoView(this.focusedMinute());
         break;
       case 'ArrowDown':
         e.preventDefault();
@@ -645,33 +647,33 @@ export class TimePicker implements FormValueControl<Date | null> {
           if (currVal !== null) return currVal < 59 ? currVal + 1 : 0;
           return this.selectedMinute() ?? this.viewMinute() ?? 0;
         });
-        this.scrollMinuteIntoView(this.focusedMinute());
+        void this.scrollMinuteIntoView(this.focusedMinute());
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        this.keyPressSwitchColumn();
+        void this.keyPressSwitchColumn();
         break;
       case 'Home': // Jump to start of list.
         e.preventDefault();
         this.focusedMinute.set(0);
-        this.scrollMinuteIntoView(0);
+        void this.scrollMinuteIntoView(0);
         break;
       case 'End': // Jump to end of list.
         e.preventDefault();
         this.focusedMinute.set(59);
-        this.scrollMinuteIntoView(59);
+        void this.scrollMinuteIntoView(59);
         break;
       case 'PageDown': // Page forward; wraps to the top only when already standing on the last minute.
         e.preventDefault(); // Without it the browser scrolls the column natively, leaving the cursor behind.
         this.focusedMinute.set(this.pageMove(this.focusedMinute(), 1, 59,
           this.pageStep(this.minuteRef().nativeElement), this.selectedMinute() ?? this.viewMinute() ?? 0));
-        this.scrollMinuteIntoView(this.focusedMinute());
+        void this.scrollMinuteIntoView(this.focusedMinute());
         break;
       case 'PageUp': // Page backward; wraps to the bottom only when already standing on the first minute.
         e.preventDefault();
         this.focusedMinute.set(this.pageMove(this.focusedMinute(), -1, 59,
           this.pageStep(this.minuteRef().nativeElement), this.selectedMinute() ?? this.viewMinute() ?? 0));
-        this.scrollMinuteIntoView(this.focusedMinute());
+        void this.scrollMinuteIntoView(this.focusedMinute());
         break;
       case 'Enter':
       case ' ':
@@ -841,29 +843,5 @@ export class TimePicker implements FormValueControl<Date | null> {
       const val = this.normalizedValue()?.getUTCMinutes() ?? this.viewMinute();
       this.focusedMinute.set(val ?? null);
     }
-  }
-
-  /**
-   * Resolve class of hour item.
-   * @param h Hour.
-   */
-  public resolveHourClass(h: number) {
-    return {
-      selected: this.selectedHour() === h,
-      curr: this.viewHour() === h,
-      focused: this.activeColumn() === 'hour' && this.focusedHour() === h,
-    };
-  }
-
-  /**
-   * Resolve class of minute item.
-   * @param m Minute.
-   */
-  public resolveMinuteClass(m: number) {
-    return {
-      selected: this.selectedMinute() === m,
-      curr: this.viewMinute() === m,
-      focused: this.activeColumn() === 'minute' && this.focusedMinute() === m,
-    };
   }
 }
