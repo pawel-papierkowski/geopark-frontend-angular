@@ -85,10 +85,22 @@
   height: 200px;
 }
 
+/* One column's vertical stack: static header on top, scroller filling the rest.
+   min-height: 0 lets the scroller shrink below its content height (a column flex item
+   defaults to min-content, which would break out of the fixed 200px row instead of scrolling). */
+
+.clock-column-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* Define single clock column with time (hour or minute). Uses nice scrollbars. */
 
 .clock-column {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 
   /* Sleek scrollbar for Firefox */
@@ -121,14 +133,18 @@
   display: none;
 }
 
+/**
+ * Column header (Hour/Minute). Sits ABOVE the scroller as a static row - it is rendered
+ * outside `.clock-column` (see template), so it must not stick/overlay while the list scrolls.
+ * flex-shrink: 0 keeps its height fixed within the column group.
+ */
 .column-header {
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   font-weight: bold;
   font-size: 0.8em;
 
   color: var(--color-text-primary);
-  background: var(--datetimepicker-clock-background);
+  background: var(--datetimepicker-time-background);
 
   padding: var(--spacing-xs) 0;
   text-align: center;

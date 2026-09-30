@@ -403,16 +403,16 @@ export class TimePicker implements FormValueControl<Date | null> {
   /**
    * Page size, in options, for one PageUp/PageDown press: how many options fit in the column's
    * visible height, minus one so the edge of the previous page stays visible as context.
-   * The sticky column header covers the top of that visible height and all options share the
-   * same height, so a single division measures the whole list. Falls back to
-   * `fallbackPageStep` when the panel has no layout yet (0/NaN result).
+   * The column header sits OUTSIDE the scroll container (see template), so the column's own
+   * `clientHeight` is fully available to the options; all options share the same height, so a
+   * single division measures the whole list. Falls back to `fallbackPageStep` when the panel
+   * has no layout yet (0/NaN result).
    * @param column The scrollable clock column.
    * @returns Number of options a page press moves, always at least 1.
    */
   private pageStep(column: HTMLElement): number {
     const optionHeight = column.querySelector<HTMLElement>('.time-item')?.offsetHeight ?? 0;
-    const headerHeight = column.querySelector<HTMLElement>('.column-header')?.offsetHeight ?? 0;
-    const visible = Math.floor((column.clientHeight - headerHeight) / optionHeight);
+    const visible = Math.floor(column.clientHeight / optionHeight);
 
     if (!Number.isFinite(visible) || visible <= 0) return fallbackPageStep;
     return Math.max(1, visible - 1);
@@ -488,12 +488,18 @@ export class TimePicker implements FormValueControl<Date | null> {
    * spurious touch. Cancelling the default keeps focus where it was (inside a .clock-column).
    * Presses inside a .clock-column are left alone: they focus that column (already inside the
    * component) and must keep native scrollbar/text-drag behaviour.
+   * The column header sits ABOVE the scroller (outside the .clock-column), so a press on it gets
+   * no native column focus: the default is cancelled here and the header's own column is focused
+   * instead - same outcome as before the header moved out of the scroller.
    * @param e Mouse event.
    */
   public handlePanelMousedown(e: MouseEvent) {
     const target = e.target;
     if (target instanceof Element && target.closest('.clock-column') !== null) return;
     e.preventDefault();
+
+    const header = target instanceof Element ? target.closest('.column-header') : null;
+    header?.closest('.clock-column-group')?.querySelector<HTMLElement>('.clock-column')?.focus();
   }
 
   /** Handle focus arriving on the input (e.g. via Tab). */

@@ -129,18 +129,18 @@ describe('TimePicker', () => {
   /**
    * Stub clock column geometry so PageUp/PageDown can measure a known page step. jsdom performs
    * no layout: every height reports 0 and the component would fall back to its fixed page size.
+   * The header sits outside the scroll container (above it), so only the column and its option
+   * need stubbing - `pageStep` reads no header height.
    * @param fixture Fixture of the component.
    * @param column Column whose geometry gets stubbed.
-   * @param sizes Assumed heights - visible column, sticky header, single option.
+   * @param sizes Assumed heights - visible column, single option.
    */
-  function stubColumnGeometry(fixture: ComponentFixture<TimePicker>, column: 'hour' | 'minute', sizes: { clientHeight: number; headerHeight: number; optionHeight: number }): void {
+  function stubColumnGeometry(fixture: ComponentFixture<TimePicker>, column: 'hour' | 'minute', sizes: { clientHeight: number; optionHeight: number }): void {
     const el = column === 'hour' ? fixture.componentInstance.hourRef().nativeElement : fixture.componentInstance.minuteRef().nativeElement;
-    const header = el.querySelector('.column-header');
     const option = el.querySelector('.time-item');
-    if (header === null || option === null) throw new Error('clock column should render a header and its options');
+    if (option === null) throw new Error('clock column should render its options');
 
     Object.defineProperty(el, 'clientHeight', { value: sizes.clientHeight, configurable: true });
-    Object.defineProperty(header, 'offsetHeight', { value: sizes.headerHeight, configurable: true });
     Object.defineProperty(option, 'offsetHeight', { value: sizes.optionHeight, configurable: true });
   }
 
@@ -965,6 +965,24 @@ describe('TimePicker', () => {
         expect(event.defaultPrevented, 'mousedown inside clock column should keep its default').toBe(false);
       });
 
+      it('should prevent default on mousedown on a column header and focus its column', async () => {
+        // Arrange: Create component and open the panel (focus starts on the hour column, so a
+        // move to the minute column proves the header handler focused it).
+        const fixture = await arrangeTimePicker();
+        await openPanel(fixture);
+        const header = fixture.nativeElement.querySelectorAll('.column-header')[1] as HTMLElement;
+
+        // Act: Dispatch a real cancelable mousedown on the minute header.
+        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        header.dispatchEvent(event);
+
+        // Assert: Default focus fixup is cancelled (it would park focus on <body> and the
+        // focusout handler would close the panel), and the header's own column is focused -
+        // same outcome as when the header still lived inside the scroller.
+        expect(event.defaultPrevented, 'mousedown on column header should be default-prevented').toBe(true);
+        expect(document.activeElement, 'mousedown on minute header should focus the minute column').toBe(fixture.componentInstance.minuteRef().nativeElement);
+      });
+
       it('should keep default on mousedown on a time item', async () => {
         // Arrange: Create component and open the panel.
         const fixture = await arrangeTimePicker();
@@ -1771,11 +1789,12 @@ describe('TimePicker', () => {
 
       it('should page hours by the measured page size, clamping and then wrapping at the ends', async () => {
         // Arrange: Open panel, stub geometry so the page step is measurable (jsdom has no
-        // layout): (200 - 20 header) / 20 option = 9 visible, minus 1 overlap => step 8.
+        // layout): 180 (the 200px row minus the header, which now sits OUTSIDE the scroller)
+        // / 20 option = 9 visible, minus 1 overlap => step 8.
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
         await openPanel(fixture);
-        stubColumnGeometry(fixture, 'hour', { clientHeight: 200, headerHeight: 20, optionHeight: 20 });
+        stubColumnGeometry(fixture, 'hour', { clientHeight: 180, optionHeight: 20 });
         fixture.componentInstance.focusedHour.set(10);
 
         // Act: Page down from 10.
@@ -1812,7 +1831,7 @@ describe('TimePicker', () => {
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
         await openPanel(fixture);
-        stubColumnGeometry(fixture, 'hour', { clientHeight: 200, headerHeight: 20, optionHeight: 20 });
+        stubColumnGeometry(fixture, 'hour', { clientHeight: 180, optionHeight: 20 });
         fixture.componentInstance.focusedHour.set(5);
 
         // Act: Page up from 5 - 5 - 8 undershoots the list start.

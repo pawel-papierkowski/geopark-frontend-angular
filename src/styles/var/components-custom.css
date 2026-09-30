@@ -68,15 +68,16 @@
   --combobox-font-size-small: 0.8em;
 
   /* DateTimePicker specific vars. */
-  --datetimepicker-date-width: 145px;
-  --datetimepicker-time-width: 90px;
 
-  /* Reserved space for the decorative clock glyph inside the time input. The glyph itself is
+  /* Date picker. */
+  --datetimepicker-date-width: 145px;
+
+  /* Reserved space for the decorative clock glyph inside the date input. The glyph itself is
      markup (aria-hidden span), the input only reserves room for it via padding. Must cover the
      rendered emoji advance (~22px at the base font size) plus the gap, or the value text would
-     start inside the glyph - guarded by an e2e measurement. */
-  --datetimepicker-time-icon-width: 1.5em;
-  --datetimepicker-time-icon-gap: 3px;
+     start inside the glyph. */
+  --datetimepicker-date-icon-width: 1.5em;
+  --datetimepicker-date-icon-gap: 3px;
 
   --datetimepicker-calendar-offset: 2px 0px 0px 2px;
   --datetimepicker-calendar-background: linear-gradient(to bottom right, #fefefe 0px, #f5f5f5 400px);
@@ -109,6 +110,17 @@
   --datetimepicker-day-disabled-background: #dddddd;
   --datetimepicker-day-disabled-shadow: 0px 0px 3px 0px rgba(0, 0, 0, 0.2);
 
+  /* Time picker. */
+
+  --datetimepicker-time-width: 90px;
+
+  /* Reserved space for the decorative clock glyph inside the time input. The glyph itself is
+     markup (aria-hidden span), the input only reserves room for it via padding. Must cover the
+     rendered emoji advance (~22px at the base font size) plus the gap, or the value text would
+     start inside the glyph. */
+  --datetimepicker-time-icon-width: 1.5em;
+  --datetimepicker-time-icon-gap: 3px;
+
   --datetimepicker-clock-offset: 2px 0px 0px 2px;
   --datetimepicker-clock-background: linear-gradient(to bottom right, #fefefe 0px, #f5f5f5 400px);
   --datetimepicker-clock-border: 1px solid #444444;
@@ -118,6 +130,7 @@
   --datetimepicker-clock-err-background: linear-gradient(to bottom right, #fffefe 0px, #fff5f5 400px);
 
   --datetimepicker-time-color: #444444;
+  --datetimepicker-time-background: unset;
   --datetimepicker-time-hover-color: #111111;
   --datetimepicker-time-hover-background: linear-gradient(to bottom, #ffedab 1%, #ffdd86 99%);
 
