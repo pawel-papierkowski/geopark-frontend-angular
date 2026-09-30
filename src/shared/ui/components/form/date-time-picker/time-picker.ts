@@ -151,14 +151,21 @@ export class TimePicker implements FormValueControl<Date | null> {
     return value !== null && !Number.isNaN(value.getTime()) ? value : null;
   });
 
-  /** aria-activedescendant value for the hour listbox. */
+  /**
+   * aria-activedescendant value for the hour listbox. Gated on `activeColumn`: the attribute
+   * belongs only to the listbox that holds DOM focus (mirrors the `.focused` ring gating in
+   * the template), otherwise the inactive column would keep announcing an active option.
+   */
   hourActiveDesc = computed(() => {
-    if (this.focusedHour() === null) return undefined;
+    if (this.activeColumn() !== 'hour' || this.focusedHour() === null) return undefined;
     return `${this.ident()}_opt_h${this.focusedHour()}`;
   });
-  /** aria-activedescendant value for the minute listbox. */
+  /**
+   * aria-activedescendant value for the minute listbox. Gated on `activeColumn`, see
+   * `hourActiveDesc`.
+   */
   minuteActiveDesc = computed(() => {
-    if (this.focusedMinute() === null) return undefined;
+    if (this.activeColumn() !== 'minute' || this.focusedMinute() === null) return undefined;
     return `${this.ident()}_opt_m${this.focusedMinute()}`;
   });
 

@@ -1423,20 +1423,52 @@ describe('TimePicker', () => {
 
       it('should set aria-activedescendant to focused option ids after keyboard open', async () => {
         // Arrange: Create component with value 14:30 and focus input without auto-open.
+        const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
         focusInputWithoutOpening(fixture);
 
         // Act: Open the panel via keyboard.
-        const user = userEvent.setup();
         await user.keyboard('{Enter}');
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Keyboard focus seeded from value and referenced via aria-activedescendant.
+        // Assert: Keyboard focus seeded from value and referenced on the focused (hour)
+        // column; the inactive minute column stays silent (the test below covers the switch).
         expect(fixture.componentInstance.focusedHour(), 'focused hour should come from value').toBe(14);
         expect(fixture.componentInstance.focusedMinute(), 'focused minute should come from value').toBe(30);
         expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-activedescendant'), 'hour activedescendant should reference focused option').toBe('test-time_opt_h14');
-        expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-activedescendant'), 'minute activedescendant should reference focused option').toBe('test-time_opt_m30');
+        expect(fixture.componentInstance.minuteRef().nativeElement.hasAttribute('aria-activedescendant'), 'inactive minute listbox must not reference an active option').toBe(false);
+
+        // Act: Switch keyboard focus to the minute listbox.
+        await user.keyboard('{ArrowRight}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: The seeded minute becomes the announced option once its column is active.
+        expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-activedescendant'), 'active minute activedescendant should reference focused option').toBe('test-time_opt_m30');
+      });
+
+      it('should set aria-activedescendant only on the active column', async () => {
+        // Arrange: Create component with value 14:30 and open the panel - focus lands in the
+        // hour listbox, but BOTH cursors are seeded on open (setupFocus on every open).
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+
+        // Assert: Only the focused (hour) listbox references its active option. The inactive
+        // minute listbox must stay silent - aria-activedescendant belongs to the widget that
+        // holds DOM focus, mirroring how the .focused ring is gated on the active column.
+        expect(fixture.componentInstance.hourRef().nativeElement.hasAttribute('aria-activedescendant'), 'active hour listbox should reference its active option').toBe(true);
+        expect(fixture.componentInstance.minuteRef().nativeElement.hasAttribute('aria-activedescendant'), 'inactive minute listbox must not reference an active option').toBe(false);
+
+        // Act: Switch keyboard focus to the minute listbox.
+        await user.keyboard('{ArrowRight}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: The reference follows the active column - minute gains it, hour loses it.
+        expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-activedescendant'), 'active minute listbox should reference its active option').toBe('test-time_opt_m30');
+        expect(fixture.componentInstance.hourRef().nativeElement.hasAttribute('aria-activedescendant'), 'inactive hour listbox must not reference an active option').toBe(false);
       });
 
       it('should set aria-selected only on selected options', async () => {
@@ -2025,8 +2057,10 @@ describe('TimePicker', () => {
         fixture.componentInstance.activeColumn.set('minute');
         fixture.detectChanges();
 
-        // Assert: Focused class removed from hour column.
+        // Assert: Focused class removed from hour column and its activedescendant goes with it.
         expect(hourOption.classList.contains('focused'), 'focused class should apply only to active column').toBe(false);
+        expect(fixture.componentInstance.hourRef().nativeElement.hasAttribute('aria-activedescendant'), 'inactive hour listbox must drop its activedescendant').toBe(false);
+        expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-activedescendant'), 'active minute listbox should carry the activedescendant').toBe('test-time_opt_m30');
       });
     });
 

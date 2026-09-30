@@ -395,6 +395,10 @@ test.describe('TimePicker', () => {
       const timePicker = getTimePicker(page);
       await timePicker.click();
       await expect(getPanel(page)).toBeVisible();
+      // aria-activedescendant is exposed only on the ACTIVE column, so first switch into the
+      // minute column (focus open lands in the hour column) to be able to read the seed.
+      await getHourColumn(page).press('ArrowRight');
+      await expect(getMinuteColumn(page)).toBeFocused();
       const seeded = await getMinuteColumn(page).getAttribute('aria-activedescendant');
       const seededMinute = Number(seeded?.match(/_opt_m(\d+)$/)?.[1]);
       expect(Number.isFinite(seededMinute), 'precondition: minute cursor should be seeded on open').toBe(true);
