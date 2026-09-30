@@ -4,9 +4,10 @@
   (focusin)="handleFocusIn($event)">
 
   <!-- Hidden button: labelable target for <label for="...">. -->
-  <!-- Label activation focuses this button (handleLabelFocus redirects focus into the sub-picker
-        input, which auto-opens its panel) and bubbles its click here (handleLabelClick swallows
-        that paired click, or toggles the panel on every later activation). -->
+  <!-- Engines disagree on label activation order: Chromium/Firefox focus this button then forward
+        the click, WebKit forwards the click first. handleLabelFocus redirects focus into the
+        sub-picker (open half on focus-first engines, restore-only when a click-first engine's
+        toggle already ran); handleLabelClick swallows the paired click or toggles the panel. -->
   <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
     (focus)="handleLabelFocus()" (click)="handleLabelClick()"></button>
 

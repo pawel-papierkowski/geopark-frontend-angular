@@ -90,6 +90,13 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * the panel closed again. Mirrors combo-box `focusOpened`. */
   focusOpened = signal(false);
 
+  /** What this label activation's forwarded click decided. Engines disagree on label activation
+   * order: Chromium/Firefox focus the hidden button first and forward the click second, WebKit
+   * does the reverse - so the focus handler that runs AFTER the click (WebKit) must only restore
+   * focus, never re-run the toggle the click already made. `none` until a forwarded click runs;
+   * reset at the start of every pointer interaction, like `focusOpened`. */
+  labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
+
   /** Date sub-picker component. Absent when `mode` does not render it, hence not `required`. */
   datePicker = viewChild(DatePicker);
   /** Time sub-picker component. Absent when `mode` does not render it, hence not `required`. */
@@ -115,8 +122,10 @@ export class DateTimePicker implements FormValueControl<Date | null> {
      * component's associated label, and close the open time panel when the press lands
      * outside the wrapper entirely.
      * Resetting `focusOpened` handles a focus-only activation that never received its click -
-     * without it, that stale marker would swallow the next activation's toggle. Reset happens
-     * before label activation's focus (and its marker) of the interaction that follows.
+     * without it, that stale marker would swallow the next activation's toggle. Resetting
+     * `labelClickDecision` equally clears the previous activation's click decision, so a fresh
+     * activation is never judged by its predecessor. Reset happens before label activation's
+     * focus (and its markers) of the interaction that follows.
      *
      * The outside-press close exists because focusout alone does not cover pointer presses:
      * WebKit does not reliably move focus on an outside press (buttons and other non-text
@@ -128,6 +137,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
      */
     const handleDocumentMousedown = (e: Event) => {
       this.focusOpened.set(false);
+      this.labelClickDecision.set('none');
       const target = e.target;
       const ident = this.resolvedIdent();
       const isOwnLabel = ident !== '' && target instanceof HTMLLabelElement && target.htmlFor === ident;
@@ -151,14 +161,30 @@ export class DateTimePicker implements FormValueControl<Date | null> {
 
   /**
    * Handle label activation focusing its hidden target (the wrapper's hidden button).
-   * Redirect focus into the sub-picker input; landing there lets the input's own focus handler
-   * auto-open the panel and move keyboard focus into it - the same end state as clicking the
-   * input or Tab-ing into it. When the panel was closed, remember that this redirect opened it,
-   * so the click label activation forwards right afterwards is swallowed instead of toggling
-   * the panel back closed within the same activation.
+   * What it may do depends on the engine's label activation order:
+   * - Focus first (Chromium/Firefox): panel state here predates this activation's click, so a
+   *   closed panel means this is the open half - redirect focus into the sub-picker input; the
+   *   input's focus handler auto-opens the panel (same end state as clicking it or Tab-ing in),
+   *   and the redirect is remembered so the paired click right after is swallowed instead of
+   *   toggling the panel closed again.
+   * - Click first (WebKit): the forwarded click already recorded its decision (`open`/`closed`),
+   *   so this only steers focus back from the hidden button the activation stole it for -
+   *   a closed panel stays closed (suppressed refocus via `hidePanelAndRefocus`), an open one
+   *   just gets focus returned without toggling.
    */
   public handleLabelFocus() {
     if (this.disabled()) return;
+    const decision = this.labelClickDecision();
+    if (decision === 'closed') {
+      // The click closed the panel - restore focus on the input without triggering auto-open.
+      this.timePicker()?.hidePanelAndRefocus();
+      return;
+    }
+    if (decision === 'open') {
+      // The click owns the open; the panel is already visible, so a plain redirect cannot toggle.
+      this.focusSubPicker();
+      return;
+    }
     const timePicker = this.timePicker();
     // TODO: once DatePicker is a real picker, account for its panel state here as well.
     const wasClosed = timePicker !== undefined && !timePicker.isClockVisible();
@@ -172,6 +198,9 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * First activation: the paired focus just opened the panel - swallow the click (no toggle).
    * Every later activation toggles: when open, close via `hidePanelAndRefocus()` so focus parks
    * on the input without re-triggering auto-open; when closed, redirect focus to reopen.
+   * Each toggle is recorded in `labelClickDecision` for engines that forward the click BEFORE
+   * focusing the hidden button (WebKit), where the focus handler runs after this one and must
+   * not undo the decision made here.
    */
   public handleLabelClick() {
     if (this.disabled()) return;
@@ -182,10 +211,16 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     const timePicker = this.timePicker();
     // TODO: once DatePicker is a real picker, toggle its panel here as well.
     if (timePicker !== undefined && timePicker.isClockVisible()) {
+      this.labelClickDecision.set('closed');
       timePicker.hidePanelAndRefocus();
       return;
     }
+    this.labelClickDecision.set('open');
     this.focusSubPicker();
+    // The redirect above opens only through the input's focus event - when the input ALREADY
+    // holds focus (click-first order after a close parks it there) no event fires, so complete
+    // the open explicitly to keep the click's toggle reliable.
+    if (timePicker !== undefined && !timePicker.isClockVisible()) timePicker.openPanel();
   }
 
   /**

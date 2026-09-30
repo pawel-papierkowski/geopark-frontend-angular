@@ -226,6 +226,54 @@ describe('DateTimePicker', () => {
       expect(touchSpy, 'second label activation should not emit touch').not.toHaveBeenCalled();
     });
 
+    it('should keep clock panel closed when the forwarded click runs before the hidden button focus', async () => {
+      // Arrange: Open the clock panel through the first label activation.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      getHiddenButton(fixture).click();
+      await flush(fixture);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'panel should be open before second activation').toBe('true');
+
+      // Act: Engines disagree on label activation order - WebKit forwards the click FIRST
+      // (the click closes the panel) and only then focuses the hidden button, both within the
+      // same task. The focus that follows must not read the just-closed panel as a fresh
+      // (focus-only) activation.
+      const hiddenButton = getHiddenButton(fixture);
+      hiddenButton.click();
+      hiddenButton.focus();
+      await flush(fixture);
+
+      // Assert: Panel stays closed with focus parked on the input; internal focus moves report no touch.
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'focus after the closing click must not reopen the panel').toBe('false');
+      expect(document.activeElement, 'focus should end on the time input').toBe(getTimeInput(fixture));
+      expect(touchSpy, 'click-then-focus activation should not emit touch').not.toHaveBeenCalled();
+    });
+
+    it('should open clock panel on click-first label activation when input already holds focus', async () => {
+      // Arrange: Close the panel so focus parks on the input (state left behind by a previous close).
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const hiddenButton = getHiddenButton(fixture);
+      hiddenButton.click();
+      await flush(fixture);
+      hiddenButton.focus();
+      hiddenButton.click();
+      await flush(fixture);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'panel should be closed before act').toBe('false');
+      expect(document.activeElement, 'focus should be parked on the input before act').toBe(getTimeInput(fixture));
+
+      // Act: Click-first activation while the input already has focus (both events in the same
+      // task, like a real WebKit label activation) - the click's focus redirect is a no-op
+      // (input already focused), so opening must not depend on a focus event.
+      hiddenButton.click();
+      hiddenButton.focus();
+      await flush(fixture);
+
+      // Assert: Panel opens and keyboard focus ends in the hour listbox.
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'click-first activation should open the panel').toBe('true');
+      expect(document.activeElement, 'focus should end in the hour listbox').toBe(getHourColumn(fixture));
+    });
+
     it('should reopen clock panel on third label activation', async () => {
       // Arrange: Open then close the panel through two label activations.
       const fixture = await arrangeDateTimePicker({ mode: 'time' });

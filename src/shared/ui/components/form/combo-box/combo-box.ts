@@ -100,6 +100,12 @@ export class ComboBox implements FormValueControl<number | string | null> {
   isOpen = signal(false);
   /** Tracks if focus handler just opened the list (to suppress synthetic follow-up click).  */
   focusOpened = signal(false);
+  /** What this label activation's forwarded click decided. Engines disagree on label activation
+   * order: Chromium/Firefox focus the hidden button first and forward the click second, WebKit
+   * does the reverse - so the focus handler that runs AFTER the click (WebKit) must not re-run
+   * the toggle the click already made (reopening a list the click just closed). `none` until a
+   * forwarded click toggles; cleared when the pointer interaction or the focus episode ends. */
+  labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
   /** Index of currently highlighted option. -1 means none highlighted. */
   highlightedIndex = signal(-1);
   /**
@@ -145,6 +151,8 @@ export class ComboBox implements FormValueControl<number | string | null> {
      * @param e Mousedown event.
      */
     const handleDocumentMousedown = (e: Event) => {
+      // New pointer interaction: no forwarded click of an earlier activation may judge this one.
+      this.labelClickDecision.set('none');
       const target = e.target;
       const ident = this.resolvedIdent();
       const isOwnLabel = ident !== '' && target instanceof HTMLLabelElement && target.htmlFor === ident;
@@ -262,6 +270,14 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /** Handle focus: handles direct clicks, label clicks, and Tab. */
   public handleFocus() {
     if (this.disabled()) return;
+    const decision = this.labelClickDecision();
+    if (decision !== 'none') {
+      // Click-first engine (WebKit): the activation's forwarded click already toggled the list,
+      // the following focus only steered it back from the hidden button - consume the decision
+      // and leave the list exactly as the click left it (open stays open, closed stays closed).
+      this.labelClickDecision.set('none');
+      return;
+    }
     if (!this.isOpen()) {
       this.openList();
       this.focusOpened.set(true);
@@ -286,6 +302,9 @@ export class ComboBox implements FormValueControl<number | string | null> {
   public handleBlur(e: FocusEvent) {
     const next = e.relatedTarget;
     if (next instanceof Node && this.comboRef().nativeElement.contains(next)) return;
+    // Focus really left the component: a click decision recorded by a focus-first engine's
+    // (Chromium/Firefox) label activation - whose click runs last - is now obsolete.
+    this.labelClickDecision.set('none');
     this.hidePanel();
     this.touch.emit();
   }
@@ -303,8 +322,15 @@ export class ComboBox implements FormValueControl<number | string | null> {
     // Toggle for direct clicks and programmatic clicks. Handles both real browser
     // clicks (preceded by mousedown) and test/programmatic clicks (no mousedown).
     this.isOpen.update((currVal) => !currVal);
-    if (this.isOpen()) this.openList();
-    else this.highlightedIndex.set(-1);
+    if (this.isOpen()) {
+      // Record the decision so a focus-first-paired focus handler (WebKit forwards the click
+      // BEFORE focusing the hidden button) does not toggle again right after this one.
+      this.labelClickDecision.set('open');
+      this.openList();
+    } else {
+      this.labelClickDecision.set('closed');
+      this.highlightedIndex.set(-1);
+    }
   }
 
   /**

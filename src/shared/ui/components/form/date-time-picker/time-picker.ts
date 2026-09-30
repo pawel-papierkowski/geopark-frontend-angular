@@ -789,6 +789,18 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
+   * Show clock panel with hours and minutes when it is closed (no-op when already visible).
+   * Completes an open that focusing the input could not trigger: focusing an ALREADY focused
+   * input fires no focus event, so the auto-open in `handleInputFocus` never runs - e.g. a
+   * label activation's click-first order (WebKit) after a close leaves focus parked on the
+   * input and its click toggle would otherwise be silently lost.
+   */
+  public openPanel() {
+    if (this.isClockVisible()) return; // already visible
+    void this.toggleTimePickerVisibility();
+  }
+
+  /**
    * Move DOM focus to the input - entry point used by DateTimePicker's label activation, which
    * has to redirect `<label for>` clicks into the sub-picker that actually owns the combobox.
    * Focusing the input auto-opens the panel (see `handleInputFocus`), so focus then continues

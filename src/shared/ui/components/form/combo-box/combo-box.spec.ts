@@ -398,6 +398,26 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.isOpen(), 'second label-target click should close list').toBe(false);
       });
 
+      it('should keep list closed when the forwarded click runs before the hidden button focus', async () => {
+        // Arrange: Create component and open list via first label-target click.
+        const fixture = await arrangeComboBox();
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        hiddenButton.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'list should be open before second activation').toBe(true);
+
+        // Act: Engines disagree on label activation order - WebKit forwards the click FIRST
+        // (the click toggles the list closed) and only then focuses the hidden button, whose
+        // focus redirect runs back into the root's focus handler.
+        hiddenButton.click();
+        hiddenButton.focus();
+        fixture.detectChanges();
+
+        // Assert: List stays closed - the focus must not read the just-closed list as a fresh
+        // focus-opened activation and reopen it.
+        expect(fixture.componentInstance.isOpen(), 'focus after the closing click must not reopen the list').toBe(false);
+      });
+
       it('should not move focus or open list on hidden button click when disabled', async () => {
         // Arrange: Create disabled component.
         const fixture = await arrangeComboBox({ disabled: true });
