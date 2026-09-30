@@ -55,4 +55,24 @@ export default defineConfig([
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
   },
+  {
+    // Guards against production code reaching for the global document instead of an injected
+    // DOCUMENT or an element-scoped lookup (`viewChild` / `ownerDocument`) - a document-wide
+    // lookup inside a component silently resolves to a foreign element when idents collide.
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-globals': ['error', {
+        name: 'document',
+        message: 'Use inject(DOCUMENT) or an element-scoped lookup (viewChild / ownerDocument) instead of the global document.',
+      }],
+    },
+  },
+  {
+    // Specs legitimately read document.activeElement to assert focus; e2e files live outside
+    // src, so their page.evaluate callbacks are never matched by the rule above.
+    files: ['src/**/*.spec.ts'],
+    rules: {
+      'no-restricted-globals': 'off',
+    },
+  },
 ]);

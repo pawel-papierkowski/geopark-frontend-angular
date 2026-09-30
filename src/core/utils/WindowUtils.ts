@@ -53,6 +53,8 @@ export class WindowUtils {
    * The viewport is read as `documentElement.clientWidth/clientHeight` (visible area WITHOUT
    * scrollbars) rather than `window.innerWidth/innerHeight` (which include them): with the
    * latter a panel could be judged to fit while actually being clipped by the scrollbar gutter.
+   * The element is taken from the panel's OWN document (`ownerDocument`), never the global one,
+   * so the measurement stays correct for a panel outside the main document as well.
    * Overflow comparisons assume the panel's right/bottom margins are 0, so the rect edges are
    * also the visual edges.
    *
@@ -65,8 +67,9 @@ export class WindowUtils {
    */
   public static resolvePanelPlacement(anchor: HTMLElement, panel: HTMLElement, placement: PanelPlacement): PanelInsets {
     const rect = panel.getBoundingClientRect();
-    const overflowRight = rect.right > document.documentElement.clientWidth;
-    const fitsBelow = rect.bottom <= document.documentElement.clientHeight;
+    const docEl = panel.ownerDocument.documentElement;
+    const overflowRight = rect.right > docEl.clientWidth;
+    const fitsBelow = rect.bottom <= docEl.clientHeight;
 
     // Flip only when the flipped panel fits: `flipY` puts the panel's bottom edge at the anchor's
     // top edge, so the panel fits above exactly when its height fits into that top offset. Read

@@ -5,12 +5,14 @@ export class NavUtils {
 
   /**
    * Starting from the current element, focus on the next focusable element on the page. Does nothing in case of failure.
+   * The focusable list is read from the element's OWN document (`ownerDocument`), never from the
+   * global one, so the call behaves correctly for elements outside the main document as well.
    * @param currElement Current element.
    */
   public static FocusNext(currElement: HTMLElement | null) {
     if (!currElement) return;
 
-    const allFocusable = document.querySelectorAll<HTMLElement>(NavUtils.focusable);
+    const allFocusable = currElement.ownerDocument.querySelectorAll<HTMLElement>(NavUtils.focusable);
     const idx = Array.from(allFocusable).indexOf(currElement as HTMLElement);
     if (idx === -1) return; // current element is not focusable anyway
 
@@ -23,12 +25,14 @@ export class NavUtils {
 
   /**
    * Starting from the current element, focus on the previous focusable element on the page. Does nothing in case of failure.
+   * The focusable list is read from the element's OWN document (`ownerDocument`), never from the
+   * global one, so the call behaves correctly for elements outside the main document as well.
    * @param currElement Current element.
    */
   public static FocusPrev(currElement: HTMLElement | null) {
     if (!currElement) return;
 
-    const allFocusable = document.querySelectorAll<HTMLElement>(NavUtils.focusable);
+    const allFocusable = currElement.ownerDocument.querySelectorAll<HTMLElement>(NavUtils.focusable);
     const idx = Array.from(allFocusable).indexOf(currElement as HTMLElement);
     if (idx <= 0) return; // current element is not focusable or is the first one
 
