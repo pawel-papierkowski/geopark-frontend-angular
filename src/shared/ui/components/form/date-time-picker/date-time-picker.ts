@@ -229,11 +229,26 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * keyboard focus into it. The date sub-picker leads `datetime`, but the placeholder DatePicker
    * has no focusable input yet: its `focusInput()` returns null there, so focus falls through to
    * the time sub-picker.
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the focused input.
    */
-  private focusSubPicker() {
+  private focusSubPicker(options?: FocusOptions) {
     const datePicker = this.datePicker();
+    // TODO: forward options too once the placeholder DatePicker accepts FocusOptions.
     if (datePicker !== undefined && datePicker.focusInput() !== null) return;
-    this.timePicker()?.focusInput();
+    this.timePicker()?.focusInput(options);
+  }
+
+  /**
+   * Focus the control on behalf of the signal-forms `Field` directive (the optional
+   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Mirrors label
+   * activation: delegates to the sub-picker that owns the focusable input (date leads, the
+   * placeholder DatePicker falls through to time), whose focus handler auto-opens its panel
+   * like Tab does. No-op when disabled.
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
+   */
+  public focus(options?: FocusOptions): void {
+    if (this.disabled()) return;
+    this.focusSubPicker(options);
   }
 
   /**

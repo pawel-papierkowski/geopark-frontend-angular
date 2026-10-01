@@ -847,13 +847,25 @@ export class TimePicker implements FormValueControl<Date | null> {
   /**
    * Focusing the input auto-opens the panel (see `handleInputFocus`), so focus then continues
    * into the hour listbox like it does on Tab.
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
    * @returns The input that took focus, or null when the input is disabled.
    */
-  public focusInput(): HTMLElement | null {
+  public focusInput(options?: FocusOptions): HTMLElement | null {
     const inputEl = this.inputRef().nativeElement;
     if (inputEl.disabled) return null;
-    inputEl.focus();
+    inputEl.focus(options);
     return inputEl;
+  }
+
+  /**
+   * Focus the control on behalf of the signal-forms `Field` directive (the optional
+   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Delegates to
+   * `focusInput`, so the behavior mirrors Tab: the input takes focus and its focus handler
+   * auto-opens the clock panel. No-op when disabled (the input refuses focus).
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
+   */
+  public focus(options?: FocusOptions): void {
+    this.focusInput(options);
   }
 
   /**

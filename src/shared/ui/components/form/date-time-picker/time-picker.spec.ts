@@ -2597,6 +2597,63 @@ describe('TimePicker', () => {
     });
   });
 
+  describe('focus', () => {
+    it('should focus the input and open the panel with focus in the hour listbox', async () => {
+      // Arrange: Create component with closed panel; the FormUiControl.focus contract is the
+      // form-driven path (e.g. "focus first invalid field").
+      const fixture = await arrangeTimePicker();
+
+      // Act: Focus the control programmatically.
+      fixture.componentInstance.focus();
+      // The open spans two forRender rounds (measure under baseline, apply flip, then focus),
+      // so a single whenStable + detectChanges pair cannot cover it yet.
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: End state mirrors Tab exactly: the input takes focus first, then the open
+      // sequence continues keyboard focus into the hour listbox.
+      expect(fixture.componentInstance.isClockVisible(), 'focus() should auto-open the panel like Tab').toBe(true);
+      expect(document.activeElement, 'focus() should end with keyboard focus in the hour listbox')
+        .toBe(fixture.componentInstance.hourRef().nativeElement);
+    });
+
+    it('should be a no-op when disabled', async () => {
+      // Arrange: Disabled component (input carries disabled, so focusInput refuses focus).
+      const fixture = await arrangeTimePicker({ disabled: true });
+
+      // Act: Focus the disabled control.
+      fixture.componentInstance.focus();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: Neither the input nor the panel reacts.
+      expect(document.activeElement, 'focus() must not focus a disabled control').not.toBe(getInput(fixture));
+      expect(fixture.componentInstance.isClockVisible(), 'focus() must not open the panel when disabled').toBe(false);
+    });
+
+    it('should forward FocusOptions to the input', async () => {
+      // Arrange: Create component and spy on the native focus of its input.
+      const fixture = await arrangeTimePicker();
+      const focusSpy = vi.spyOn(getInput(fixture), 'focus');
+
+      // Act: Focus with explicit options.
+      fixture.componentInstance.focus({ preventScroll: true });
+      // Two flush rounds settle the focus-triggered open (same as the Tab-parity test above).
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: The contract's options reach the native call unchanged.
+      expect(focusSpy, 'focus() should pass the given options through to the input').toHaveBeenCalledWith({ preventScroll: true });
+    });
+  });
+
   describe('scrolling', () => {
     it('should not use scrollIntoView when opening panel or navigating with keyboard', async () => {
       // Arrange: Clear the shared scrollIntoView spy (stub installed in beforeAll).
