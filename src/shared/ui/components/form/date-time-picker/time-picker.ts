@@ -34,6 +34,25 @@ const panelPlacement: PanelPlacement = {
 const fallbackPageStep = 5;
 
 /**
+ * Session state of a single clock column while the panel is open:
+ * - a number - the option picked in THIS session;
+ * - `'untouched'` - no pick yet, so the column highlights the committed value's part (if any);
+ * - `'discarded'` - the user un-picked their own pick (re-click, canNull only), i.e. cleared the column.
+ * The committed `value` never changes while the panel is open - it is written only when both
+ * columns resolve (see `TimePicker.tryCommit`).
+ */
+type ColumnSession = number | 'untouched' | 'discarded';
+
+/**
+ * What applying one pick did (see `TimePicker.applyPick`):
+ * - `'committed'` - both columns are picked, so `value` was written;
+ * - `'cleared'` - both columns are discarded, so `value` was set to null;
+ * - `'picked'` / `'unpicked'` - only the pressed column changed, the session stays partial;
+ * - `null` - nothing happened (component disabled).
+ */
+type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
+
+/**
  * This is a time picker. Uses `Date` class for both input and output. Do not use it directly.
  * Use DateTimePicker with attribute mode="time".
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
@@ -42,7 +61,11 @@ const fallbackPageStep = 5;
  * Designed to be used with signal-based forms.
  *
  * Features:
- * - Can select time.
+ * - Can select time: hour and minute are picked SEPARATELY, in any order, in one panel session.
+ *   The panel closes as soon as BOTH columns are picked (or, with canNull, both are un-picked)
+ *   and only that completed selection commits the value - until then the input keeps showing
+ *   the previous time. Closing with a partial pick (Escape, outside press, focusout) discards
+ *   the pick; an incomplete session never changes the value.
  * - Can disable or mark as invalid.
  * - Keyboard navigation supported:
  *   - if clock panel closed, open it with enter, space or down arrow
@@ -50,7 +73,7 @@ const fallbackPageStep = 5;
  *   - home/end: jump to beginning/end of list
  *   - page up/down: jump a whole visible page, clamping at the list ends and wrapping to the
  *     opposite end only when already standing on the end item
- *   - enter/space (pick hour/minute)
+ *   - enter/space (pick hour/minute; the panel closes when the pick completes the time)
  *   - delete/backspace: clear the value (only when canNull)
  *   - esc (close panel).
  * - Supports WAI-ARIA.
@@ -92,7 +115,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   public label = input<string>('');
   /** Host's hidden label-activation target. */
   public labelTarget = input<Element | null>(null);
-  /** If true, allow deselecting date. */
+  /** If true, allow deselecting: re-clicking the picked option un-picks its column; the value is cleared (and the panel closes) once both columns are un-picked. */
   public canNull = input<boolean>(false);
   /** Is component required? */
   public readonly required = input<boolean>(false);
@@ -134,6 +157,15 @@ export class TimePicker implements FormValueControl<Date | null> {
   public viewMinute = signal<number | null>(null);
 
   /**
+   * Pick made in the hour column during the CURRENT panel session (see `ColumnSession`).
+   * Starts `'untouched'` on open and is reset in `hidePanel`, so a close without a complete
+   * selection silently discards the pick - `value` is only written when both columns resolve.
+   */
+  private hourSession = signal<ColumnSession>('untouched');
+  /** Pick made in the minute column during the CURRENT panel session; see `hourSession`. */
+  private minuteSession = signal<ColumnSession>('untouched');
+
+  /**
    * Inline style of the clock panel (see `panelPlacement`). All four insets are managed
    * TOGETHER: the CSS default (`top: 100%`, `left: 0`) can be overridden inline, so a stale
    * inline `top: auto` from a previous upward flip would otherwise persist, and having both
@@ -144,10 +176,25 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   // COMPUTED
 
-  /** Currently selected hour. */
-  public selectedHour = computed(() => this.normalizedValue()?.getUTCHours() ?? null);
-  /** Currently selected minute. */
-  public selectedMinute = computed(() => this.normalizedValue()?.getUTCMinutes() ?? null);
+  /**
+   * Currently highlighted hour in the column: this session's pick when one was made, the
+   * committed value's hour while the column is `'untouched'`, nothing after it was discarded.
+   * Drives `.selected`/`aria-selected`, the scroll target on open and the keyboard seeds.
+   */
+  public selectedHour = computed<number | null>(() => {
+    const session = this.hourSession();
+    if (typeof session === 'number') return session;
+    if (session === 'discarded') return null;
+    return this.normalizedValue()?.getUTCHours() ?? null;
+  });
+  
+  /** Currently highlighted minute in the column; mirrors `selectedHour`. */
+  public selectedMinute = computed<number | null>(() => {
+    const session = this.minuteSession();
+    if (typeof session === 'number') return session;
+    if (session === 'discarded') return null;
+    return this.normalizedValue()?.getUTCMinutes() ?? null;
+  });
 
   /** `value` when it carries a real time, otherwise null. Prevents showing NaN on invalid Date and similar bugs. */
   private normalizedValue = computed<Date | null>(() => {
@@ -262,87 +309,71 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   //
 
-  /** Select hour. Private: selection is only driven by the option click/keyboard handlers. */
-  private selectHour(h: number | null) {
-    if (this.disabled() || h === null) return;
+  /**
+   * Apply one pick (click or Enter) to the given column's session and, when it completes the
+   * session, commit `value` via `tryCommit`. NEVER writes `value` for a partial pick - the
+   * input keeps showing the previous time until both columns resolve.
+   * Own-pick rules: from `'untouched'` any option is picked (even one equal to the value's
+   * part - re-picking the existing value counts, so changing the time stays a two-click
+   * action); pressing the option equal to the column's OWN pick toggles it to `'discarded'`
+   * when `canNull`, otherwise it is a no-op. A `'discarded'` column re-picks normally.
+   * Also keeps the keyboard cursor in agreement with the pick (covers clicks that arrive
+   * without a prior mousedown on the option, e.g. synthesized/touch events).
+   * @param column Which column the pick belongs to.
+   * @param picked Hour or minute value of the picked option.
+   * @returns What the pick did; null when the component is disabled.
+   */
+  private applyPick(column: 'hour' | 'minute', picked: number): PickOutcome {
+    if (this.disabled()) return null;
 
-    // Selection and the keyboard cursor must agree.
-    this.focusedHour.set(h);
-
-    const current = this.normalizedValue();
-
-    // Selecting same hour.
-    if (current && current.getUTCHours() === h) {
-      if (this.canNull()) {
-        this.value.set(null); // Deselect time.
-        return;
-      }
-      this.value.set(this.clearSubMinute(current)); // Normalize stray seconds even when selection does not change.
-      return;
+    if (column === 'hour') {
+      this.focusedHour.set(picked);
+    } else {
+      this.focusedMinute.set(picked);
     }
 
-    const date = this.clearSubMinute(current ? new Date(current) : this.createSeedDate());
-    date.setUTCHours(h);
-    this.value.set(date);
-  }
-
-  /** Select minute. Private: selection is only driven by the option click/keyboard handlers. */
-  private selectMinute(m: number | null) {
-    if (this.disabled() || m === null) return;
-
-    // Selection and the keyboard cursor must agree (mirrors `selectHour`; also covers clicks
-    // that arrive without a prior mousedown on the option, e.g. synthesized/touch events).
-    this.focusedMinute.set(m);
-
-    const current = this.normalizedValue();
-
-    // Selecting same minute.
-    if (current && current.getUTCMinutes() === m) {
-      if (this.canNull()) {
-        this.value.set(null); // Deselect time.
-        return;
-      }
-      this.value.set(this.clearSubMinute(current)); // Normalize stray seconds even when selection does not change.
-      return;
+    const current = column === 'hour' ? this.hourSession() : this.minuteSession();
+    const next: ColumnSession = current === picked && this.canNull() ? 'discarded' : picked;
+    if (column === 'hour') {
+      this.hourSession.set(next);
+    } else {
+      this.minuteSession.set(next);
     }
 
-    const date = this.clearSubMinute(current ? new Date(current) : this.createSeedDate());
-    date.setUTCMinutes(m);
-    this.value.set(date);
+    const completed = this.tryCommit();
+    if (completed !== null) return completed;
+    return next === 'discarded' ? 'unpicked' : 'picked';
   }
 
   /**
-   * Return a Date with seconds and milliseconds zeroed. The picker only lets the user pick
-   * hours and minutes (display shows `HH:mm`), so sub-minute parts must never leave the
-   * component - otherwise values seeded with stray seconds would reach the backend untouched.
-   * Returns the same instance when already clean, so untouched clean values keep their identity.
-   * @param date Date to normalize.
-   * @returns Date without seconds and milliseconds.
+   * Commit `value` when the session is complete and report the outcome.
+   * Completes on TWO PICKS (any order) - writes the chosen hour and minute onto the current
+   * value's date (or today's date when no value is set), zeroing sub-minute parts; an
+   * unchanged result keeps the value's identity so the form is not notified spuriously.
+   * Completes on TWO DISCARDS (both columns un-picked, only reachable with canNull) - writes
+   * null. A partial session returns null and leaves `value` untouched: the panel stays open,
+   * and any close without completion (Escape, outside press, focusout, disabling) resets the
+   * session in `hidePanel` without committing. This is the ONLY place a pick changes `value`.
+   * @returns `'committed'`/`'cleared'` when `value` was written, null when still partial.
    */
-  private clearSubMinute(date: Date): Date {
-    if (date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0) return date;
-    const copy = new Date(date);
-    copy.setUTCSeconds(0, 0);
-    return copy;
-  }
+  private tryCommit(): 'committed' | 'cleared' | null {
+    const h = this.hourSession();
+    const m = this.minuteSession();
 
-  /**
-   * Base date for a selection made while no value is set: today's calendar date (taken from
-   * `new Date()`, so the date part stays exactly as before) carrying the VIEWED local time as
-   * UTC fields, with sub-minute parts zeroed.
-   * Reading the UTC fields of a plain `new Date()` instead would seed `localHour - utcOffset`,
-   * which contradicts the `curr` marker and the keyboard seed - both show the local time, so a
-   * partial selection (hour only or minute only) must follow them, not the timezone-shifted
-   * clock. The viewed time is frozen when the panel opened, exactly like the markers the user
-   * is picking against. Falls back to the wall clock when nothing has been viewed yet (e.g.
-   * programmatic selection without opening the panel), mirroring `findViewTime`.
-   * @returns Date ready for the chosen hour/minute to be applied via UTC accessors.
-   */
-  private createSeedDate(): Date {
-    const now = new Date();
-    const date = new Date(now);
-    date.setUTCHours(this.viewHour() ?? now.getHours(), this.viewMinute() ?? now.getMinutes(), 0, 0);
-    return date;
+    if (typeof h === 'number' && typeof m === 'number') {
+      const current = this.normalizedValue();
+      const date = current !== null ? new Date(current) : new Date();
+      date.setUTCHours(h, m, 0, 0); // Also zeroes seconds/milliseconds: sub-minute parts must never leave the component.
+      if (current === null || date.getTime() !== current.getTime()) this.value.set(date);
+      return 'committed';
+    }
+
+    if (h === 'discarded' && m === 'discarded') {
+      if (this.value() !== null) this.value.set(null);
+      return 'cleared';
+    }
+
+    return null;
   }
 
   /**
@@ -524,38 +555,32 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Handle click on an hour option: apply the selection and close the clock panel ONLY when
-   * the click deselected the time (canNull same-hour toggle). A normal hour click keeps the
-   * panel open because the minute still has to be picked - but a deselect clears the whole
-   * time, so the interaction is complete, exactly like the keyboard path in
-   * `keyPressSelectHour` and every minute click in `handleMinuteClick`. Focus returns to the
-   * input (the panel's focus owner) before the panel is hidden, so the resulting focusout
-   * stays internal and no touch is reported - touch fires only when focus really leaves the
-   * component, same as on Escape.
+   * Handle click on an hour option: apply the pick to the session and close the clock panel
+   * ONLY when the pick completes the session (both columns picked in any order, or both
+   * un-picked with canNull). A partial pick keeps the panel open - the other column still has
+   * to be picked; a close WITHOUT completion (Escape, outside press, focusout) silently
+   * discards it. Focus returns to the input (the panel's focus owner) before the panel is
+   * hidden, so the resulting focusout stays internal and no touch is reported - touch fires
+   * only when focus really leaves the component, same as on Escape.
    * @param h Clicked hour.
    */
   public handleHourClick(h: number) {
     if (this.disabled()) return;
-    this.selectHour(h);
-    // Null after the click <=> the click deselected: a non-deselect click always leaves a Date
-    // (guard above also keeps a disabled component from closing on a null value).
-    if (this.normalizedValue() === null) this.hidePanelAndRefocus();
+    const outcome = this.applyPick('hour', h);
+    if (outcome === 'committed' || outcome === 'cleared') this.hidePanelAndRefocus();
   }
 
   /**
-   * Handle click on a minute option: apply the selection and close the clock panel - picking a
-   * minute completes the time, so the interaction ends here (hour clicks keep the panel open
-   * because the minute still has to be picked, unless the hour click deselected the time - see
-   * `handleHourClick`). Focus returns to the input (the panel's focus
-   * owner), so the resulting focusout stays internal and no touch is reported - touch fires only
-   * when focus really leaves the component, same as on Escape. The panel also closes when the
-   * click deselected the time (canNull toggle): either way the interaction is complete.
+   * Handle click on a minute option: apply the pick to the session and close the clock panel
+   * ONLY when the pick completes the session - mirrors `handleHourClick`, since either column
+   * may be the completing pick (selection order is free). A partial minute pick keeps the
+   * panel open; focus handling on close is the same as for an hour pick.
    * @param m Clicked minute.
    */
   public handleMinuteClick(m: number) {
     if (this.disabled()) return;
-    this.selectMinute(m);
-    this.hidePanelAndRefocus(); // Focus moves to the input BEFORE the panel is hidden, so the focusout reads as an internal move.
+    const outcome = this.applyPick('minute', m);
+    if (outcome === 'committed' || outcome === 'cleared') this.hidePanelAndRefocus();
   }
 
   /**
@@ -659,7 +684,7 @@ export class TimePicker implements FormValueControl<Date | null> {
         void this.keyPressSelectHour();
         break;
       case 'Delete':
-      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors Enter-deselect).
+      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors the minute path).
         e.preventDefault();
         if (this.keyPressClear()) this.hidePanelAndRefocus();
         break;
@@ -731,10 +756,10 @@ export class TimePicker implements FormValueControl<Date | null> {
       case 'Enter':
       case ' ':
         e.preventDefault();
-        this.keyPressSelectMinute();
+        void this.keyPressSelectMinute();
         break;
       case 'Delete':
-      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors the minute deselect path).
+      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors the hour path).
         e.preventDefault();
         if (this.keyPressClear()) this.hidePanelAndRefocus();
         break;
@@ -780,44 +805,81 @@ export class TimePicker implements FormValueControl<Date | null> {
     }
   }
 
-  /** React to selecting hour via key press. */
+  /**
+   * React to selecting hour via key press.
+   * A completing pick/discard closes the panel - a committed time moves focus on to the next
+   * element (today's minute-Enter close), a cleared value returns to the input (today's
+   * hour-Enter deselect close). A partial pick hands focus to the minute column so the flow
+   * can continue there; a partial discard stays in the hour column being managed.
+   */
   private async keyPressSelectHour() {
-    if (this.focusedHour() === null) {
+    const hour = this.focusedHour();
+    if (hour === null) {
       // Just show focus without selecting anything.
       this.setupFocus(false);
       return;
     }
 
-    this.selectHour(this.focusedHour());
+    const outcome = this.applyPick('hour', hour);
     await forRender(this.injector);
 
-    // If time was deselected (canNull same-hour toggle), close panel.
-    // Otherwise move focus to minute column.
-    if (this.normalizedValue() === null) {
-      this.hidePanelAndRefocus();
-    } else {
-      this.activeColumn.set('minute');
-      if (this.focusedMinute() === null) {
-        const val = this.normalizedValue()?.getUTCMinutes() ?? this.viewMinute();
-        this.focusedMinute.set(val ?? null);
-      }
-      await forRender(this.injector);
-      // preventScroll: same reasoning as the column switch in `keyPressSwitchColumn` - a
-      // below-the-fold panel must not drag the viewport when the hour press advances the flow.
-      this.minuteRef().nativeElement.focus({ preventScroll: true });
+    if (outcome === 'committed') {
+      this.hidePanelAndFocusNext();
+      return;
     }
+    if (outcome === 'cleared') {
+      this.hidePanelAndRefocus();
+      return;
+    }
+    if (outcome === null || outcome === 'unpicked') return;
+
+    // Partial pick: continue the flow in the minute column (the mirror of
+    // keyPressSelectMinute's partial-pick branch).
+    this.activeColumn.set('minute');
+    if (this.focusedMinute() === null) {
+      this.focusedMinute.set(this.selectedMinute() ?? this.viewMinute() ?? null);
+    }
+    await forRender(this.injector);
+    // preventScroll: same reasoning as the column switch in `keyPressSwitchColumn` - a
+    // below-the-fold panel must not drag the viewport when the hour press advances the flow.
+    this.minuteRef().nativeElement.focus({ preventScroll: true });
   }
 
-  /** React to selecting minute via key press. */
-  private keyPressSelectMinute() {
-    if (this.focusedMinute() === null) {
+  /**
+   * React to selecting minute via key press. Mirrors `keyPressSelectHour` with the columns
+   * swapped: a completing pick/discard closes the panel (a committed time moves focus on to
+   * the next element, a cleared value returns to the input), a partial pick hands focus to
+   * the hour column, a partial discard stays in the minute column.
+   */
+  private async keyPressSelectMinute() {
+    const minute = this.focusedMinute();
+    if (minute === null) {
       // Just show focus without selecting anything.
       this.setupFocus(false);
       return;
     }
 
-    this.selectMinute(this.focusedMinute());
-    this.hidePanelAndFocusNext();
+    const outcome = this.applyPick('minute', minute);
+    await forRender(this.injector);
+
+    if (outcome === 'committed') {
+      this.hidePanelAndFocusNext();
+      return;
+    }
+    if (outcome === 'cleared') {
+      this.hidePanelAndRefocus();
+      return;
+    }
+    if (outcome === null || outcome === 'unpicked') return;
+
+    // Partial pick: continue the flow in the hour column (mirrors keyPressSelectHour).
+    this.activeColumn.set('hour');
+    if (this.focusedHour() === null) {
+      this.focusedHour.set(this.selectedHour() ?? this.viewHour() ?? null);
+    }
+    await forRender(this.injector);
+    // preventScroll: same reasoning as in `keyPressSelectHour`.
+    this.hourRef().nativeElement.focus({ preventScroll: true });
   }
 
   /**
@@ -844,6 +906,9 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /**
    * Hide clock panel with hours and minutes.
+   * Also resets the pick session: a close WITHOUT a completed selection (Escape, outside
+   * press, focusout, disabling) silently discards any partial pick - `value` is only ever
+   * written by `tryCommit` when both columns resolved.
    */
   public hidePanel() {
     if (!this.isClockVisible()) return; // already hidden
@@ -851,6 +916,8 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.isClockVisible.set(false);
     this.focusedHour.set(null);
     this.focusedMinute.set(null);
+    this.hourSession.set('untouched');
+    this.minuteSession.set('untouched');
   }
 
   /**
@@ -918,17 +985,16 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Set up focus values.
+   * Set up focus values. Seeds from the DISPLAY selection (`selectedHour`/`selectedMinute` -
+   * session pick ?? committed value), falling back to the viewed local time.
    * @param force If true, will override focused values. If false, will set focused values only if these are null.
    */
   private setupFocus(force: boolean) {
     if (force || this.focusedHour() === null) {
-      const val = this.normalizedValue()?.getUTCHours() ?? this.viewHour();
-      this.focusedHour.set(val ?? null);
+      this.focusedHour.set(this.selectedHour() ?? this.viewHour() ?? null);
     }
     if (force || this.focusedMinute() === null) {
-      const val = this.normalizedValue()?.getUTCMinutes() ?? this.viewMinute();
-      this.focusedMinute.set(val ?? null);
+      this.focusedMinute.set(this.selectedMinute() ?? this.viewMinute() ?? null);
     }
   }
 }

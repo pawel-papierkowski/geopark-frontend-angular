@@ -465,19 +465,22 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedMinute(), 'Escape should reset focused minute').toBeNull();
       });
 
-      it('should select hour on hour click without closing panel', async () => {
+      it('should keep the value and panel on the first hour pick, marking the picked hour', async () => {
         // Arrange: Create component with empty value and open panel.
         const fixture = await arrangeTimePicker({ value: null });
         await openPanel(fixture);
 
-        // Act: Click hour 14.
+        // Act: Click hour 14 - the first column of the two-step selection.
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value carries selected hour with cleared seconds, panel stays open for minute picking.
-        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain hour 14').toBe(14);
-        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
-        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after hour click').toBe(true);
+        // Assert: A single-column pick never commits - the input keeps showing the old (empty)
+        // value, the panel stays open for the minute pick, and the picked hour is highlighted.
+        expect(fixture.componentInstance.value(), 'first hour pick must not write the value').toBeNull();
+        expect(getInput(fixture).value, 'input must stay empty until both columns are picked').toBe('');
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after the hour pick').toBe(true);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('selected'), 'picked hour 14 should be highlighted').toBe(true);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').getAttribute('aria-selected'), 'picked hour 14 should be aria-selected').toBe('true');
       });
 
       it('should move keyboard cursor to the hour clicked with mouse', async () => {
@@ -516,30 +519,35 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.focusedHour(), 'ArrowDown should advance from clicked hour 5 to 6').toBe(6);
       });
 
-      it('should deselect, close panel and refocus input when the click deselects the value', async () => {
-        // Arrange: Create deselectable component with value 14:30, open panel, move the cursor
-        // away from the selected hour (so only a click on hour 14 itself can deselect) and spy
-        // on touch output.
-        const user = userEvent.setup();
+      it('should clear the value, close panel and refocus input when both columns are un-picked with the mouse', async () => {
+        // Arrange: Create deselectable component with value 14:30, open panel and spy on touch output.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true });
         const touchSpy = vi.fn();
         fixture.componentInstance.touch.subscribe(touchSpy);
         await openPanel(fixture);
-        await user.keyboard('{ArrowDown}');
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(fixture.componentInstance.focusedHour(), 'precondition: cursor should sit on hour 15').toBe(15);
 
-        // Act: Click the already selected hour 14 (deselects because canNull).
+        // Act: Un-pick the hour - the first click picks it, the second re-click discards it.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Deselect completes the interaction - the mouse path must close the panel just
-        // like the keyboard path and every minute click, and focus returns to the input without
-        // reporting a touch (internal move).
-        expect(fixture.componentInstance.value(), 're-clicking selected hour with canNull should clear value').toBeNull();
-        expect(fixture.componentInstance.isClockVisible(), 'panel should close after deselecting with the mouse').toBe(false);
-        expect(document.activeElement, 'focus should return to input after deselect').toBe(getInput(fixture));
+        // Assert: The discard applies to the hour column only - the value is cleared only when
+        // BOTH columns are discarded, so the first column alone keeps it and the panel stays open.
+        expect(fixture.componentInstance.value(), 'hour discard alone must keep the value').not.toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after a single-column discard').toBe(true);
+
+        // Act: Un-pick the minute the same way (pick, then re-click to discard).
+        fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
+        fixture.detectChanges();
+        fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
+        fixture.detectChanges();
+
+        // Assert: Discarding the second column completes the clear - the mouse path closes the
+        // panel and returns focus to the input INTERNALLY, so no touch is reported.
+        expect(fixture.componentInstance.value(), 're-picking both selected options with canNull should clear value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'panel should close after both columns are discarded').toBe(false);
+        expect(document.activeElement, 'focus should return to input after the clear').toBe(getInput(fixture));
         expect(fixture.componentInstance.focusedHour(), 'closing the panel should clear the keyboard cursor').toBeNull();
         expect(touchSpy, 'refocusing the input should not emit touch').not.toHaveBeenCalled();
       });
@@ -587,7 +595,15 @@ describe('TimePicker', () => {
         fixture.componentInstance.touch.subscribe(touchSpy);
         await openPanel(fixture);
 
-        // Act: Click minute 30.
+        // Act: Pick hour 14 first (the hour already matches, so only the minute is about to change).
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+
+        // Assert: One column picked is still a partial session - nothing committed yet.
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'hour-only pick must keep the old minute').toBe(5);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after the hour pick').toBe(true);
+
+        // Act: Click minute 30 - the second pick completes the session.
         fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
         fixture.detectChanges();
 
@@ -599,62 +615,84 @@ describe('TimePicker', () => {
         expect(touchSpy, 'refocusing the input should not emit touch').not.toHaveBeenCalled();
       });
 
-      it('should select minute from empty value with seconds cleared', async () => {
+      it('should commit the value from empty once the hour is also picked, with seconds cleared', async () => {
         // Arrange: Create component with empty value and open panel.
         const fixture = await arrangeTimePicker({ value: null });
         await openPanel(fixture);
 
-        // Act: Click minute 45.
+        // Act: Pick minute 45 first - selection order is free, but the session stays partial.
         fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
         fixture.detectChanges();
 
-        // Assert: Value carries minute with cleared seconds.
-        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 45').toBe(45);
-        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
-      });
+        // Assert: A minute-only pick must not create a value out of thin air.
+        expect(fixture.componentInstance.value(), 'minute-only pick must not write the value').toBeNull();
 
-      it('should seed the untouched hour from the highlighted current time when only a minute is picked', async () => {
-        // Arrange: Create component without value and open panel (both columns highlight current
-        // local time). Shift the highlighted hour by one so it cannot coincide with the
-        // wall-clock hour the seeding used to copy from `new Date()` - the assertion then fails
-        // on every machine timezone instead of passing vacuously on UTC runners.
-        const fixture = await arrangeTimePicker({ value: null });
-        await openPanel(fixture);
-        expect(fixture.componentInstance.viewHour(), 'precondition: open should seed the viewed hour').not.toBeNull();
-        const highlightedHour = ((fixture.componentInstance.viewHour() ?? 0) + 1) % 24;
-        fixture.componentInstance.viewHour.set(highlightedHour);
-        fixture.detectChanges();
-
-        // Act: Click minute 45 without picking an hour first.
-        fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
-        fixture.detectChanges();
-
-        // Assert: Value carries the clicked minute with the hour the panel highlighted - not the
-        // highlight shifted by the browser's UTC offset (which the old seeding produced).
-        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should come from the highlighted current time').toBe(highlightedHour);
-        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be the clicked one').toBe(45);
-        expect(getInput(fixture).value, 'input should show highlighted hour with clicked minute').toBe(`${String(highlightedHour).padStart(2, '0')}:45`);
-      });
-
-      it('should seed the untouched minute from the highlighted current time when only an hour is picked', async () => {
-        // Arrange: Create component without value, open panel and shift the highlighted minute
-        // by one, for the same timezone-robustness reason as the hour variant above.
-        const fixture = await arrangeTimePicker({ value: null });
-        await openPanel(fixture);
-        expect(fixture.componentInstance.viewMinute(), 'precondition: open should seed the viewed minute').not.toBeNull();
-        const highlightedMinute = ((fixture.componentInstance.viewMinute() ?? 0) + 1) % 60;
-        fixture.componentInstance.viewMinute.set(highlightedMinute);
-        fixture.detectChanges();
-
-        // Act: Click hour 14 without picking a minute first.
+        // Act: Click hour 14, the completing pick.
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value carries the clicked hour with the minute the panel highlighted and no
-        // stray seconds.
-        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be the clicked one').toBe(14);
-        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should come from the highlighted current time').toBe(highlightedMinute);
+        // Assert: The completed session commits the value with cleared seconds.
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 45').toBe(45);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain hour 14').toBe(14);
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+      });
+
+      it('should discard a pending pick on Escape and restore the committed highlight on reopen', async () => {
+        // Arrange: Create component with value 14:30 and open panel.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        const before = fixture.componentInstance.value();
+
+        // Act: Pick hour 9 (partial), then leave the panel via Escape.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h9"]').click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.value(), 'pending hour pick must not change the value').toBe(before);
+        expect(getInput(fixture).value, 'input keeps showing the committed time while the pick is pending').toBe('14:30');
+        await user.keyboard('{Escape}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Escape without a completed selection discards the pick.
+        expect(fixture.componentInstance.value(), 'Escape must discard the pending pick').toBe(before);
+        expect(fixture.componentInstance.isClockVisible(), 'Escape should close the panel').toBe(false);
+
+        // Act: Reopen the panel.
+        await openPanel(fixture);
+
+        // Assert: The session reset re-highlights the committed value, not the discarded pick.
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h9"]').classList.contains('selected'), 'discarded hour 9 must lose the highlight').toBe(false);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('selected'), 'committed hour 14 should be highlighted again').toBe(true);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').classList.contains('selected'), 'committed minute 30 should be highlighted again').toBe(true);
+      });
+
+      it('should discard a pending pick when focus leaves the component', async () => {
+        // Arrange: Create component with value 14:30, open panel, spy on touch and create an
+        // element outside the component.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        await openPanel(fixture);
+        const before = fixture.componentInstance.value();
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+
+        try {
+          // Act: Pick minute 45 (partial), then let focus leave the component.
+          fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
+          fixture.detectChanges();
+          expect(fixture.componentInstance.value(), 'pending minute pick must not change the value').toBe(before);
+          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
+          fixture.detectChanges();
+
+          // Assert: The blur close discards the pick instead of committing it, and the real
+          // blur reports the control as touched.
+          expect(fixture.componentInstance.value(), 'focusout must discard the pending pick').toBe(before);
+          expect(fixture.componentInstance.isClockVisible(), 'panel should close when focus leaves component').toBe(false);
+          expect(touchSpy, 'touch should be emitted when focus leaves with a pending pick').toHaveBeenCalledTimes(1);
+        } finally { // cleanup
+          outside.remove();
+        }
       });
 
       it('should clear seconds and milliseconds when changing hour on value with sub-minute parts', async () => {
@@ -662,11 +700,19 @@ describe('TimePicker', () => {
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123) });
         await openPanel(fixture);
 
-        // Act: Click hour 15.
+        // Act: Click hour 15 (partial pick).
         fixture.nativeElement.querySelector('[data-testid="test-time_h15"]').click();
         fixture.detectChanges();
 
-        // Assert: Selected hour applied, seconds and milliseconds dropped.
+        // Assert: The pending pick must not rewrite the value at all - not even its normalization.
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'pending hour pick must not change the value').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCSeconds(), 'value keeps its stray seconds until the session completes').toBe(47);
+
+        // Act: Click minute 30, the completing pick.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
+        fixture.detectChanges();
+
+        // Assert: The commit applies the picked hour and drops sub-minute parts.
         expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain hour 15').toBe(15);
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
         expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
@@ -677,27 +723,38 @@ describe('TimePicker', () => {
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123) });
         await openPanel(fixture);
 
-        // Act: Click minute 45.
+        // Act: Click minute 45 (partial pick).
         fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
         fixture.detectChanges();
 
-        // Assert: Selected minute applied, hour preserved, seconds and milliseconds dropped.
+        // Assert: The pending pick leaves the committed value untouched.
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'pending minute pick must not change the value').toBe(30);
+
+        // Act: Click hour 14, the completing pick.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+
+        // Assert: The commit applies the picked minute, preserves the hour and drops sub-minute parts.
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 45').toBe(45);
         expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
         expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
       });
 
-      it('should normalize sub-minute parts when re-clicking selected hour with canNull false', async () => {
+      it('should keep the value and normalize sub-minute parts when re-clicking selected hour with canNull false', async () => {
         // Arrange: Create component with unclean value and open panel.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123), canNull: false });
         await openPanel(fixture);
 
-        // Act: Click already selected hour 14.
+        // Act: Click already selected hour 14 twice (pick, then a re-click that must NOT discard
+        // it - canNull is false), then complete the session with minute 30.
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is kept but normalized instead of left with stray seconds.
+        // Assert: The re-click kept the hour pick, so completing the session commits the value
+        // with sub-minute parts normalized - without canNull no discard can ever reach it.
         expect(fixture.componentInstance.value(), 'value should stay selected').not.toBeNull();
         expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should stay selected').toBe(14);
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be preserved').toBe(30);
@@ -705,16 +762,19 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
       });
 
-      it('should normalize sub-minute parts when re-clicking selected minute with canNull false', async () => {
+      it('should keep the value and normalize sub-minute parts when re-clicking selected minute with canNull false', async () => {
         // Arrange: Create component with unclean value and open panel.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30, 47, 123), canNull: false });
         await openPanel(fixture);
 
-        // Act: Click already selected minute 30.
+        // Act: Click already selected minute 30 twice (pick, then a non-discarding re-click),
+        // then complete the session with hour 14.
         fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
+        fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is kept but normalized instead of left with stray seconds.
+        // Assert: The re-click kept the minute pick, so the completing commit normalizes the value.
         expect(fixture.componentInstance.value(), 'value should stay selected').not.toBeNull();
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should stay selected').toBe(30);
         expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
@@ -732,24 +792,32 @@ describe('TimePicker', () => {
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is untouched (same instance proves early return) and the panel stays
-        // open so the minute can still be picked.
+        // Assert: Value is untouched - a partial pick never writes it and canNull is false so
+        // the re-click cannot discard the column either - and the panel stays open so the
+        // minute can still be picked.
         expect(fixture.componentInstance.value(), 're-clicking selected hour should keep value').toBe(before);
         expect(fixture.componentInstance.isClockVisible(), 'non-deselect hour click should keep panel open').toBe(true);
       });
 
-      it('should deselect value when same hour is clicked again and canNull is true', async () => {
+      it('should un-pick the hour column on re-click when canNull is true but keep the value', async () => {
         // Arrange: Create deselectable component with value 14:30 and open panel.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true });
         await openPanel(fixture);
 
-        // Act: Click already selected hour 14.
+        // Act: Click already selected hour 14 twice - the first pick, then the re-click discard.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.value(), 'the first click only picks, it must not clear the value').not.toBeNull();
         fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is deselected and the interaction is complete.
-        expect(fixture.componentInstance.value(), 're-clicking selected hour with canNull should clear value').toBeNull();
-        expect(fixture.componentInstance.isClockVisible(), 'panel should close after deselecting').toBe(false);
+        // Assert: The discard is per-column - the value survives until the minute is discarded
+        // too, the panel stays open for that second step and the highlight leaves the hour.
+        expect(fixture.componentInstance.value(), 'hour discard alone must keep the value').not.toBeNull();
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'value hour should be untouched').toBe(14);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after a single-column discard').toBe(true);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('selected'), 'discarded hour should lose the highlight').toBe(false);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').classList.contains('selected'), 'untouched minute should keep the value highlight').toBe(true);
       });
 
       it('should keep value when same minute is clicked again and canNull is false', async () => {
@@ -762,21 +830,29 @@ describe('TimePicker', () => {
         fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is untouched (same instance proves early return).
+        // Assert: Value is untouched - the pick never writes it and canNull blocks the discard.
         expect(fixture.componentInstance.value(), 're-clicking selected minute should keep value').toBe(before);
       });
 
-      it('should deselect value when same minute is clicked again and canNull is true', async () => {
+      it('should un-pick the minute column on re-click when canNull is true but keep the value', async () => {
         // Arrange: Create deselectable component with value 14:30 and open panel.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true });
         await openPanel(fixture);
 
-        // Act: Click already selected minute 30.
+        // Act: Click already selected minute 30 twice - the first pick, then the re-click discard.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.value(), 'the first click only picks, it must not clear the value').not.toBeNull();
         fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').click();
         fixture.detectChanges();
 
-        // Assert: Value is deselected.
-        expect(fixture.componentInstance.value(), 're-clicking selected minute with canNull should clear value').toBeNull();
+        // Assert: Per-column discard mirrors the hour side - the value survives until the hour
+        // is discarded too, and the panel stays open for that second step.
+        expect(fixture.componentInstance.value(), 'minute discard alone must keep the value').not.toBeNull();
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value minute should be untouched').toBe(30);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after a single-column discard').toBe(true);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').classList.contains('selected'), 'discarded minute should lose the highlight').toBe(false);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('selected'), 'untouched hour should keep the value highlight').toBe(true);
       });
 
       it('should ignore hour and minute selection when disabled', async () => {
@@ -1353,34 +1429,48 @@ describe('TimePicker', () => {
         ).toBe(`test-time_opt_h${fixture.componentInstance.viewHour()}`);
       });
 
-      it('should heal an invalid value when an hour is clicked', async () => {
-        // Arrange: Create component fed an invalid Date and open the panel.
+      it('should heal an invalid value when the hour pick completes the selection', async () => {
+        // Arrange: Create component fed an invalid Date, open the panel and pick a minute first.
         const fixture = await arrangeTimePicker({ value: invalidDate });
         await openPanel(fixture);
-
-        // Act: Click hour 14.
-        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
-        fixture.detectChanges();
-
-        // Assert: Value became a valid Date carrying the clicked hour.
-        const healed = fixture.componentInstance.value();
-        expect(healed !== null && !Number.isNaN(healed.getTime()), 'value must become a valid Date after clicking an hour').toBe(true);
-        expect(healed?.getUTCHours(), 'healed value must carry the clicked hour').toBe(14);
-      });
-
-      it('should heal an invalid value when a minute is clicked', async () => {
-        // Arrange: Create component fed an invalid Date and open the panel.
-        const fixture = await arrangeTimePicker({ value: invalidDate });
-        await openPanel(fixture);
-
-        // Act: Click minute 45.
         fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
         fixture.detectChanges();
 
-        // Assert: Value became a valid Date carrying the clicked minute.
+        // Assert: A single-column pick must not touch the corrupt value - healing happens only
+        // with the completing commit.
+        expect(fixture.componentInstance.value(), 'pending minute pick must not touch the corrupt value').toBe(invalidDate);
+
+        // Act: Click hour 14, the completing pick.
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+
+        // Assert: The completed session replaces the corrupt value with a valid Date carrying
+        // both picked parts.
         const healed = fixture.componentInstance.value();
-        expect(healed !== null && !Number.isNaN(healed.getTime()), 'value must become a valid Date after clicking a minute').toBe(true);
-        expect(healed?.getUTCMinutes(), 'healed value must carry the clicked minute').toBe(45);
+        expect(healed !== null && !Number.isNaN(healed.getTime()), 'value must become a valid Date once both columns are picked').toBe(true);
+        expect(healed?.getUTCHours(), 'healed value must carry the picked hour').toBe(14);
+        expect(healed?.getUTCMinutes(), 'healed value must carry the picked minute').toBe(45);
+      });
+
+      it('should heal an invalid value when the minute pick completes the selection', async () => {
+        // Arrange: Create component fed an invalid Date, open the panel and pick an hour first.
+        const fixture = await arrangeTimePicker({ value: invalidDate });
+        await openPanel(fixture);
+        fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+        fixture.detectChanges();
+
+        // Assert: The partial pick leaves the corrupt value alone (mirrors the hour variant).
+        expect(fixture.componentInstance.value(), 'pending hour pick must not touch the corrupt value').toBe(invalidDate);
+
+        // Act: Click minute 45, the completing pick.
+        fixture.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
+        fixture.detectChanges();
+
+        // Assert: The completed session replaces the corrupt value with a valid Date.
+        const healed = fixture.componentInstance.value();
+        expect(healed !== null && !Number.isNaN(healed.getTime()), 'value must become a valid Date once both columns are picked').toBe(true);
+        expect(healed?.getUTCMinutes(), 'healed value must carry the picked minute').toBe(45);
+        expect(healed?.getUTCHours(), 'healed value must carry the picked hour').toBe(14);
       });
 
       it('should clear an invalid value with Backspace from the input when canNull', async () => {
@@ -2083,7 +2173,7 @@ describe('TimePicker', () => {
         expect(document.activeElement, 'ArrowRight should focus minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
       });
 
-      it('should select focused hour and focus minute column on Enter', async () => {
+      it('should pick the focused hour without committing on Enter and focus minute column', async () => {
         // Arrange: Create component with value 14:05, open panel and seed focused hour.
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
@@ -2095,15 +2185,17 @@ describe('TimePicker', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Hour selected (minute preserved), flow advanced to minute column.
-        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain hour 9').toBe(9);
-        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be preserved').toBe(5);
+        // Assert: One column picked is a partial session - the value keeps its committed time
+        // while the picked hour is highlighted - and the flow advances to the minute column.
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour-only Enter must not rewrite the value').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'hour-only Enter must keep the committed minute').toBe(5);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h9"]').classList.contains('selected'), 'picked hour 9 should be highlighted').toBe(true);
         expect(fixture.componentInstance.activeColumn(), 'flow should advance to minute column').toBe('minute');
         expect(document.activeElement, 'focus should move to minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
         expect(fixture.componentInstance.focusedMinute(), 'focused minute should be seeded from value').toBe(5);
       });
 
-      it('should select focused hour on Space', async () => {
+      it('should pick the focused hour without committing on Space', async () => {
         // Arrange: Create component with value 14:05, open panel and seed focused hour.
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
@@ -2115,30 +2207,63 @@ describe('TimePicker', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Hour selected and flow advanced to minute column.
-        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain hour 21').toBe(21);
+        // Assert: Space picks exactly like Enter - partial value untouched, flow advanced.
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'hour-only Space must not rewrite the value').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'hour-only Space must keep the committed minute').toBe(5);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h21"]').classList.contains('selected'), 'picked hour 21 should be highlighted').toBe(true);
         expect(fixture.componentInstance.activeColumn(), 'flow should advance to minute column').toBe('minute');
       });
 
-      it('should deselect and close panel on Enter with same hour when canNull', async () => {
-        // Arrange: Create deselectable component with value 14:30, open panel, seed focused hour 14.
+      it('should clear the value and refocus input on Enter when both columns are un-picked with canNull', async () => {
+        // Arrange: Deselectable component with value 14:30, panel open in the hour listbox,
+        // spy on touch output (the clear must refocus internally, so no touch is reported).
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30), canNull: true });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
         await openPanel(fixture);
-        fixture.componentInstance.focusedHour.set(14);
 
-        // Act: Press Enter on already selected hour.
+        // Act: Pick the hour (Enter), go back to it (ArrowLeft) and un-pick it (Enter).
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await user.keyboard('{ArrowLeft}');
+        await fixture.whenStable();
+        fixture.detectChanges();
         await user.keyboard('{Enter}');
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Value deselected, panel closed, focus back on input.
-        expect(fixture.componentInstance.value(), 'Enter on same hour with canNull should clear value').toBeNull();
-        expect(fixture.componentInstance.isClockVisible(), 'panel should close after deselecting').toBe(false);
+        // Assert: The hour discard alone leaves the value intact and the session partial.
+        expect(fixture.componentInstance.value(), 'hour discard alone must keep the value').not.toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after a single-column discard').toBe(true);
+
+        // Act: Pick the minute (ArrowRight, Enter), go back to it (ArrowRight) and un-pick it
+        // (Enter) - the second discard completes the clear.
+        await user.keyboard('{ArrowRight}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await user.keyboard('{ArrowRight}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Clearing completes the interaction - the panel closes, focus returns to the
+        // input INTERNALLY (no touch) and the keyboard cursor state resets.
+        expect(fixture.componentInstance.value(), 'discarding both columns via Enter with canNull should clear value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'panel should close after both columns are discarded').toBe(false);
+        expect(fixture.componentInstance.focusedHour(), 'closing should reset focused hour').toBeNull();
+        expect(fixture.componentInstance.focusedMinute(), 'closing should reset focused minute').toBeNull();
         expect(document.activeElement, 'focus should return to input').toBe(getInput(fixture));
+        expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
       });
 
-      it('should select seeded hour on Enter right after open', async () => {
+      it('should keep the value and advance to the minute column on Enter with the seeded hour', async () => {
         // Arrange: Create component with value 14:30 and open panel (open seeds focus from value).
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
@@ -2151,10 +2276,11 @@ describe('TimePicker', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Seeded hour is committed and the flow advances to the seeded minute.
-        expect(fixture.componentInstance.value(), 'Enter should keep the clean seeded value instance').toBe(before);
-        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain seeded hour 14').toBe(14);
-        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should be preserved').toBe(30);
+        // Assert: The pick is partial - the value instance is kept (a partial pick never writes
+        // it) - and the flow advances to the seeded minute.
+        expect(fixture.componentInstance.value(), 'Enter should keep the untouched value instance').toBe(before);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should still carry hour 14').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should still carry minute 30').toBe(30);
         expect(fixture.componentInstance.activeColumn(), 'flow should advance to minute column').toBe('minute');
         expect(fixture.componentInstance.focusedMinute(), 'focused minute should stay seeded').toBe(30);
         expect(document.activeElement, 'focus should move to minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
@@ -2429,17 +2555,21 @@ describe('TimePicker', () => {
       });
 
       it('should select minute on Enter, close panel and move focus to next control', async () => {
-        // Arrange: Create component focused in minute listbox with seeded focus and
-        // a focusable control after the picker (target of focus handoff).
+        // Arrange: Create component with value 14:05, panel open in the hour listbox, the minute
+        // cursor seeded at 30 and a focusable control after the picker (focus handoff target).
         const user = userEvent.setup();
-        const fixture = await arrangeFocusedMinute({ value: utcTime(14, 5) });
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
+        await openPanel(fixture);
         fixture.componentInstance.focusedMinute.set(30);
         const nextControl = document.createElement('button');
         nextControl.setAttribute('data-testid', 'next-control');
         document.body.appendChild(nextControl);
 
         try {
-          // Act: Press Enter to pick the focused minute.
+          // Act: Enter picks the hour (partial), the second Enter picks the minute and completes.
+          await user.keyboard('{Enter}');
+          await fixture.whenStable();
+          fixture.detectChanges();
           await user.keyboard('{Enter}');
           await fixture.whenStable();
           fixture.detectChanges();
@@ -2455,12 +2585,17 @@ describe('TimePicker', () => {
       });
 
       it('should select minute on Space and close panel', async () => {
-        // Arrange: Create component focused in minute listbox with seeded focus.
+        // Arrange: Create component with value 14:05, panel open in the hour listbox and the
+        // minute cursor seeded at 45.
         const user = userEvent.setup();
-        const fixture = await arrangeFocusedMinute({ value: utcTime(14, 5) });
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
+        await openPanel(fixture);
         fixture.componentInstance.focusedMinute.set(45);
 
-        // Act: Press Space to pick the focused minute.
+        // Act: Enter picks the hour (partial), Space on the minute completes the session.
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
         await user.keyboard(' ');
         await fixture.whenStable();
         fixture.detectChanges();
@@ -2470,74 +2605,78 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.isClockVisible(), 'panel should close after minute selection').toBe(false);
       });
 
-      it('should deselect value on Enter with same minute when canNull', async () => {
-        // Arrange: Create deselectable component focused in minute listbox with selected minute focused
-        // and a focusable control after the picker (target of focus handoff).
+      it('should un-pick the minute column on the second Enter when canNull, keeping the value', async () => {
+        // Arrange: Deselectable component focused in the minute listbox on the selected minute.
         const user = userEvent.setup();
         const fixture = await arrangeFocusedMinute({ canNull: true });
         fixture.componentInstance.focusedMinute.set(30);
-        const nextControl = document.createElement('button');
-        nextControl.setAttribute('data-testid', 'next-control');
-        document.body.appendChild(nextControl);
-
-        try {
-          // Act: Press Enter on already selected minute (same toggle as mouse re-click).
-          await user.keyboard('{Enter}');
-          await fixture.whenStable();
-          fixture.detectChanges();
-
-          // Assert: Value deselected, panel closed, focus moved on (Enter commits and exits).
-          expect(fixture.componentInstance.value(), 'Enter on same minute with canNull should clear value').toBeNull();
-          expect(fixture.componentInstance.isClockVisible(), 'panel should close after deselecting').toBe(false);
-          expect(document.activeElement, 'focus should move to next focusable control').toBe(nextControl);
-        } finally { // cleanup
-          nextControl.remove();
-        }
-      });
-
-      it('should keep the same value instance on Enter with same minute', async () => {
-        // Arrange: Create component focused in minute listbox with the already selected minute focused
-        // and a focusable control after the picker (target of focus handoff).
-        const user = userEvent.setup();
-        const fixture = await arrangeFocusedMinute({ canNull: false });
-        fixture.componentInstance.focusedMinute.set(30);
         const before = fixture.componentInstance.value();
-        const nextControl = document.createElement('button');
-        nextControl.setAttribute('data-testid', 'next-control');
-        document.body.appendChild(nextControl);
 
-        try {
-          // Act: Press Enter on already selected minute.
-          await user.keyboard('{Enter}');
-          await fixture.whenStable();
-          fixture.detectChanges();
-
-          // Assert: Value instance untouched (no spurious model update), flow still completes.
-          expect(fixture.componentInstance.value(), 'Enter on same minute should keep the same value instance').toBe(before);
-          expect(fixture.componentInstance.isClockVisible(), 'panel should close after minute selection').toBe(false);
-          expect(document.activeElement, 'focus should move to next focusable control').toBe(nextControl);
-        } finally { // cleanup
-          nextControl.remove();
-        }
-      });
-
-      it('should clear seconds and milliseconds on Enter with same minute', async () => {
-        // Arrange: Create component with value carrying stray seconds and milliseconds,
-        // focused in minute listbox on the selected minute.
-        const user = userEvent.setup();
-        const fixture = await arrangeFocusedMinute({ value: utcTime(14, 30, 47, 123), canNull: false });
-        fixture.componentInstance.focusedMinute.set(30);
-
-        // Act: Press Enter on already selected minute.
+        // Act: Enter picks minute 30 (the flow advances to the hour column), ArrowRight returns
+        // to the minute column and the second Enter un-picks it.
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.value(), 'the first Enter only picks, it must not clear the value').toBe(before);
+        await user.keyboard('{ArrowRight}');
+        await fixture.whenStable();
+        fixture.detectChanges();
         await user.keyboard('{Enter}');
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Sub-minute parts normalized while the selection stays.
+        // Assert: The discard is per-column - the value survives, the panel stays open for the
+        // hour discard, and the highlight leaves the minute while the hour keeps the value mark.
+        expect(fixture.componentInstance.value(), 'minute discard alone must keep the value').toBe(before);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after a single-column discard').toBe(true);
+        expect(document.activeElement, 'focus should stay in the minute listbox after the discard').toBe(fixture.componentInstance.minuteRef().nativeElement);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').classList.contains('selected'), 'discarded minute should lose the highlight').toBe(false);
+        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').classList.contains('selected'), 'untouched hour should keep the value highlight').toBe(true);
+      });
+
+      it('should keep the value instance when Enter picks only the minute column', async () => {
+        // Arrange: Create component focused in the minute listbox on the already selected minute.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute({ canNull: false });
+        fixture.componentInstance.focusedMinute.set(30);
+        const before = fixture.componentInstance.value();
+
+        // Act: Press Enter on the selected minute.
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: A single-column pick never writes the value (same instance proves it), the
+        // panel stays open for the hour pick and the flow advances there.
+        expect(fixture.componentInstance.value(), 'minute-only Enter should keep the same value instance').toBe(before);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should stay open after a partial minute pick').toBe(true);
+        expect(fixture.componentInstance.activeColumn(), 'flow should advance to hour column').toBe('hour');
+        expect(document.activeElement, 'focus should move to hour listbox').toBe(fixture.componentInstance.hourRef().nativeElement);
+      });
+
+      it('should clear seconds and milliseconds when Enter completes the selection on the same minute', async () => {
+        // Arrange: Component with value carrying stray seconds and milliseconds, focused in the
+        // minute listbox on the selected minute.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute({ value: utcTime(14, 30, 47, 123), canNull: false });
+        fixture.componentInstance.focusedMinute.set(30);
+
+        // Act: Enter picks the minute (partial), the next Enter picks the seeded hour 14 and
+        // completes the session.
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: The completing commit is what normalizes sub-minute parts - and it closes the
+        // interaction.
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'minute should stay selected').toBe(30);
         expect(fixture.componentInstance.value()?.getUTCHours(), 'hour should be preserved').toBe(14);
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
         expect(fixture.componentInstance.value()?.getUTCMilliseconds(), 'milliseconds should be zeroed').toBe(0);
+        expect(fixture.componentInstance.isClockVisible(), 'the completing pick should close the panel').toBe(false);
       });
 
       it('should close panel and refocus input on Escape from minute listbox', async () => {

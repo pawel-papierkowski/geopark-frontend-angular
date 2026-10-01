@@ -17,28 +17,32 @@ function getTimePicker(page: Page, wantNullable: boolean = false): Locator {
 /**
  * Locate the clock panel of the time-picker.
  * @param page Browser page.
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the clock panel.
  */
-function getPanel(page: Page): Locator {
+function getPanel(page: Page, wantNullable: boolean = false): Locator {
+  if (wantNullable) return page.getByTestId('timeId_cc-timePickerNull_panel');
   return page.getByTestId('timeId_cc-timePicker_panel');
 }
 
 /**
  * Locate the hour listbox column inside the clock panel (first of the two columns).
  * @param page Browser page.
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the hour listbox.
  */
-function getHourColumn(page: Page): Locator {
-  return getPanel(page).locator('.clock-column').nth(0);
+function getHourColumn(page: Page, wantNullable: boolean = false): Locator {
+  return getPanel(page, wantNullable).locator('.clock-column').nth(0);
 }
 
 /**
  * Locate the minute listbox column inside the clock panel (second of the two columns).
  * @param page Browser page.
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the minute listbox.
  */
-function getMinuteColumn(page: Page): Locator {
-  return getPanel(page).locator('.clock-column').nth(1);
+function getMinuteColumn(page: Page, wantNullable: boolean = false): Locator {
+  return getPanel(page, wantNullable).locator('.clock-column').nth(1);
 }
 
 /**
@@ -57,9 +61,11 @@ function getHour(page: Page, hour: number, wantNullable: boolean = false): Locat
  * Locate a specific minute option inside the time-picker.
  * @param page Browser page.
  * @param minute Minute value (0-59).
+ * @param wantNullable False if you want base component, true if you want nullable version of component.
  * @returns Locator for the minute option.
  */
-function getMinute(page: Page, minute: number): Locator {
+function getMinute(page: Page, minute: number, wantNullable: boolean = false): Locator {
+  if (wantNullable) return page.getByTestId(`timeId_cc-timePickerNull_m${minute}`);
   return page.getByTestId(`timeId_cc-timePicker_m${minute}`);
 }
 
@@ -131,7 +137,8 @@ async function readFocusoutCount(page: Page): Promise<number> {
 /**
  * Select a deterministic time (14:30) through mouse interaction.
  * Uses fixed values so assertions do not depend on the current time.
- * Note: picking the minute closes the panel and leaves focus on the input.
+ * The hour pick stays partial; the minute pick completes the session, which commits the value,
+ * closes the panel and leaves focus on the input.
  * @param page Browser page.
  */
 async function selectTimeViaMouse(page: Page): Promise<void> {
@@ -298,6 +305,7 @@ test.describe('TimePicker', () => {
       // Act: Pick hour 14 and minute 30.
       await getHour(page, 14).click();
       await expect(timePicker).toHaveAttribute('aria-expanded', 'true'); // Hour picking keeps the panel open for the minute.
+      await expect(getValueDisplay(page), 'hour-only pick must not commit a value yet').toContainText('❓'); // The form is notified only by the completed session.
       await getMinute(page, 30).click();
 
       // Assert: Input shows formatted time and raw value propagated to form display.
@@ -419,12 +427,24 @@ test.describe('TimePicker', () => {
       await expect(page.locator('.time-minute.focused')).toHaveAttribute('data-testid', `timeId_cc-timePicker_m${pressedMinute}`);
       await expect(getMinuteColumn(page)).toHaveAttribute('aria-activedescendant', `timeId_cc-timePicker_opt_m${pressedMinute}`);
 
-      // Act: Release, so the click selects the pressed minute and completes the flow.
+      // Act: Release - the click picks the pressed minute. With no hour picked yet the session
+      // stays partial, so the value must stay empty (deferred commit) and the panel must stay
+      // open for the hour pick.
       await page.mouse.up();
 
-      // Assert: Panel closes, focus returns to the input and the value carries the pressed minute.
+      // Assert: The minute-only pick registers (highlighted option) but commits nothing yet.
+      await expect(timePicker, 'panel should stay open after a minute-only pick').toHaveAttribute('aria-expanded', 'true');
+      await expect(getMinute(page, pressedMinute), 'picked minute should be highlighted').toHaveClass(/selected/);
+      await expect(timePicker, 'minute-only pick must not commit a value').toHaveValue('');
+
+      // Act: Complete the session by picking hour 14.
+      await getHour(page, 14).click();
+
+      // Assert: The completed session commits `14:<pressed>` through the form, closes the panel
+      // and returns focus to the input.
+      await expect(timePicker).toHaveValue(`14:${String(pressedMinute).padStart(2, '0')}`);
+      await expect(getValueDisplay(page)).toContainText(`T14:${String(pressedMinute).padStart(2, '0')}:00`);
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
-      await expect(timePicker).toHaveValue(new RegExp(`\\d{2}:${String(pressedMinute).padStart(2, '0')}`));
       await expect(timePicker).toBeFocused();
     });
   });
@@ -728,13 +748,26 @@ test.describe('TimePicker', () => {
       const valueDisplay = getValueDisplay(page, true);
       await expect(valueDisplay, 'value should start empty').toContainText('❓');
 
-      // Act: Pick hour 14 (hour clicks keep the panel open for the minute).
+      // Act: Pick hour 14 only (partial session - the form must not be notified yet).
       await timePicker.click();
       await getHour(page, 14, true).click();
-      await expect(valueDisplay, 'hour pick should set a partial time value').toContainText('T14:');
-      await expect(timePicker, 'panel should stay open after the hour pick').toHaveAttribute('aria-expanded', 'true');
 
-      // Act: Delete while the hour listbox holds focus.
+      // Assert: The hour pick highlights but commits nothing while the session is incomplete.
+      await expect(timePicker, 'panel should stay open after the hour pick').toHaveAttribute('aria-expanded', 'true');
+      await expect(valueDisplay, 'hour-only pick must not commit a value').toContainText('❓');
+      await expect(getHour(page, 14, true), 'picked hour should be highlighted').toHaveClass(/selected/);
+
+      // Act: Complete the session with minute 30.
+      await getMinute(page, 30, true).click();
+
+      // Assert: The completed session commits the value, closes the panel and refocuses the input.
+      await expect(valueDisplay, 'completed selection should commit the value').toContainText('T14:30:00');
+      await expect(timePicker, 'panel should close after the completing pick').toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker, 'focus should return to the input after the completing pick').toBeFocused();
+
+      // Act: Reopen via keyboard and Delete while the hour listbox holds focus.
+      await page.keyboard.press('Enter');
+      await expect(getHourColumn(page, true), 'reopened panel should focus the hour listbox').toBeFocused();
       await page.keyboard.press('Delete');
 
       // Assert: Value cleared, interaction completed - panel closed, focus back on the input.
@@ -742,15 +775,12 @@ test.describe('TimePicker', () => {
       await expect(timePicker, 'panel should close after clearing from the listbox').toHaveAttribute('aria-expanded', 'false');
       await expect(timePicker, 'focus should return to the input after clearing').toBeFocused();
 
-      // Act: Reopen, pick hour 14 again (from null this sets, never deselects), Escape to the input.
+      // Act: Commit the value again (hour 14 + minute 30), then Backspace on the input.
       await page.keyboard.press('Enter');
       await getHour(page, 14, true).click();
-      await expect(valueDisplay, 'hour pick should set the value again').toContainText('T14:');
-      await page.keyboard.press('Escape');
-      await expect(timePicker, 'Escape should close the panel and keep the value').toHaveAttribute('aria-expanded', 'false');
-      await expect(timePicker, 'Escape should park focus on the input').toBeFocused();
-
-      // Act: Backspace on the input.
+      await getMinute(page, 30, true).click();
+      await expect(valueDisplay, 'second selection should commit the value again').toContainText('T14:30:00');
+      await expect(timePicker, 'focus should return to the input after the second selection').toBeFocused();
       await page.keyboard.press('Backspace');
 
       // Assert: Value and input cleared; the key closes nothing (panel already closed) and focus stays.

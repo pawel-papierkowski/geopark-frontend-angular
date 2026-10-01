@@ -430,6 +430,34 @@ describe('DateTimePicker', () => {
       }
     });
 
+    it('should keep the value when an outside press closes the clock panel with a pending pick', async () => {
+      // Arrange: Wrapper carrying a value, clock panel open and hour 9 picked - the pick stays
+      // pending until the minute column is picked too.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const value = new Date(Date.UTC(2026, 0, 15, 14, 30));
+      fixture.componentRef.setInput('value', value);
+      await flush(fixture);
+      await openClockPanel(fixture);
+      const outside = document.createElement('button');
+      document.body.appendChild(outside);
+
+      try {
+        // Act: Pick hour 9 (partial selection), then press outside the wrapper.
+        fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_h9"]').click();
+        await flush(fixture);
+        expect(fixture.componentInstance.value(), 'pending hour pick must not change the value').toBe(value);
+        dispatchMousedown(outside);
+        await flush(fixture);
+
+        // Assert: The press closes the panel WITHOUT committing the pending pick - the value
+        // is the very same instance, so no form update happened on the way out.
+        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'outside mousedown should close the clock panel').toBe('false');
+        expect(fixture.componentInstance.value(), 'outside press must discard the pending pick').toBe(value);
+      } finally { // cleanup
+        outside.remove();
+      }
+    });
+
     it('should close clock panel when mousedown lands on a foreign label', async () => {
       // Arrange: Open the panel and create a label pointing at an unrelated control.
       const fixture = await arrangeDateTimePicker({ mode: 'time' });
