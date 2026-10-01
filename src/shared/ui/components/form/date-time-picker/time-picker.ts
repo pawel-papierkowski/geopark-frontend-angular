@@ -407,10 +407,6 @@ export class TimePicker implements FormValueControl<Date | null> {
   /**
    * Page size, in options, for one PageUp/PageDown press: how many options fit in the column's
    * visible height, minus one so the edge of the previous page stays visible as context.
-   * The column header sits OUTSIDE the scroll container (see template), so the column's own
-   * `clientHeight` is fully available to the options; all options share the same height, so a
-   * single division measures the whole list. Falls back to `fallbackPageStep` when the panel
-   * has no layout yet (0/NaN result).
    * @param column The scrollable clock column.
    * @returns Number of options a page press moves, always at least 1.
    */
@@ -426,8 +422,9 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Move a listbox keyboard cursor by one page with boundary wrap.
    * The move always clamps to the list ends first: a press that reaches an end stops there,
    * and only the NEXT press - cursor already standing on the end item - wraps to the opposite
-   * end, landing exactly on it rather than on a step-aligned value. Example with step 12 on
-   * minutes: 30 -> 42 -> 54 -> 59 (clamp) -> 0 (wrap) -> 12.
+   * end, landing exactly on it rather than on a step-aligned value.
+   * Step example with 5 cells visible: 1 2 [3] 4 5 will be 6 7 [8] 9 10. So no overlap, but also no gaps in values.
+   * Clamp example with step 12 on minutes: 30 -> 42 -> 54 -> 59 (clamp) -> 0 (wrap) -> 12.
    * A null cursor is only seeded (no movement), mirroring how the Arrow-key cases treat it.
    * @param current Current cursor value, or null when nothing is focused yet.
    * @param direction 1 to page down, -1 to page up.
@@ -815,15 +812,12 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Clear the value via Delete/Backspace. Guarded by `canNull` (the single switch governing
-   * every user-driven null, same as the same-value toggles in `selectHour`/`selectMinute` -
-   * `required` intentionally does not block clearing, it only reports state) and by an existing
-   * value (clearing null is a no-op). Callers decide what happens afterwards: the input path
-   * keeps focus where it is, the column paths close the panel when this returns true.
+   * Clear the value via Delete/Backspace.
+   * Note: we test `value`, not `normalizedValue` so we can clear corrupted `Date`.
    * @returns True when a value was actually cleared.
    */
   private keyPressClear(): boolean {
-    if (this.disabled() || !this.canNull() || this.normalizedValue() === null) return false;
+    if (this.disabled() || !this.canNull() || this.value() === null) return false;
     this.value.set(null);
     return true;
   }
@@ -842,6 +836,19 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
+   * Show clock panel with hours and minutes when it is closed (no-op when already visible).
+   * Completes an open that focusing the input could not trigger: focusing an ALREADY focused
+   * input fires no focus event, so the auto-open in `handleInputFocus` never runs - e.g. a
+   * label activation's click-first order (WebKit) after a close leaves focus parked on the
+   * input and its click toggle would otherwise be silently lost.
+   */
+  public openPanel() {
+    if (this.disabled()) return;
+    if (this.isClockVisible()) return; // already visible
+    void this.toggleTimePickerVisibility();
+  }
+
+  /**
    * Hide clock panel with hours and minutes.
    */
   public hidePanel() {
@@ -853,20 +860,6 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Show clock panel with hours and minutes when it is closed (no-op when already visible).
-   * Completes an open that focusing the input could not trigger: focusing an ALREADY focused
-   * input fires no focus event, so the auto-open in `handleInputFocus` never runs - e.g. a
-   * label activation's click-first order (WebKit) after a close leaves focus parked on the
-   * input and its click toggle would otherwise be silently lost.
-   */
-  public openPanel() {
-    if (this.isClockVisible()) return; // already visible
-    void this.toggleTimePickerVisibility();
-  }
-
-  /**
-   * Move DOM focus to the input - entry point used by DateTimePicker's label activation, which
-   * has to redirect `<label for>` clicks into the sub-picker that actually owns the combobox.
    * Focusing the input auto-opens the panel (see `handleInputFocus`), so focus then continues
    * into the hour listbox like it does on Tab.
    * @returns The input that took focus, or null when the input is disabled.

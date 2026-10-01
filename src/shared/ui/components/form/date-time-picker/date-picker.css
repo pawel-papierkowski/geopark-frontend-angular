@@ -87,13 +87,6 @@
   outline: none;
 }
 
-.weekday {
-  font-weight: bold;
-  font-size: 0.8em;
-  padding-bottom: var(--spacing-xs);
-  color: var(--color-text-primary);
-}
-
 .day {
   margin: 1px;
 
@@ -144,6 +137,17 @@
   outline-offset: var(--focus-outline-offset);
 }
 
+/* Cell with week name. */
+.weekday {
+  font-weight: bold;
+  font-size: 0.8em;
+  padding-bottom: var(--spacing-xs);
+
+  color: var(--datetimepicker-week-color);
+  background: var(--datetimepicker-week-background);
+}
+
+/* Cell with week number. */
 .weekNum {
   margin: 1px;
 

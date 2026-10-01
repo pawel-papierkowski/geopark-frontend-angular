@@ -1382,6 +1382,46 @@ describe('TimePicker', () => {
         expect(healed !== null && !Number.isNaN(healed.getTime()), 'value must become a valid Date after clicking a minute').toBe(true);
         expect(healed?.getUTCMinutes(), 'healed value must carry the clicked minute').toBe(45);
       });
+
+      it('should clear an invalid value with Backspace from the input when canNull', async () => {
+        // Arrange: Component fed an invalid Date (a non-null corrupt value), deselectable,
+        // input focused with panel closed; touch must stay silent.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: invalidDate, canNull: true });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const input = focusInputWithoutOpening(fixture);
+
+        // Act: Press Backspace.
+        await user.keyboard('{Backspace}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: The corrupt value counts as an existing value and is cleared, so the model
+        // is healed to null; clearing is not a blur, so focus and panel stay untouched.
+        expect(fixture.componentInstance.value(), 'Backspace with canNull must clear an invalid value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'clearing from the input should keep the panel closed').toBe(false);
+        expect(document.activeElement, 'focus should stay on the input').toBe(input);
+        expect(touchSpy, 'clearing without focus movement should not emit touch').not.toHaveBeenCalled();
+      });
+
+      it('should clear an invalid value with Delete from the hour listbox and close the panel when canNull', async () => {
+        // Arrange: Component fed an invalid Date, deselectable, panel open with focus in the hour listbox.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: invalidDate, canNull: true });
+        await openPanel(fixture);
+
+        // Act: Press Delete.
+        await user.keyboard('{Delete}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Corrupt value cleared, so the interaction completes exactly like a normal
+        // clear - panel closes and focus returns to the input internally.
+        expect(fixture.componentInstance.value(), 'Delete with canNull must clear an invalid value').toBeNull();
+        expect(fixture.componentInstance.isClockVisible(), 'clearing should complete the interaction and close the panel').toBe(false);
+        expect(document.activeElement, 'focus should return to the input').toBe(getInput(fixture));
+      });
     });
   });
 
