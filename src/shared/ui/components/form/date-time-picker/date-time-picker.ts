@@ -219,8 +219,8 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     this.focusSubPicker();
     // The redirect above opens only through the input's focus event - when the input ALREADY
     // holds focus (click-first order after a close parks it there) no event fires, so complete
-    // the open explicitly to keep the click's toggle reliable.
-    if (timePicker !== undefined && !timePicker.isClockVisible()) timePicker.openPanel();
+    // the open explicitly to keep the click's toggle reliable (showPanel no-ops when visible).
+    if (timePicker !== undefined) void timePicker.showPanel();
   }
 
   /**

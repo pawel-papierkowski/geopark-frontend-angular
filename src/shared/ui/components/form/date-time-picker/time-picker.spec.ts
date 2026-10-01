@@ -1207,7 +1207,7 @@ describe('TimePicker', () => {
 
       /**
        * Close the clock panel with a mouse click on the input and flush pending component work.
-       * Mirrors the flushing of `openPanel` so the async close cycle fully settles.
+       * Mirrors the flushing of the `openPanel` helper so the async close cycle fully settles.
        * @param fixture Fixture of the component.
        */
       async function closePanel(fixture: ComponentFixture<TimePicker>): Promise<void> {

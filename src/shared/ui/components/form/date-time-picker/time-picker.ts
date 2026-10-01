@@ -825,27 +825,12 @@ export class TimePicker implements FormValueControl<Date | null> {
   // UTILITIES
 
   /**
-   * Show panel (if not already visible). Programmatic open for external controllers -
-   * notably DateTimePicker, which will move between both sub-pickers once DatePicker is
-   * functional. User-driven opens go through focus/click handlers instead.
-   * Does nothing while disabled: opening would move focus into a disabled control's listbox.
+   * Show the clock panel when it is closed (no-op when already visible).
    */
   public async showPanel() {
     if (this.disabled()) return;
-    if (!this.isClockVisible()) await this.toggleTimePickerVisibility();
-  }
-
-  /**
-   * Show clock panel with hours and minutes when it is closed (no-op when already visible).
-   * Completes an open that focusing the input could not trigger: focusing an ALREADY focused
-   * input fires no focus event, so the auto-open in `handleInputFocus` never runs - e.g. a
-   * label activation's click-first order (WebKit) after a close leaves focus parked on the
-   * input and its click toggle would otherwise be silently lost.
-   */
-  public openPanel() {
-    if (this.disabled()) return;
-    if (this.isClockVisible()) return; // already visible
-    void this.toggleTimePickerVisibility();
+    if (this.isClockVisible()) return;
+    await this.toggleTimePickerVisibility();
   }
 
   /**
