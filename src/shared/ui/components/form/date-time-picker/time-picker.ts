@@ -349,8 +349,8 @@ export class TimePicker implements FormValueControl<Date | null> {
    * Scroll the given option to the vertical center of its own `.clock-column` container.
    * Deliberately avoids `Element.scrollIntoView()`: it aligns the option against the viewport and
    * therefore scrolls EVERY scrollable ancestor, including the page - opening the panel near a
-   * viewport edge would jump the whole document (animated, because `html:focus-within` enables
-   * smooth scrolling - see styles/general/reset.css). Writing `scrollTop` touches only the column.
+   * viewport edge would jump the whole document out from under the user. Writing `scrollTop`
+   * touches only the column.
    * @param column The scrollable clock column containing the option.
    * @param option The option element to center.
    */
@@ -500,7 +500,10 @@ export class TimePicker implements FormValueControl<Date | null> {
     e.preventDefault();
 
     const header = target instanceof Element ? target.closest('.column-header') : null;
-    header?.closest('.clock-column-group')?.querySelector<HTMLElement>('.clock-column')?.focus();
+    // preventScroll: the default was cancelled above, so nothing native would scroll either -
+    // this programmatic focus must not move the page right after the user's press (the panel
+    // can sit below the fold, see the open-path focus in `toggleTimePickerVisibility`).
+    header?.closest('.clock-column-group')?.querySelector<HTMLElement>('.clock-column')?.focus({ preventScroll: true });
   }
 
   /** Handle focus arriving on the input (e.g. via Tab). */
@@ -764,12 +767,16 @@ export class TimePicker implements FormValueControl<Date | null> {
       // Switch focus to hour column.
       this.activeColumn.set('hour');
       await forRender(this.injector);
-      this.hourRef().nativeElement.focus();
+      // preventScroll: same reasoning as the open-path focus in `toggleTimePickerVisibility` -
+      // the panel may sit below the fold, and revealing it is the USER's job, not focus's.
+      // Reveal inside the column is handled by `scrollHourIntoView`/`scrollMinuteIntoView`
+      // (column scrollTop only), so nothing here needs a viewport scroll.
+      this.hourRef().nativeElement.focus({ preventScroll: true });
     } else {
       // Switch focus to minute column.
       this.activeColumn.set('minute');
       await forRender(this.injector);
-      this.minuteRef().nativeElement.focus();
+      this.minuteRef().nativeElement.focus({ preventScroll: true }); // preventScroll: see the hour branch above.
     }
   }
 
@@ -795,7 +802,9 @@ export class TimePicker implements FormValueControl<Date | null> {
         this.focusedMinute.set(val ?? null);
       }
       await forRender(this.injector);
-      this.minuteRef().nativeElement.focus();
+      // preventScroll: same reasoning as the column switch in `keyPressSwitchColumn` - a
+      // below-the-fold panel must not drag the viewport when the hour press advances the flow.
+      this.minuteRef().nativeElement.focus({ preventScroll: true });
     }
   }
 
@@ -876,7 +885,14 @@ export class TimePicker implements FormValueControl<Date | null> {
    */
   public hidePanelAndRefocus() {
     this.suppressFocusOpen = true;
-    this.inputRef().nativeElement.focus(); // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
+    // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
+    // preventScroll: after a close (minute pick, Escape, deselect) the page must stay where the
+    // user put it - scrolling back up to the input would yank the viewport away right after a
+    // click that landed on a below-the-fold panel. Tradeoff: when the user HAS scrolled the
+    // input out of view, focus lands off-screen; page position stays user-controlled (same
+    // contract as the open-path focus in `toggleTimePickerVisibility`), and the next Tab
+    // scrolls normally.
+    this.inputRef().nativeElement.focus({ preventScroll: true });
     this.suppressFocusOpen = false;
     this.hidePanel();
   }

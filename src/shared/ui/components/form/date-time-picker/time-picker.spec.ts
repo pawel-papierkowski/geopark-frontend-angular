@@ -2675,9 +2675,87 @@ describe('TimePicker', () => {
       fixture.detectChanges();
 
       // Assert: Only the clock column itself may be scrolled. scrollIntoView aligns against
-      // the viewport, so it would also scroll every scrollable ancestor - including the page,
-      // animated by html:focus-within smooth scrolling - whenever the option is off-center.
+      // the viewport, so it would also scroll every scrollable ancestor - including the page -
+      // whenever the option is off-center.
       expect(scrollSpy, 'scrollIntoView must not be used because it scrolls page ancestors').not.toHaveBeenCalled();
+    });
+
+    it('should pass preventScroll when moving focus between columns via arrow keys', async () => {
+      // Arrange: Open panel, seed both columns, then spy on both column focus methods (the
+      // open-path focus already ran, so only the switch presses are captured).
+      const user = userEvent.setup();
+      const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+      await openPanel(fixture);
+      fixture.componentInstance.focusedHour.set(14);
+      fixture.componentInstance.focusedMinute.set(30);
+      fixture.componentInstance.activeColumn.set('hour');
+      const hourFocusSpy = vi.spyOn(fixture.componentInstance.hourRef().nativeElement, 'focus');
+      const minuteFocusSpy = vi.spyOn(fixture.componentInstance.minuteRef().nativeElement, 'focus');
+
+      // Act: Switch hour -> minute, flush, then minute -> hour.
+      await user.keyboard('{ArrowRight}');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await user.keyboard('{ArrowLeft}');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: Both switch moves pass preventScroll (focus() would otherwise scroll the page
+      // to a below-the-fold panel) and really moved DOM focus.
+      expect(minuteFocusSpy, 'ArrowRight should focus the minute listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
+      expect(hourFocusSpy, 'ArrowLeft should focus the hour listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
+      expect(document.activeElement, 'focus should end back in the hour listbox').toBe(fixture.componentInstance.hourRef().nativeElement);
+    });
+
+    it('should pass preventScroll when advancing from hour to minute on Enter', async () => {
+      // Arrange: Open panel with a value and seed the hour cursor.
+      const user = userEvent.setup();
+      const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
+      await openPanel(fixture);
+      fixture.componentInstance.focusedHour.set(9);
+      const minuteFocusSpy = vi.spyOn(fixture.componentInstance.minuteRef().nativeElement, 'focus');
+
+      // Act: Confirm the hour, which advances the flow into the minute column.
+      await user.keyboard('{Enter}');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: The advance passes preventScroll and landed on the minute listbox.
+      expect(minuteFocusSpy, 'hour Enter should focus the minute listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
+      expect(document.activeElement, 'focus should move to the minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
+    });
+
+    it('should pass preventScroll when a column header press focuses its column', async () => {
+      // Arrange: Open panel and spy on the minute column focus (focus starts in hour column).
+      const fixture = await arrangeTimePicker();
+      await openPanel(fixture);
+      const header = fixture.nativeElement.querySelectorAll('.column-header')[1] as HTMLElement;
+      const minuteFocusSpy = vi.spyOn(fixture.componentInstance.minuteRef().nativeElement, 'focus');
+
+      // Act: Press the minute column header (its handler cancels the default and focuses the column).
+      header.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+
+      // Assert: The header-initiated focus passes preventScroll and landed on the column.
+      expect(minuteFocusSpy, 'header press should focus the minute listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
+      expect(document.activeElement, 'header press should focus the minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
+    });
+
+    it('should pass preventScroll when closing returns focus to the input', async () => {
+      // Arrange: Open panel and spy on the input focus.
+      const user = userEvent.setup();
+      const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+      await openPanel(fixture);
+      const inputFocusSpy = vi.spyOn(getInput(fixture), 'focus');
+
+      // Act: Leave the panel via Escape, which refocuses the input before hiding the panel.
+      await user.keyboard('{Escape}');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: The refocus passes preventScroll (it must not scroll the page back up to the
+      // input after the user scrolled down to a below-the-fold panel) and landed on the input.
+      expect(inputFocusSpy, 'Escape should refocus the input with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
+      expect(document.activeElement, 'Escape should return focus to the input').toBe(getInput(fixture));
     });
 
     it('should center target option inside its own clock column via scrollTop', async () => {

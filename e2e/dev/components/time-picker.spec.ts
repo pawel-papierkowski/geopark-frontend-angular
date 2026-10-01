@@ -556,6 +556,73 @@ test.describe('TimePicker', () => {
       await expect(timePicker).toBeFocused();
     });
 
+    // Regression: focus moves inside the open panel must never scroll the page. When the panel
+    // fits on neither side of the input it deliberately stays below the fold (the user scrolls
+    // down to it), so focus() without preventScroll scrolls the viewport to reveal the newly
+    // focused column/refocus target - yanking the page under the user's cursor. Every in-panel
+    // focus move below must leave window.scrollY exactly where it was.
+    test('should not scroll the page when moving focus inside the open panel', async ({ page }) => {
+      // Arrange: short viewport + downward scroll place the picker so the panel fits on
+      // NEITHER side of the input (no room above or below it), which keeps the panel at its
+      // baseline position extending past the viewport bottom - the exact below-the-fold state
+      // the open path documents at length (time-picker.ts, toggleTimePickerVisibility).
+      await page.setViewportSize({ width: 1100, height: 300 });
+      await goToComponentsPage(page);
+      await page.evaluate(() => window.scrollTo(0, 390));
+      const timePicker = getTimePicker(page);
+      await timePicker.focus(); // focus auto-opens the panel and lands in the hour listbox.
+
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(getHourColumn(page)).toBeFocused();
+      const panelBox = await getPanel(page).boundingBox();
+      expect(panelBox !== null && panelBox.y + panelBox.height, 'pre-condition: panel must extend below the fold for this test to mean anything').toBeGreaterThan(300);
+      expect(panelBox !== null && panelBox.y, 'pre-condition: panel must stay partially visible so revealing it would scroll').toBeLessThan(300);
+      const scrollBefore = await page.evaluate(() => window.scrollY);
+      expect(scrollBefore, 'opening the panel must not scroll the page (open-path contract)').toBe(390);
+
+      // Act: Switch hour -> minute with ArrowRight.
+      await page.keyboard.press('ArrowRight');
+
+      // Assert: Focus moved and the page did not.
+      await expect(getMinuteColumn(page)).toBeFocused();
+      expect(await page.evaluate(() => window.scrollY), 'ArrowRight (hour -> minute switch) must not scroll the page').toBe(scrollBefore);
+
+      // Act: Switch back minute -> hour with ArrowLeft.
+      await page.keyboard.press('ArrowLeft');
+
+      // Assert: Focus moved and the page did not.
+      await expect(getHourColumn(page)).toBeFocused();
+      expect(await page.evaluate(() => window.scrollY), 'ArrowLeft (minute -> hour switch) must not scroll the page').toBe(scrollBefore);
+
+      // Act: Confirm the hour, which advances focus into the minute column.
+      await page.keyboard.press('Enter');
+
+      // Assert: Flow advanced and the page did not.
+      await expect(getMinuteColumn(page)).toBeFocused();
+      expect(await page.evaluate(() => window.scrollY), 'Enter (hour -> minute advance) must not scroll the page').toBe(scrollBefore);
+
+      // Act: Press OUR panel's hour column header (dispatched raw, so Playwright's own
+      // pre-click scroll-into-view cannot move the page and pollute the assertion). The query
+      // is scoped to the open panel: the page hosts several pickers whose hidden panels also
+      // carry .column-header, and pressing a foreign one counts as an outside press (the
+      // DateTimePicker document handler would close our panel instead of focusing a column).
+      await getPanel(page).locator('.column-header').first().evaluate((header) => {
+        header.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      });
+
+      // Assert: Header press refocused the hour column and the page did not.
+      await expect(getHourColumn(page)).toBeFocused();
+      expect(await page.evaluate(() => window.scrollY), 'header press must not scroll the page').toBe(scrollBefore);
+
+      // Act: Leave the panel via Escape (refocuses the input).
+      await page.keyboard.press('Escape');
+
+      // Assert: Panel closed, focus back on the input, page still untouched.
+      await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(timePicker).toBeFocused();
+      expect(await page.evaluate(() => window.scrollY), 'Escape refocus must not scroll the page').toBe(scrollBefore);
+    });
+
     test('should select time via keyboard and move focus to next component', async ({ page }) => {
       // Arrange: Select a deterministic time with the mouse (minute selection closes the panel
       // and returns focus to the input, so no Escape is needed to get back to it).
