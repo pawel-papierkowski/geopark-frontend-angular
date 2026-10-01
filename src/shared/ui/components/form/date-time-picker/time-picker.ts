@@ -127,7 +127,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   public touch = output<void>();
 
   /** Indicates visibility of clock panel. */
-  public isClockVisible = signal(false);
+  public readonly isClockVisible = signal(false);
   /** Root focusable element. */
   private pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
   /** Reference to clock panel. */
@@ -187,7 +187,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (session === 'discarded') return null;
     return this.normalizedValue()?.getUTCHours() ?? null;
   });
-  
+
   /** Currently highlighted minute in the column; mirrors `selectedHour`. */
   public selectedMinute = computed<number | null>(() => {
     const session = this.minuteSession();

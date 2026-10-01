@@ -90,7 +90,7 @@
   min-width: 150px;
   max-height: 300px;
   overflow-y: auto;
-  z-index: 10010;
+  z-index: 1000;
 }
 .combobox.invalid .combobox-options {
   background: var(--combobox-option-err-background);
