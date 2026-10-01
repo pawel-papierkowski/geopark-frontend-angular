@@ -88,7 +88,9 @@ export class DatePicker implements FormValueControl<Date | null> {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   handleFocusOut(e: FocusEvent) {
-    // TODO
+    // TODO: when the real picker lands, recognize the host's hidden label target like
+    // TimePicker does - via the `labelTarget` input, not by class (the shared
+    // `hidden-label-button` class also belongs to other form components' label targets).
   }
 
   // TODO

@@ -61,6 +61,7 @@ const fallbackPageStep = 5;
  * Inputs:
  * - ident - Used for identification and id attributes of the input and panel (data-testid, aria-controls, aria-activedescendant etc.). Always provided by parent DateTimePicker, this component is not meant to be used alone.
  * - label - For `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. Optional.
+ * - labelTarget - The host's hidden label-activation target, which lives OUTSIDE this component's subtree (a sibling on the parent's root). Focus landing on it during label activation reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  *
  * Outputs:
@@ -89,6 +90,8 @@ export class TimePicker implements FormValueControl<Date | null> {
   ident = input<string>('');
   /** Label reference. */
   label = input<string>('');
+  /** Host's hidden label-activation target. */
+  labelTarget = input<Element | null>(null);
   /** If true, allow deselecting date. */
   canNull = input<boolean>(false);
   /** Is component required? */
@@ -565,11 +568,13 @@ export class TimePicker implements FormValueControl<Date | null> {
   public handleFocusOut(e: FocusEvent) {
     const next = e.relatedTarget;
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
-    // The wrapper's hidden label target (`.hidden-label-button`) is a sibling of this component -
-    // it lives on the parent DateTimePicker's root - so containment misses it. Focus landing
-    // there means label activation is about to redirect straight back into this component
-    // (it always pairs focus with a click), so it reads as an internal move, not a user blur.
-    if (next instanceof Element && next.classList.contains('hidden-label-button')) return;
+    // The host's hidden label target (forwarded through the `labelTarget` input) is a sibling of
+    // this component - it lives on the parent DateTimePicker's root - so containment misses it.
+    // Focus landing there means label activation is about to redirect straight back into this
+    // component (it always pairs focus with a click), so it reads as an internal move, not a
+    // user blur. Identity comparison keeps other components' hidden-label buttons (same class,
+    // different control) counting as a real blur.
+    if (next instanceof Element && next === this.labelTarget()) return;
     this.hidePanel();
     if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
     this.touch.emit();

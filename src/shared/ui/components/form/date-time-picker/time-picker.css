@@ -175,11 +175,6 @@
   background: var(--datetimepicker-time-hover-background);
 }
 
-.time-item.curr:hover {
-  color: var(--datetimepicker-time-hover-color);
-  background: var(--datetimepicker-time-hover-background);
-}
-
 /** Keyboard-focus ring on the active option. */
 .time-item.focused {
   outline: var(--datetimepicker-time-focus-outline);

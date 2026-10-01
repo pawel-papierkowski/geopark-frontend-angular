@@ -7,8 +7,11 @@
   <!-- Engines disagree on label activation order: Chromium/Firefox focus this button then forward
         the click, WebKit forwards the click first. handleLabelFocus redirects focus into the
         sub-picker (open half on focus-first engines, restore-only when a click-first engine's
-        toggle already ran); handleLabelClick swallows the paired click or toggles the panel. -->
-  <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
+        toggle already ran); handleLabelClick swallows the paired click or toggles the panel.
+        Its #labelBtnRef reference is forwarded to the time sub-picker (labelTarget input) so its
+        focusout can recognize label activation - the button is a sibling of the sub-picker, so
+        plain containment inside the sub-picker misses it. -->
+  <button #labelBtnRef type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
     (focus)="handleLabelFocus()" (click)="handleLabelClick()"></button>
 
   @if (mode() === 'datetime' || mode() === 'date') {
@@ -36,6 +39,7 @@
 
       [ident]="timeIdent()"
       [label]="label()"
+      [labelTarget]="labelBtnRef"
       [canNull]="canNull()"
 
       [required]="required()"

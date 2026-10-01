@@ -943,6 +943,56 @@ describe('TimePicker', () => {
         expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
       });
 
+      it('should keep panel open without touch when focus moves to the configured labelTarget', async () => {
+        // Arrange: Create component, configure its host's label target, open panel, spy on touch.
+        const fixture = await arrangeTimePicker();
+        const labelTarget = document.createElement('button');
+        document.body.appendChild(labelTarget);
+        fixture.componentRef.setInput('labelTarget', labelTarget);
+        fixture.detectChanges();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        await openPanel(fixture);
+
+        try {
+          // Act: Simulate label activation moving focus from inside the picker to the target.
+          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: labelTarget }));
+          fixture.detectChanges();
+
+          // Assert: The configured label target is the host's own relay - still "internal", so
+          // it must neither close the panel nor report the control as touched.
+          expect(fixture.componentInstance.isClockVisible(), 'panel should stay open when focus moves to labelTarget').toBe(true);
+          expect(touchSpy, 'touch should not be emitted when focus moves to labelTarget').not.toHaveBeenCalled();
+        } finally { // cleanup
+          labelTarget.remove();
+        }
+      });
+
+      it('should treat focus move to a foreign hidden-label-button as a real blur', async () => {
+        // Arrange: Create component, open panel, spy on touch and create a foreign element that
+        // carries the shared hidden-label-button class but is NOT this picker's label target.
+        const fixture = await arrangeTimePicker();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        await openPanel(fixture);
+        const foreign = document.createElement('button');
+        foreign.classList.add('hidden-label-button');
+        document.body.appendChild(foreign);
+
+        try {
+          // Act: Simulate focus leaving to the foreign hidden button.
+          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: foreign }));
+          fixture.detectChanges();
+
+          // Assert: The class belongs to other components' label targets too, so it must count
+          // as leaving - panel closed and touch emitted once.
+          expect(fixture.componentInstance.isClockVisible(), 'panel should close when focus leaves to a foreign hidden-label-button').toBe(false);
+          expect(touchSpy, 'touch should be emitted when focus leaves to a foreign hidden-label-button').toHaveBeenCalledTimes(1);
+        } finally { // cleanup
+          foreign.remove();
+        }
+      });
+
       it('should prevent default on mousedown on the clock panel chrome', async () => {
         // Arrange: Create component and open the panel (chrome = padding/border of the panel).
         const fixture = await arrangeTimePicker();
