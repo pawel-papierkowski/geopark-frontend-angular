@@ -1651,13 +1651,21 @@ describe('TimePicker', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').getAttribute('id'), 'minute option id should follow pattern').toBe('test-time_opt_m30');
       });
 
-      it('should set option aria-labels with translation keys', async () => {
-        // Arrange: Create component (translations not registered, keys are rendered).
+      it('should name options from rendered content instead of aria-label', async () => {
+        // Arrange: Create component (translations not registered, keys would render; value 14:30).
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
 
-        // Assert: Option labels combine value with translation key.
-        expect(fixture.nativeElement.querySelector('[data-testid="test-time_h14"]').getAttribute('aria-label'), 'hour option label should contain translation key').toBe('14 dateTimePicker.hour');
-        expect(fixture.nativeElement.querySelector('[data-testid="test-time_m30"]').getAttribute('aria-label'), 'minute option label should contain translation key').toBe('30 dateTimePicker.minute');
+        // Assert: Options carry no aria-label - it would shadow the zero-padded content and the
+        // accessible name must contain the visible text (WCAG 2.5.3 Label in Name).
+        const hourOption = fixture.nativeElement.querySelector('[data-testid="test-time_h14"]');
+        const minuteOption = fixture.nativeElement.querySelector('[data-testid="test-time_m30"]');
+        const singleDigitHourOption = fixture.nativeElement.querySelector('[data-testid="test-time_h5"]');
+        expect(hourOption.hasAttribute('aria-label'), 'hour option must not carry aria-label').toBe(false);
+        expect(minuteOption.hasAttribute('aria-label'), 'minute option must not carry aria-label').toBe(false);
+        expect(singleDigitHourOption.hasAttribute('aria-label'), 'single-digit hour option must not carry aria-label').toBe(false);
+        expect(hourOption.textContent?.trim(), 'hour option text should be the rendered value').toBe('14');
+        expect(minuteOption.textContent?.trim(), 'minute option text should be the rendered value').toBe('30');
+        expect(singleDigitHourOption.textContent?.trim(), 'single-digit hour should render zero-padded, since it is the accessible name').toBe('05');
       });
 
       it('should set data-testid from ident on input and panel', async () => {
