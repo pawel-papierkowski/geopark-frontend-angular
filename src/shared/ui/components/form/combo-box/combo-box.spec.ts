@@ -1036,13 +1036,15 @@ describe('ComboBox', () => {
         expect(root.getAttribute('aria-activedescendant'), 'should reference highlighted option').toBe('test-combo_option_1');
       });
 
-      it('should have role listbox on options container and role option on each option', async () => {
+      it('should have role listbox with vertical orientation on options container and role option on each option', async () => {
         // Arrange: Create component with three options.
         const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
 
-        // Assert: Listbox and option roles present.
+        // Assert: Listbox declares vertical orientation (matches Up/Down navigation) and option
+        // roles present.
         const list = fixture.nativeElement.querySelector('.combobox-options');
         expect(list.getAttribute('role'), 'container should have listbox role').toBe('listbox');
+        expect(list.getAttribute('aria-orientation'), 'container should declare vertical orientation').toBe('vertical');
         const options = fixture.nativeElement.querySelectorAll('.combobox-option');
         expect(options.length, 'should render three options').toBe(3);
         for (const option of options) {

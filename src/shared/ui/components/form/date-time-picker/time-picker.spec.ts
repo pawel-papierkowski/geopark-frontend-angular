@@ -1486,17 +1486,20 @@ describe('TimePicker', () => {
         expect(panel.hasAttribute('aria-modal'), 'panel should not claim to be modal').toBe(false);
       });
 
-      it('should have listbox roles, aria-labels and tabindex -1 on columns', async () => {
+      it('should have listbox roles, aria-labels, aria-orientation and tabindex -1 on columns', async () => {
         // Arrange: Create component (translations not registered, keys are rendered).
         const fixture = await arrangeTimePicker();
         const hourBox = fixture.componentInstance.hourRef().nativeElement;
         const minuteBox = fixture.componentInstance.minuteRef().nativeElement;
 
-        // Assert: Columns are activedescendant-managed listboxes labelled by translation keys.
+        // Assert: Columns are activedescendant-managed vertical listboxes labelled by translation
+        // keys; orientation matches the visual layout and the Up/Down option navigation.
         expect(hourBox.getAttribute('role'), 'hour column should have listbox role').toBe('listbox');
         expect(minuteBox.getAttribute('role'), 'minute column should have listbox role').toBe('listbox');
         expect(hourBox.getAttribute('aria-label'), 'hour column should be labelled with translation key').toBe('dateTimePicker.hour');
         expect(minuteBox.getAttribute('aria-label'), 'minute column should be labelled with translation key').toBe('dateTimePicker.minute');
+        expect(hourBox.getAttribute('aria-orientation'), 'hour column should declare vertical orientation').toBe('vertical');
+        expect(minuteBox.getAttribute('aria-orientation'), 'minute column should declare vertical orientation').toBe('vertical');
         expect(hourBox.getAttribute('tabindex'), 'hour column should not be a tab stop').toBe('-1');
         expect(minuteBox.getAttribute('tabindex'), 'minute column should not be a tab stop').toBe('-1');
       });

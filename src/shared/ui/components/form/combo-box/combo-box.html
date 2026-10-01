@@ -39,7 +39,8 @@
       [id]="listboxId()"
       [style]="containerStyle()"
       [style.display]="isOpen() ? '' : 'none'"
-      role="listbox">
+      role="listbox"
+      aria-orientation="vertical">
 
       @for (option of options(); track $index) {
         <!-- Options are not tab stops: highlight moves via aria-activedescendant on root,
