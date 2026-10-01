@@ -41,30 +41,30 @@ export class TextBox implements FormValueControl<string | null> {
   private readonly idService = inject(IdService);
 
   /** Value held by component. */
-  value = model<string | null>(null);
+  public value = model<string | null>(null);
   /** Identifier for this component. */
-  ident = input<string>('');
+  public ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `text-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'text-box'));
+  public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'text-box'));
   /** Label reference. */
-  label = input<string>('');
+  public label = input<string>('');
   /** Type of input. */
-  type = input<enTextBoxType>('text');
+  public type = input<enTextBoxType>('text');
   /** If false, this input does not allow pasting text into the field. */
-  allowPaste = input<boolean>(true);
+  public allowPaste = input<boolean>(true);
   /** For autocomplete attribute of <input>. */
-  autocomplete = input<string>('off');
+  public autocomplete = input<string>('off');
   /** Shows grayed out text in background of input if value is null/empty. */
-  placeholder = input<string>('');
+  public placeholder = input<string>('');
   /** Is component required? */
-  readonly required = input<boolean>(false);
+  public readonly required = input<boolean>(false);
   /** Is component disabled? */
-  readonly disabled = input<boolean>(false);
+  public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  readonly invalid = input<boolean>(false);
+  public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
-  touch = output<void>();
+  public touch = output<void>();
 
   //
 

@@ -109,13 +109,15 @@ describe('TimePicker', () => {
 
   /**
    * Focus the input without triggering focus-driven panel opening, mimicking focus
-   * that follows a mousedown (component skips auto-open for such focus).
+   * that follows a mousedown (component skips auto-open for such focus). Uses the real
+   * production path: a dispatched mousedown marks the upcoming focus as click-caused,
+   * the focus handler then consumes the mark instead of opening the panel.
    * @param fixture Fixture of the component.
    * @returns The input element, already focused.
    */
   function focusInputWithoutOpening(fixture: ComponentFixture<TimePicker>): HTMLInputElement {
     const input = getInput(fixture);
-    fixture.componentInstance.focusFromClick = true;
+    input.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     input.focus();
     fixture.detectChanges();
     return input;
@@ -419,31 +421,27 @@ describe('TimePicker', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Panel is open (a double toggle would leave it closed) and suppression flag was consumed.
+        // Assert: Panel is open (a double toggle would leave it closed - the click-caused focus
+        // must not have auto-opened before the click closed it again).
         expect(fixture.componentInstance.isClockVisible(), 'real click flow should open panel exactly once').toBe(true);
-        expect(fixture.componentInstance.focusFromClick, 'click suppression flag should be reset after focus').toBe(false);
       });
 
       it('should keep auto-open on focus after mousedown on already-focused input', async () => {
         // Arrange: Create component with input focused (focus-open suppressed) and panel closed.
         const fixture = await arrangeTimePicker();
         const input = focusInputWithoutOpening(fixture);
-        expect(fixture.componentInstance.focusFromClick, 'suppression flag should start consumed').toBe(false);
 
-        // Act: Mousedown lands on the already-focused input, so no focus event follows to consume the flag.
+        // Act: Mousedown lands on the already-focused input, so no focus event follows to consume
+        // the click-caused mark - it must not be set in the first place (a mark left behind here
+        // would leak and swallow the auto-open asserted below).
         input.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-
-        // Assert: Nothing was marked (marking here would leak and swallow the next auto-open).
-        expect(fixture.componentInstance.focusFromClick, 'mousedown on focused input should not mark the flag').toBe(false);
-
-        // Act: Leave the input and focus it again (Tab-like flow).
         input.blur();
         input.focus();
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Focus auto-opens the panel (a leaked flag would keep it closed).
+        // Assert: Focus auto-opens the panel (a leaked mark would keep it closed).
         expect(fixture.componentInstance.isClockVisible(), 'auto-open should work after mousedown on focused input').toBe(true);
       });
 
@@ -781,29 +779,16 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.value(), 're-clicking selected minute with canNull should clear value').toBeNull();
       });
 
-      it('should ignore selection of null hour or minute', async () => {
-        // Arrange: Create component with value and open panel.
-        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
-        await openPanel(fixture);
-        const before = fixture.componentInstance.value();
-
-        // Act: Call selection handlers with null (defensive API contract).
-        fixture.componentInstance.selectHour(null);
-        fixture.componentInstance.selectMinute(null);
-        fixture.detectChanges();
-
-        // Assert: Value is untouched.
-        expect(fixture.componentInstance.value(), 'null selection should be ignored').toBe(before);
-      });
-
       it('should ignore hour and minute selection when disabled', async () => {
         // Arrange: Create disabled component with value (panel state is irrelevant for these guards).
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30), disabled: true });
         const before = fixture.componentInstance.value();
 
-        // Act: Call selection handlers directly (disabled input does not receive user clicks).
-        fixture.componentInstance.selectHour(5);
-        fixture.componentInstance.selectMinute(5);
+        // Act: Click the hidden options directly (the disabled panel stays hidden, but the
+        // options remain in the DOM - only display is toggled - so the disabled guards are
+        // checked through events, same approach as the option mousedown test below).
+        fixture.nativeElement.querySelector('[data-testid="test-time_h5"]').click();
+        fixture.nativeElement.querySelector('[data-testid="test-time_m5"]').click();
         fixture.detectChanges();
 
         // Assert: Value and keyboard cursor are untouched.

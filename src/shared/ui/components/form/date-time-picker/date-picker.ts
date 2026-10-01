@@ -44,27 +44,27 @@ import { FormValueControl } from '@angular/forms/signals';
 })
 export class DatePicker implements FormValueControl<Date | null> {
   /** Value held by component. */
-  value = model<Date | null>(null);
+  public value = model<Date | null>(null);
   /** Identifier for this component. */
-  ident = input<string>('');
+  public ident = input<string>('');
   /** Label reference. */
-  label = input<string>('');
+  public label = input<string>('');
   /** If true, allow deselecting date. */
-  canNull = input<boolean>(false);
+  public canNull = input<boolean>(false);
   /** If true, show weeks. */
-  showWeeks = input<boolean>(false);
+  public showWeeks = input<boolean>(false);
   /** If not null, defines earliest allowed date. */
-  dateMin = input<Date | null>(null);
+  public dateMin = input<Date | null>(null);
   /** If not null, defines latest allowed date. */
-  dateMax = input<Date | null>(null);
+  public dateMax = input<Date | null>(null);
   /** Is component required? */
-  readonly required = input<boolean>(false);
+  public readonly required = input<boolean>(false);
   /** Is component disabled? */
-  readonly disabled = input<boolean>(false);
+  public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  readonly invalid = input<boolean>(false);
+  public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
-  touch = output<void>();
+  public touch = output<void>();
 
   // GENERAL
 
@@ -76,7 +76,7 @@ export class DatePicker implements FormValueControl<Date | null> {
    * label activation can fall through to the time sub-picker (when the mode renders it).
    * @returns Always null until the placeholder is replaced by the real picker.
    */
-  focusInput(): HTMLElement | null {
+  public focusInput(): HTMLElement | null {
     return null;
   }
 
@@ -87,7 +87,7 @@ export class DatePicker implements FormValueControl<Date | null> {
    * @param e Focus event.
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  handleFocusOut(e: FocusEvent) {
+  public handleFocusOut(e: FocusEvent) {
     // TODO: when the real picker lands, recognize the host's hidden label target like
     // TimePicker does - via the `labelTarget` input, not by class (the shared
     // `hidden-label-button` class also belongs to other form components' label targets).

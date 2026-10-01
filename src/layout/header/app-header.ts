@@ -22,6 +22,6 @@ import { NavAdmin } from '@/layout/admin/nav/nav-admin';
   styleUrl: './app-header.css',
 })
 export class AppHeader {
-  readonly currSection = input.required<Section>();
-  readonly cssClass = computed(() => 'app-header ' + this.currSection());
+  public readonly currSection = input.required<Section>();
+  public readonly cssClass = computed(() => 'app-header ' + this.currSection());
 }

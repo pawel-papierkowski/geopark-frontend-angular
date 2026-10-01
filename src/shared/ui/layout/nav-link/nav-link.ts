@@ -36,9 +36,9 @@ import { Section } from '@/shared/config/types';
 })
 export class NavLink {
   private readonly router = inject(Router);
-  readonly currSection = input.required<Section>();
-  readonly target = input.required<string>();
-  readonly name = input.required<string>();
+  public readonly currSection = input.required<Section>();
+  public readonly target = input.required<string>();
+  public readonly name = input.required<string>();
 
   private readonly currentUrl = toSignal(
     this.router.events.pipe(
@@ -56,7 +56,7 @@ export class NavLink {
    * Parent targets do not match nested paths (e.g. `/dev` does not match `/dev/components`).
    * @returns True if this link should be marked as current page.
    */
-  readonly isActive = computed(() => {
+  public readonly isActive = computed(() => {
     const path = NavLink.stripExtraParts(this.currentUrl());
     const target = NavLink.stripExtraParts(this.target());
     return path === target;

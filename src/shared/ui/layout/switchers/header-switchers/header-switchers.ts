@@ -18,5 +18,5 @@ import { SectionSwitcher } from '@/shared/ui/layout/switchers/section-switcher/s
   styleUrl: './header-switchers.css',
 })
 export class HeaderSwitchers {
-  readonly currSection = input.required<Section>();
+  public readonly currSection = input.required<Section>();
 }

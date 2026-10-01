@@ -16,7 +16,7 @@ export class App implements OnInit {
   private readonly languageService = inject(LanguageService);
 
   /** Initializes application-wide language handling. */
-  ngOnInit(): void {
+  public ngOnInit(): void {
     this.languageService.initialize();
   }
 }

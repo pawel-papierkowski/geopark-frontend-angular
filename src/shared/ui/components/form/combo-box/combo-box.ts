@@ -73,41 +73,41 @@ export class ComboBox implements FormValueControl<number | string | null> {
   private readonly idService = inject(IdService);
 
   /** Value held by component. */
-  value = model<number | string | null>(null);
+  public value = model<number | string | null>(null);
   /** Identifier for this component. */
-  ident = input<string>('');
+  public ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `combo-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'combo-box'));
+  public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'combo-box'));
   /** Label reference. */
-  label = input<string>('');
+  public label = input<string>('');
   /** Array of options. String, number (so also enum) and null allowed. */
-  options = input<(number | string | null)[]>([]);
+  public options = input<(number | string | null)[]>([]);
   /** Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation. */
-  langPrefix = input<string>('');
+  public langPrefix = input<string>('');
   /** Translation key to use if nothing is selected. Treated as raw text if langPrefix is empty. Optional, not used if options have null entry. */
-  placeholder = input<string>('');
+  public placeholder = input<string>('');
   /** Is component required? */
-  readonly required = input<boolean>(false);
+  public readonly required = input<boolean>(false);
   /** Is component disabled? */
-  readonly disabled = input<boolean>(false);
+  public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  readonly invalid = input<boolean>(false);
+  public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
-  touch = output<void>();
+  public touch = output<void>();
 
   /** Indicates visibility of combobox list. */
-  isOpen = signal(false);
+  public isOpen = signal(false);
   /** Tracks if focus handler just opened the list (to suppress synthetic follow-up click).  */
-  focusOpened = signal(false);
+  private focusOpened = signal(false);
   /** What this label activation's forwarded click decided. Engines disagree on label activation
    * order: Chromium/Firefox focus the hidden button first and forward the click second, WebKit
    * does the reverse - so the focus handler that runs AFTER the click (WebKit) must not re-run
    * the toggle the click already made (reopening a list the click just closed). `none` until a
    * forwarded click toggles; cleared when the pointer interaction or the focus episode ends. */
-  labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
+  private labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
   /** Index of currently highlighted option. -1 means none highlighted. */
-  highlightedIndex = signal(-1);
+  public highlightedIndex = signal(-1);
   /**
    * Inline style of the options list (see `panelPlacement`). All four insets are managed
    * TOGETHER: the CSS default (`top: 100%`, `left: 0`, `right: 0`) can be overridden inline,
@@ -115,13 +115,13 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * having both `top` and `bottom` non-auto would over-constrain the absolutely positioned list.
    * Reset to the baseline on every open before measuring.
    */
-  containerStyle = signal<PanelInsets>(panelPlacement.baseline);
+  public containerStyle = signal<PanelInsets>(panelPlacement.baseline);
   /** Number of the most recent open - drops stale placement work from an earlier open. */
   private positionSession = 0;
   /** Root focusable element (role=combobox). */
-  comboRef = viewChild.required<ElementRef<HTMLDivElement>>('comboRef');
+  private comboRef = viewChild.required<ElementRef<HTMLDivElement>>('comboRef');
   /** Reference to the options list popup. */
-  optionsRef = viewChild.required<ElementRef<HTMLDivElement>>('optionsRef');
+  private optionsRef = viewChild.required<ElementRef<HTMLDivElement>>('optionsRef');
 
   constructor() {
     // Watch `disabled` field: close open list when component becomes disabled.
@@ -174,9 +174,9 @@ export class ComboBox implements FormValueControl<number | string | null> {
   // COMPUTED
 
   /** Class of decorative arrow on right. */
-  arrowClass = computed(() => ({ open: this.isOpen() }));
+  public arrowClass = computed(() => ({ open: this.isOpen() }));
   /** Compute identifier for listbox used by aria-controls. */
-  listboxId = computed(() => {
+  public listboxId = computed(() => {
     return `${this.resolvedIdent()}_listbox`;
   });
 
@@ -420,7 +420,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /**
    * Hide panel with list of options.
    */
-  public hidePanel() {
+  private hidePanel() {
     if (!this.isOpen()) return; // already hidden
 
     this.isOpen.set(false);

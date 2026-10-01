@@ -281,7 +281,6 @@ describe('ComboBox', () => {
 
         // Assert: List is open.
         expect(fixture.componentInstance.isOpen(), 'list should be open after focus').toBe(true);
-        expect(fixture.componentInstance.focusOpened(), 'focus should mark list as focus-opened').toBe(true);
       });
 
       it('should suppress click after focus opened the list', async () => {
@@ -292,13 +291,20 @@ describe('ComboBox', () => {
         fixture.detectChanges();
         expect(fixture.componentInstance.isOpen(), 'list should be open after focus').toBe(true);
 
-        // Act: Click the already focused combobox (synthetic click after focus).
+        // Act: Click the already focused combobox (synthetic click after focus), then click again.
         root.click();
         fixture.detectChanges();
 
-        // Assert: List stays open, suppression flag cleared.
+        // Assert: First click is suppressed, list stays open.
         expect(fixture.componentInstance.isOpen(), 'click after focus should not close the list').toBe(true);
-        expect(fixture.componentInstance.focusOpened(), 'suppression flag should be cleared after click').toBe(false);
+
+        // Act: Second synthetic click - the first click consumed the focus-open suppression,
+        // so this one must toggle instead of being swallowed.
+        root.click();
+        fixture.detectChanges();
+
+        // Assert: List closed, proving the first click cleared the suppression flag.
+        expect(fixture.componentInstance.isOpen(), 'suppression should be cleared after the first click').toBe(false);
       });
 
       it('should toggle closed when mousedown resets focus suppression', async () => {
@@ -1320,8 +1326,8 @@ describe('ComboBox', () => {
         // Act: Focus combobox and press ArrowDown.
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
-        fixture.componentInstance.isOpen.set(false);
-        fixture.componentInstance.focusOpened.set(false);
+        // Close the list that focus just opened; Escape also clears the focus-open suppression.
+        await user.keyboard('{Escape}');
         await user.keyboard('{ArrowDown}');
         await fixture.whenStable();
         fixture.detectChanges();
@@ -1339,8 +1345,8 @@ describe('ComboBox', () => {
         // Act: Focus combobox and press ArrowDown.
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
-        fixture.componentInstance.isOpen.set(false);
-        fixture.componentInstance.focusOpened.set(false);
+        // Close the list that focus just opened; Escape also clears the focus-open suppression.
+        await user.keyboard('{Escape}');
         await user.keyboard('{ArrowDown}');
         await fixture.whenStable();
         fixture.detectChanges();
@@ -1393,8 +1399,8 @@ describe('ComboBox', () => {
         const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
-        fixture.componentInstance.isOpen.set(false);
-        fixture.componentInstance.focusOpened.set(false);
+        // Close the list that focus just opened; Escape also clears the focus-open suppression.
+        await user.keyboard('{Escape}');
 
         // Act: Press ArrowUp.
         await user.keyboard('{ArrowUp}');
@@ -1449,8 +1455,8 @@ describe('ComboBox', () => {
         const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
-        fixture.componentInstance.isOpen.set(false);
-        fixture.componentInstance.focusOpened.set(false);
+        // Close the list that focus just opened; Escape also clears the focus-open suppression.
+        await user.keyboard('{Escape}');
 
         // Act: Press Home.
         await user.keyboard('{Home}');
@@ -1486,8 +1492,8 @@ describe('ComboBox', () => {
         const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
-        fixture.componentInstance.isOpen.set(false);
-        fixture.componentInstance.focusOpened.set(false);
+        // Close the list that focus just opened; Escape also clears the focus-open suppression.
+        await user.keyboard('{Escape}');
 
         // Act: Press End.
         await user.keyboard('{End}');
@@ -1523,8 +1529,8 @@ describe('ComboBox', () => {
         const fixture = await arrangeComboBox();
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
-        fixture.componentInstance.isOpen.set(false);
-        fixture.componentInstance.focusOpened.set(false);
+        // Close the list that focus just opened; Escape also clears the focus-open suppression.
+        await user.keyboard('{Escape}');
 
         // Act: Press Enter.
         await user.keyboard('{Enter}');

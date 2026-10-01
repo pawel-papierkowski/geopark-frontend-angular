@@ -40,29 +40,29 @@ export class CheckBox implements FormValueControl<boolean | null> {
   private readonly idService = inject(IdService);
 
   /** Value held by component. */
-  value = model<boolean | null>(null);
+  public value = model<boolean | null>(null);
   /** Identifier for this component. */
-  ident = input<string>('');
+  public ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `check-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'check-box'));
+  public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'check-box'));
   /** Label reference. */
-  label = input<string>('');
+  public label = input<string>('');
   /** Can use null value? */
-  canNull = input<boolean>(false);
+  public canNull = input<boolean>(false);
   /** Is component required? */
-  readonly required = input<boolean>(false);
+  public readonly required = input<boolean>(false);
   /** Is component disabled? */
-  readonly disabled = input<boolean>(false);
+  public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  readonly invalid = input<boolean>(false);
+  public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
-  touch = output<void>();
+  public touch = output<void>();
 
   // COMPUTED
 
   /** Compute value needed for aria-checked. */
-  ariaChecked = computed(() => {
+  public ariaChecked = computed(() => {
     if (this.value() === null) return 'mixed';
     return this.value();
   });
@@ -71,7 +71,7 @@ export class CheckBox implements FormValueControl<boolean | null> {
    * What should be shown as checkbox value?
    * @returns Checkbox character.
    */
-  showSymbol = computed(() => {
+  public showSymbol = computed(() => {
     if (this.value() === null) return '◼';
     if (this.value()) return '✔';
     return '\u00A0'; // Non-breakable space used. Empty string or normal space would move checkbox visually when changing value.

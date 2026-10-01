@@ -16,12 +16,12 @@ export class PageNotFound implements OnInit, OnDestroy {
   private readonly meta = inject(Meta);
   private tag: HTMLMetaElement | null = null;
 
-  ngOnInit(): void {
+  public ngOnInit(): void {
     // Inject additional metadata into header of page to inform.
     this.tag = this.meta.addTag({ name: 'prerender-status-code', content: '404', id: 'prerender-status-code' });
   }
 
-  ngOnDestroy(): void {
+  public ngOnDestroy(): void {
     // Clean up metadata.
     if (this.tag) this.meta.removeTagElement(this.tag);
   }

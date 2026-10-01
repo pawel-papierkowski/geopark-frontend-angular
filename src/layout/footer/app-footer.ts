@@ -13,5 +13,5 @@ import { projectProp } from "@/shared/config/const";
   styleUrl: './app-footer.css',
 })
 export class AppFooter {
-  readonly projectProp = projectProp;
+  public readonly projectProp = projectProp;
 }

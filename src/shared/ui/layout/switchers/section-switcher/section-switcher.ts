@@ -21,11 +21,11 @@ import { Section } from '@/shared/config/types';
   styleUrl: './section-switcher.css',
 })
 export class SectionSwitcher {
-  readonly currSection = input.required<Section>();
-  readonly otherSections = computed(() => sections.filter(s => s !== this.currSection()));
+  public readonly currSection = input.required<Section>();
+  public readonly otherSections = computed(() => sections.filter(s => s !== this.currSection()));
 
   /** Available sections and their target URLs. */
-  readonly sectionRoutes: Record<Section, string[]> = {
+  public readonly sectionRoutes: Record<Section, string[]> = {
     public: ['/'],
     admin: ['/admin'],
     dev: ['/dev'],

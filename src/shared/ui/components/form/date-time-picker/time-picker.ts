@@ -85,53 +85,53 @@ export class TimePicker implements FormValueControl<Date | null> {
   private readonly document = inject(DOCUMENT);
 
   /** Value held by component. */
-  value = model<Date | null>(null);
+  public value = model<Date | null>(null);
   /** Identifier for this component. */
-  ident = input<string>('');
+  public ident = input<string>('');
   /** Label reference. */
-  label = input<string>('');
+  public label = input<string>('');
   /** Host's hidden label-activation target. */
-  labelTarget = input<Element | null>(null);
+  public labelTarget = input<Element | null>(null);
   /** If true, allow deselecting date. */
-  canNull = input<boolean>(false);
+  public canNull = input<boolean>(false);
   /** Is component required? */
-  readonly required = input<boolean>(false);
+  public readonly required = input<boolean>(false);
   /** Is component disabled? */
-  readonly disabled = input<boolean>(false);
+  public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  readonly invalid = input<boolean>(false);
+  public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component (focus left it), regardless of panel visibility. */
-  touch = output<void>();
+  public touch = output<void>();
 
   /** Indicates visibility of clock panel. */
-  isClockVisible = signal(false);
+  public isClockVisible = signal(false);
   /** Root focusable element. */
-  pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
+  private pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
   /** Reference to clock panel. */
-  clockPanelRef = viewChild.required<ElementRef<HTMLDivElement>>('clockPanelRef');
+  public clockPanelRef = viewChild.required<ElementRef<HTMLDivElement>>('clockPanelRef');
   /** Reference to hour listbox. */
-  hourRef = viewChild.required<ElementRef<HTMLDivElement>>('hourRef');
+  public hourRef = viewChild.required<ElementRef<HTMLDivElement>>('hourRef');
   /** Reference to minute listbox. */
-  minuteRef = viewChild.required<ElementRef<HTMLDivElement>>('minuteRef');
+  public minuteRef = viewChild.required<ElementRef<HTMLDivElement>>('minuteRef');
   /** Reference to the text input. */
-  inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
+  private inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
 
   /** Keyboard-focus hour index. Set when panel opens, updated via arrow navigation. */
-  focusedHour = signal<number | null>(null);
+  public focusedHour = signal<number | null>(null);
   /** Keyboard-focus minute index. Set when panel opens, updated via arrow navigation. */
-  focusedMinute = signal<number | null>(null);
+  public focusedMinute = signal<number | null>(null);
   /** Which listbox column currently has keyboard focus. */
-  activeColumn = signal<'hour' | 'minute'>('hour');
+  public activeColumn = signal<'hour' | 'minute'>('hour');
 
   /** List of hours. We use full 24-hour clock. */
-  hours = Array.from({ length: 24 }, (_, i) => i);
+  public hours = Array.from({ length: 24 }, (_, i) => i);
   /** List of minutes. */
-  minutes = Array.from({ length: 60 }, (_, i) => i);
+  public minutes = Array.from({ length: 60 }, (_, i) => i);
 
   /** Currently viewed hour. */
-  viewHour = signal<number | null>(null);
+  public viewHour = signal<number | null>(null);
   /** Currently viewed minute. */
-  viewMinute = signal<number | null>(null);
+  public viewMinute = signal<number | null>(null);
 
   /**
    * Inline style of the clock panel (see `panelPlacement`). All four insets are managed
@@ -140,17 +140,17 @@ export class TimePicker implements FormValueControl<Date | null> {
    * `top` and `bottom` non-auto would over-constrain the absolutely positioned panel.
    * Reset to the baseline on every open before measuring.
    */
-  containerStyle = signal<PanelInsets>(panelPlacement.baseline);
+  public containerStyle = signal<PanelInsets>(panelPlacement.baseline);
 
   // COMPUTED
 
   /** Currently selected hour. */
-  selectedHour = computed(() => this.normalizedValue()?.getUTCHours() ?? null);
+  public selectedHour = computed(() => this.normalizedValue()?.getUTCHours() ?? null);
   /** Currently selected minute. */
-  selectedMinute = computed(() => this.normalizedValue()?.getUTCMinutes() ?? null);
+  public selectedMinute = computed(() => this.normalizedValue()?.getUTCMinutes() ?? null);
 
   /** `value` when it carries a real time, otherwise null. Prevents showing NaN on invalid Date and similar bugs. */
-  normalizedValue = computed<Date | null>(() => {
+  private normalizedValue = computed<Date | null>(() => {
     const value = this.value();
     return value !== null && !Number.isNaN(value.getTime()) ? value : null;
   });
@@ -160,7 +160,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * belongs only to the listbox that holds DOM focus (mirrors the `.focused` ring gating in
    * the template), otherwise the inactive column would keep announcing an active option.
    */
-  hourActiveDesc = computed(() => {
+  public hourActiveDesc = computed(() => {
     if (this.activeColumn() !== 'hour' || this.focusedHour() === null) return undefined;
     return `${this.ident()}_opt_h${this.focusedHour()}`;
   });
@@ -168,7 +168,7 @@ export class TimePicker implements FormValueControl<Date | null> {
    * aria-activedescendant value for the minute listbox. Gated on `activeColumn`, see
    * `hourActiveDesc`.
    */
-  minuteActiveDesc = computed(() => {
+  public minuteActiveDesc = computed(() => {
     if (this.activeColumn() !== 'minute' || this.focusedMinute() === null) return undefined;
     return `${this.ident()}_opt_m${this.focusedMinute()}`;
   });
@@ -179,12 +179,12 @@ export class TimePicker implements FormValueControl<Date | null> {
    * baked in here would be read out ("clock face one-thirty") before the time. The clock glyph
    * is rendered outside the input as an `aria-hidden` span (see the template).
    */
-  displayTimeValue = computed(() => TimeUtils.formatUTCTime(this.normalizedValue()));
+  public displayTimeValue = computed(() => TimeUtils.formatUTCTime(this.normalizedValue()));
   /**
    * Compute placeholder value for time input. Same rule as the value: no decorative glyph, so
    * the format hint is announced (and read) as plain `hh:mm`.
    */
-  placeholderTimeValue = computed(() => this.translateService.instant('dateTimePicker.placeholder.time'));
+  public placeholderTimeValue = computed(() => this.translateService.instant('dateTimePicker.placeholder.time'));
 
   constructor() {
     // Watch `disabled` field: close clock panel when component becomes disabled.
@@ -262,8 +262,8 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   //
 
-  /** Select hour. */
-  public selectHour(h: number | null) {
+  /** Select hour. Private: selection is only driven by the option click/keyboard handlers. */
+  private selectHour(h: number | null) {
     if (this.disabled() || h === null) return;
 
     // Selection and the keyboard cursor must agree.
@@ -286,8 +286,8 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.value.set(date);
   }
 
-  /** Select minute. */
-  public selectMinute(m: number | null) {
+  /** Select minute. Private: selection is only driven by the option click/keyboard handlers. */
+  private selectMinute(m: number | null) {
     if (this.disabled() || m === null) return;
 
     // Selection and the keyboard cursor must agree (mirrors `selectHour`; also covers clicks
@@ -449,7 +449,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   // EVENTS
 
   /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). Set only when a click-caused focus event is actually coming. */
-  public focusFromClick = false;
+  private focusFromClick = false;
 
   /** True while a programmatic refocus (e.g. after closing the panel) must not auto-open the panel. */
   private suppressFocusOpen = false;

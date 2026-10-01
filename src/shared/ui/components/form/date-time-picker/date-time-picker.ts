@@ -58,56 +58,56 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   private readonly destroyRef = inject(DestroyRef);
 
   /** Value held by component. */
-  value = model<Date | null>(null);
+  public value = model<Date | null>(null);
   /** Identifier for this component. */
-  ident = input<string>('');
+  public ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `date-time-picker-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'date-time-picker'));
+  public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'date-time-picker'));
   /** Label reference. */
-  label = input<string>('');
+  public label = input<string>('');
   /** Mode of operation (both date and time, only date, only time). */
-  mode = input<enDateTimePickerMode>('datetime');
+  public mode = input<enDateTimePickerMode>('datetime');
   /** If true, allow deselecting date. */
-  canNull = input<boolean>(false);
+  public canNull = input<boolean>(false);
   /** If true, show weeks. */
-  showWeeks = input<boolean>(false);
+  public showWeeks = input<boolean>(false);
   /** If not null, defines earliest allowed date. */
-  dateMin = input<Date | null>(null);
+  public dateMin = input<Date | null>(null);
   /** If not null, defines latest allowed date. */
-  dateMax = input<Date | null>(null);
+  public dateMax = input<Date | null>(null);
   /** Is component required? */
-  readonly required = input<boolean>(false);
+  public readonly required = input<boolean>(false);
   /** Is component disabled? */
-  readonly disabled = input<boolean>(false);
+  public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  readonly invalid = input<boolean>(false);
+  public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
-  touch = output<void>();
+  public touch = output<void>();
 
   /** Whether the current label activation's focus redirect just opened the panel; the click that
    * label activation forwards right after the focus must then be swallowed instead of toggling
    * the panel closed again. Mirrors combo-box `focusOpened`. */
-  focusOpened = signal(false);
+  private focusOpened = signal(false);
 
   /** What this label activation's forwarded click decided. Engines disagree on label activation
    * order: Chromium/Firefox focus the hidden button first and forward the click second, WebKit
    * does the reverse - so the focus handler that runs AFTER the click (WebKit) must only restore
    * focus, never re-run the toggle the click already made. `none` until a forwarded click runs;
    * reset at the start of every pointer interaction, like `focusOpened`. */
-  labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
+  private labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
 
   /** Date sub-picker component. Absent when `mode` does not render it, hence not `required`. */
-  datePicker = viewChild(DatePicker);
+  private datePicker = viewChild(DatePicker);
   /** Time sub-picker component. Absent when `mode` does not render it, hence not `required`. */
-  timePicker = viewChild(TimePicker);
+  private timePicker = viewChild(TimePicker);
   /** Root element of the wrapper - the containment boundary deciding whether a pointer press
    * landed "outside" the component (see the outside-press close in the constructor). */
-  rootRef = viewChild.required<ElementRef<HTMLDivElement>>('rootRef');
+  private rootRef = viewChild.required<ElementRef<HTMLDivElement>>('rootRef');
 
   /** Identifiers of sub-pickers, derived from resolved ident so they follow it when it changes. */
-  dateIdent = computed(() => `dateId_${this.resolvedIdent()}`);
-  timeIdent = computed(() => `timeId_${this.resolvedIdent()}`);
+  public dateIdent = computed(() => `dateId_${this.resolvedIdent()}`);
+  public timeIdent = computed(() => `timeId_${this.resolvedIdent()}`);
 
   constructor() {
     // A <label> is not focusable, so mousedown on it moves focus from the sub-picker input to

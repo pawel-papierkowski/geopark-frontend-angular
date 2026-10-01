@@ -18,5 +18,5 @@ import { AppFooter } from '@/layout/footer/app-footer';
 export class SectionLayout {
   private readonly route = inject(ActivatedRoute);
   // Note it is not reactive. It is fine, as each section has its own SectionLayout instance.
-  readonly currSection: Section = this.route.snapshot.data['section'];
+  public readonly currSection: Section = this.route.snapshot.data['section'];
 }

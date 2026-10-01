@@ -57,7 +57,7 @@ export type CustomComponentsForm = {
 })
 export class PageCustomComponents {
   /** Custom components model. */
-  compModel = signal<CustomComponentsForm>({
+  private compModel = signal<CustomComponentsForm>({
     mode: EnInputMode.Standard,
     textBox: null,
     comboBox: null,
@@ -73,7 +73,7 @@ export class PageCustomComponents {
   });
 
   /** Custom components form. */
-  compForm = form(this.compModel, (schema) => {
+  public compForm = form(this.compModel, (schema) => {
     this.modeDisabled(schema.textBox, schema.mode);
     this.modeDisabled(schema.checkBox, schema.mode);
     this.modeDisabled(schema.comboBox, schema.mode);
@@ -99,11 +99,11 @@ export class PageCustomComponents {
   });
 
   /** Mode. */
-  enModeOptions = enModeOptions;
+  public enModeOptions = enModeOptions;
   /** Options for radiobox. */
-  enRadioBoxOptions = enRadioBoxOptions;
+  public enRadioBoxOptions = enRadioBoxOptions;
   /** Options for combobox. */
-  enComboBoxOptions = enComboBoxOptions;
+  public enComboBoxOptions = enComboBoxOptions;
 
   //
 

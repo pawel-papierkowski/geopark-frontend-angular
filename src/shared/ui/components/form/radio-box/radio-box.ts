@@ -47,26 +47,26 @@ export class RadioBox implements FormValueControl<number | string | null> {
   private readonly idService = inject(IdService);
 
   /** Value held by component. */
-  value = model<number | string | null>(null);
+  public value = model<number | string | null>(null);
   /** Identifier for this component. */
-  ident = input<string>('');
+  public ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `radio-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
-  readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'radio-box'));
+  public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'radio-box'));
   /** Label reference. */
-  label = input<string>('');
+  public label = input<string>('');
   /** Array of options. String, number (so also enum) and null allowed. */
-  options = input<(number | string | null)[]>([]);
+  public options = input<(number | string | null)[]>([]);
   /** Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation. */
-  langPrefix = input<string>('');
+  public langPrefix = input<string>('');
   /** Is component required? */
-  readonly required = input<boolean>(false);
+  public readonly required = input<boolean>(false);
   /** Is component disabled? */
-  readonly disabled = input<boolean>(false);
+  public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
-  readonly invalid = input<boolean>(false);
+  public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
-  touch = output<void>();
+  public touch = output<void>();
 
   public optionId(index: number): string {
     return this.resolvedIdent() + '_opt_' + index;
@@ -151,7 +151,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
   };
 
   /** Move focus to the next focusable element on the page. */
-  public focusNext() {
+  private focusNext() {
     const el = this.findActiveElement();
     NavUtils.FocusNext(el);
     this.touch.emit();

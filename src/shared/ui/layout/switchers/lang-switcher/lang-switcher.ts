@@ -19,14 +19,14 @@ import type { Lang } from '@/shared/config/types';
 })
 export class LangSwitcher {
   private readonly languageService = inject(LanguageService);
-  readonly languages = languages;
-  readonly currentLang = this.languageService.activeLanguage;
+  public readonly languages = languages;
+  public readonly currentLang = this.languageService.activeLanguage;
 
   /**
    * Change language of website to given language.
    * @param language Language.
    */
-  selectLang(language: Lang): void {
+  public selectLang(language: Lang): void {
     // Delegate the selection to the application-wide language coordinator.
     this.languageService.select(language);
   }

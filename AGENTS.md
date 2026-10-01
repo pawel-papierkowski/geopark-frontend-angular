@@ -68,6 +68,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
 - **Custom components:**
   - Should implement `FormValueControl` with appropriate type and `null`.
   - Should have basic inputs: `ident`, `label`, `required`, `disabled`, `invalid` plus any specific to given component.
+  - Must explicitly specify accessors like `public` or `private`.
 - **Forms:**
   - For components, identifiers (`ident` for custom components) must be present and must be unique, like `formName_fieldName`.
 
@@ -79,6 +80,7 @@ We use **Vitest** for unit tests and **Playwright** for e2e tests.
   - Every test must have marked sections: Arrange, Act, Assert. In some cases it is allowed to skip section (usually Act when Arrange also acts).
   - Assertions should use context messages (as second argument for `expect()`), unless it is obvious what failure means.
   - Use `data-testid` attribute to uniquely identify elements for testing.
+  - Never widen member visibility for tests; drive behavior through DOM/events.
   - When bug is known, write test first, run it to ensure it catches bug, and only then fix bug.
 - Vitest:
   - For user events (keyboard) use userEvent from `@testing-library/user-event`.
