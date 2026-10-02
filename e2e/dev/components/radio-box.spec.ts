@@ -260,12 +260,13 @@ test.describe('RadioBox', () => {
       await page.keyboard.press('Tab');
 
       // Assert: Focus moved past the radioBox to the next focusable component on the page - the
-      // datetime row's date input (the row's first tab stop), which auto-opens its calendar panel.
-      // No radio option remains focused.
+      // datetime row's date input (the row's first tab stop). Landing on it auto-opens the
+      // calendar panel and moves focus into its calendar grid (parity with the time-picker,
+      // which focuses its hour listbox on open). No radio option remains focused.
       const dateTimeDateInput = page.getByTestId('dateId_cc-dateTimePicker_input');
-      await expect(dateTimeDateInput).toBeFocused();
       await expect(dateTimeDateInput).toHaveAttribute('aria-expanded', 'true');
       await expect(page.getByTestId('dateId_cc-dateTimePicker_panel')).toBeVisible();
+      await expect(page.getByTestId('dateId_cc-dateTimePicker_panel').locator('.calendar-grid')).toBeFocused();
       await expect(option0).not.toBeFocused();
     });
 

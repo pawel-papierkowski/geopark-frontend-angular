@@ -103,7 +103,7 @@
     <div
       #calendarGridRef
       class="calendar-grid"
-      tabindex="0"
+      [tabindex]="isCalendarVisible() ? 0 : -1"
       [style]="gridStyle()"
       role="grid"
       [aria-label]="headerText()"
@@ -130,10 +130,12 @@
           role="gridcell"
           [attr.aria-selected]="calendarCell.type === EnCalendarCellType.Date ? isDaySelected(calendarCell) : undefined"
           [attr.aria-disabled]="calendarCell.type === EnCalendarCellType.Date ? isDayDisabled(calendarCell) || undefined : undefined"
+          [attr.aria-current]="isToday(calendarCell) ? 'date' : null"
           [attr.aria-label]="
             calendarCell.type === EnCalendarCellType.Date
               ? `${calendarCell.year} ${'dateTimePicker.month.' + calendarCell.month | translate} ${calendarCell.day}`
               : undefined"
+          (mousedown)="handleCellMousedown(calendarCell)"
           (click)="selectCell(calendarCell)">
           {{ calendarCell.day }}
         </div>

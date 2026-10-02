@@ -125,8 +125,12 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   /** Date under keyboard focus within the calendar grid. Set when panel opens, updated via arrow navigation. */
   public focusedDate = signal<Date | null>(null);
-  /** Currently highlighted date in the grid. */
-  public selectedDate = signal<Date | null>(null);
+  /**
+   * Currently highlighted date in the grid - the display selection, derived from `value` so an
+   * externally loaded value marks its day as selected. Read-only: picking writes `value`
+   * (mirrors time-picker's `selectedHour`, which is likewise computed from `value`).
+   */
+  public selectedDate = computed<Date | null>(() => this.normalizedValue());
   /** Currently viewed date in the grid. */
   public viewDate = signal<Date | null>(null);
 
@@ -220,6 +224,12 @@ export class DatePicker implements FormValueControl<Date | null> {
 
       // Adjust picker position if needed to prevent window overflow (measured under baseline).
       this.positionPanel();
+
+      // Move keyboard focus into the panel (calendar grid) so navigation keys work right away.
+      // preventScroll: the panel was just placed to fit the viewport (or deliberately left below
+      // the fold when it fits on neither side), so there is nothing to reveal - and a
+      // focus-triggered page scroll would race with the user's mouse.
+      this.calendarGridRef().nativeElement.focus({ preventScroll: true });
     }
   }
 
@@ -233,13 +243,21 @@ export class DatePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Find and set current date in the browser's local timezone.
-   * Drives the `curr` marker (always), and - when no value is set - keyboard focus seed,
-   * so opening the picker without a value pre-selects local date.
-   * Values themselves stay timezone-agnostic (UTC-carried), see class doc.
+   * Find and set the date shown in the grid.
+   * Follows the selection when one exists (the user sees their date), otherwise seeds from the
+   * LOCAL calendar date so opening without a value pre-selects today's day. The seed is anchored
+   * at UTC midnight of the local date: grid cells are built from the UTC parts of `viewDate`,
+   * while "today" itself stays local (see `isToday`). Values stay timezone-agnostic (UTC-carried),
+   * see class doc.
    */
   private findViewDate() {
-    this.viewDate.set(this.selectedDate() ? new Date(this.selectedDate()!) : new Date());
+    const selected = this.selectedDate();
+    if (selected !== null) {
+      this.viewDate.set(new Date(selected));
+      return;
+    }
+    const now = new Date();
+    this.viewDate.set(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())));
   }
 
   //
@@ -251,7 +269,10 @@ export class DatePicker implements FormValueControl<Date | null> {
   private calcCalendarCells(): CalendarCell[] {
     const cells: CalendarCell[] = this.calcDays();
 
-    if (this.showWeeks()) {
+    // Before the first open no month has been viewed yet, so the day list is empty - there are
+    // no rows to attach week numbers to. The panel content is always built (only its display
+    // toggles), so this state must not throw. Skip the week pass.
+    if (this.showWeeks() && cells.length > 0) {
       // Insert week number cells, always six weeks.
       for (let i = 0; i < 6; i++) {
         const dayIx = i * 8; // Always on monday, will be used for splicing at the end.
@@ -372,40 +393,41 @@ export class DatePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Select a specific date (shared by click and keyboard).
+   * Apply one date pick to `value` (shared by click and keyboard). NEVER touches the panel -
+   * callers complete the interaction (close/refocus) based on the returned outcome, because
+   * mouse and keyboard finish a pick differently (see `selectCell` and `keyPressSelectDate`).
    * @param date Date to select.
+   * @returns True when the value actually changed (a pick or a deselect), false on a no-op
+   * (same day with `canNull` off, out-of-range day, disabled component).
    */
-  private selectDate(date: Date) {
-    if (this.disabled()) return;
-    if (!this.canPick(date)) return;
+  private selectDate(date: Date): boolean {
+    if (this.disabled()) return false;
+    if (!this.canPick(date)) return false;
 
     const newDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+    const current = this.normalizedValue();
 
     if (
-      this.selectedDate() &&
-      this.selectedDate()!.getUTCFullYear() === newDate.getUTCFullYear() &&
-      this.selectedDate()!.getUTCMonth() === newDate.getUTCMonth() &&
-      this.selectedDate()!.getUTCDate() === newDate.getUTCDate()
+      current !== null &&
+      current.getUTCFullYear() === newDate.getUTCFullYear() &&
+      current.getUTCMonth() === newDate.getUTCMonth() &&
+      current.getUTCDate() === newDate.getUTCDate()
     ) {
       // Selected same date again, deselect date.
-      if (this.canNull()) this.selectedDate.set(null);
-      else return;
-    } else {
-      // Select new date without touching time.
-      const prevDateTime = this.selectedDate();
-      if (prevDateTime) {
-        newDate.setUTCHours(prevDateTime.getUTCHours());
-        newDate.setUTCMinutes(prevDateTime.getUTCMinutes());
-        newDate.setUTCSeconds(prevDateTime.getUTCSeconds());
-        newDate.setUTCMilliseconds(prevDateTime.getUTCMilliseconds());
-      }
-      this.selectedDate.set(newDate);
+      if (!this.canNull()) return false;
+      this.value.set(null);
+      return true;
     }
 
-    // Now update actual value.
-    this.value.set(this.selectedDate());
-    // Hide calendar panel.
-    this.hidePanelAndRefocus();
+    // Select new date without touching time.
+    if (current !== null) {
+      newDate.setUTCHours(current.getUTCHours());
+      newDate.setUTCMinutes(current.getUTCMinutes());
+      newDate.setUTCSeconds(current.getUTCSeconds());
+      newDate.setUTCMilliseconds(current.getUTCMilliseconds());
+    }
+    this.value.set(newDate);
+    return true;
   }
 
   /**
@@ -414,7 +436,9 @@ export class DatePicker implements FormValueControl<Date | null> {
    */
   public selectCell(calendarCell: CalendarCell) {
     if (calendarCell.type !== EnCalendarCellType.Date) return;
-    this.selectDate(this.calendarCellToDate(calendarCell));
+    // A mouse pick completes the interaction right away: close the panel and return focus to
+    // the input internally (no touch - the pointer never left the component).
+    if (this.selectDate(this.calendarCellToDate(calendarCell))) this.hidePanelAndRefocus();
   }
 
   /**
@@ -449,16 +473,19 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   /**
    * Check if given date is today.
+   * Compares against the LOCAL calendar date (what the user's clock/calendar shows), while the
+   * cells themselves carry the UTC parts of the viewed month - both sides are plain calendar
+   * numbers, so a day only matches when it is really today for the user.
    * @param calendarCell Calendar cell. Should be Date.
    * @returns True if given calendar cell is date and is for today.
    */
-  private isToday(calendarCell: CalendarCell): boolean {
+  public isToday(calendarCell: CalendarCell): boolean {
     if (calendarCell.type !== EnCalendarCellType.Date) return false;
     const today = new Date();
     return (
-      calendarCell.day === today.getUTCDate() &&
-      calendarCell.month === today.getUTCMonth() &&
-      calendarCell.year === today.getUTCFullYear()
+      calendarCell.day === today.getDate() &&
+      calendarCell.month === today.getMonth() &&
+      calendarCell.year === today.getFullYear()
     );
   }
 
@@ -533,6 +560,19 @@ export class DatePicker implements FormValueControl<Date | null> {
     const target = e.target;
     if (target instanceof Element && target.closest('.day') !== null) return;
     e.preventDefault();
+  }
+
+  /**
+   * Handle mousedown on a calendar cell: seed the keyboard cursor onto the pressed day BEFORE
+   * the click lands. The browser paints between mousedown and mouseup, so without this the
+   * `.focused` ring and aria-activedescendant would flash on the stale seeded day while the
+   * button is held (mirrors time-picker's `handleMousedownOption`).
+   * @param calendarCell Calendar cell that was pressed.
+   */
+  public handleCellMousedown(calendarCell: CalendarCell): void {
+    if (this.disabled()) return;
+    if (calendarCell.type !== EnCalendarCellType.Date) return;
+    this.focusedDate.set(this.calendarCellToDate(calendarCell));
   }
 
   /** Handle focus arriving on the input (e.g. via Tab). */
@@ -633,19 +673,20 @@ export class DatePicker implements FormValueControl<Date | null> {
       case 'PageUp':
         e.preventDefault();
         this.changeMonth(-1);
-        if (this.focusedDate()) {
-          const newDate = new Date(this.focusedDate()!);
-          newDate.setUTCMonth(newDate.getUTCMonth() - 1);
-          this.focusedDate.set(newDate);
-        }
+        this.shiftFocusedMonth(-1);
         break;
       case 'PageDown':
         e.preventDefault();
         this.changeMonth(1);
-        if (this.focusedDate()) {
-          const newDate = new Date(this.focusedDate()!);
-          newDate.setUTCMonth(newDate.getUTCMonth() + 1);
-          this.focusedDate.set(newDate);
+        this.shiftFocusedMonth(1);
+        break;
+      case 'Tab':
+        // Only Shift+Tab needs handling: native backward traversal would land on the input
+        // (still inside the component) instead of leaving it. Forward Tab keeps the native
+        // traversal - the grid is the last focusable element inside the picker.
+        if (e.shiftKey) {
+          e.preventDefault();
+          this.hidePanelAndFocusPrev();
         }
         break;
       case 'Enter':
@@ -656,6 +697,16 @@ export class DatePicker implements FormValueControl<Date | null> {
       case 'Escape':
         e.preventDefault();
         this.hidePanelAndRefocus();
+        break;
+      case 'Delete':
+      case 'Backspace':
+        // Default prevented unconditionally (same contract as the input): Backspace must never
+        // reach the browser's legacy history-back handling (Firefox), even when canNull forbids
+        // the clear.
+        e.preventDefault();
+        // The open grid is where the keyboard actually sits, so it offers the same clear as the
+        // input: a successful clear completes the interaction (close + internal refocus).
+        if (this.keyPressClear()) this.hidePanelAndRefocus();
         break;
     }
   }
@@ -669,6 +720,25 @@ export class DatePicker implements FormValueControl<Date | null> {
     newDate.setUTCDate(newDate.getUTCDate() + days);
     this.ensureViewShows(newDate);
     this.focusedDate.set(newDate);
+  }
+
+  /**
+   * Helper to shift focusedDate by whole months, clamping the day to the target month's length.
+   * A plain `setUTCMonth` would overflow the day (31 January + 1 month becomes 2/3 March via
+   * "Feb 31"), parking the cursor outside the shown grid - its cell and therefore the grid's
+   * aria-activedescendant would disappear. The day is anchored on the 1st first so the month
+   * step itself can never overflow either.
+   * @param delta Month step (sign of the move).
+   */
+  private shiftFocusedMonth(delta: number): void {
+    const focused = this.focusedDate();
+    if (focused === null) return;
+    const day = focused.getUTCDate();
+    const stepped = new Date(focused);
+    stepped.setUTCDate(1);
+    stepped.setUTCMonth(stepped.getUTCMonth() + delta);
+    stepped.setUTCDate(Math.min(day, TimeUtils.getUTCDaysInMonth(stepped.getUTCFullYear(), stepped.getUTCMonth())));
+    this.focusedDate.set(stepped);
   }
 
   /**
@@ -689,13 +759,21 @@ export class DatePicker implements FormValueControl<Date | null> {
   async keyPressSelectDate() {
     if (!this.focusedDate()) return;
 
-    const prevDateTime = this.selectedDate();
-    this.selectDate(this.focusedDate()!);
+    // No change (same day with canNull off): the pick is a no-op - keep the panel open for
+    // another try, exactly like a blocked mouse re-click.
+    if (!this.selectDate(this.focusedDate()!)) return;
 
     await forRender(this.injector);
 
-    // Only close and refocus if the selection actually changed (or was cleared).
-    if (this.selectedDate() !== prevDateTime) this.hidePanelAndFocusNext();
+    if (this.value() === null) {
+      // Cleared pick: the contract is an INTERNAL refocus on the input (no touch - focus
+      // never left the component).
+      this.hidePanelAndRefocus();
+    } else {
+      // Committed pick: the interaction is complete - hand focus to the next control and let
+      // the resulting focusout report the real blur (touch).
+      this.hidePanelAndFocusNext();
+    }
   }
 
   /**
@@ -732,13 +810,15 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   /**
    * Hide calendar panel.
-   * Also resets the pick session.
+   * Also resets the pick session: the keyboard cursor drops so the closed grid does not keep
+   * aria-activedescendant pointing at a hidden cell, and the next open re-seeds it from the
+   * (possibly changed) selection (mirrors time-picker's cursor reset in its `hidePanel`).
    */
   public hidePanel() {
     if (!this.isCalendarVisible()) return; // already hidden
 
     this.isCalendarVisible.set(false);
-    // TODO reset internals
+    this.focusedDate.set(null);
   }
 
   /**
@@ -788,9 +868,12 @@ export class DatePicker implements FormValueControl<Date | null> {
    * Hide panel and move focus to the next focusable element on page.
    * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
    * focus leaving the component, closes the panel and reports touch.
+   * Anchored on the GRID, not the input: while the panel is open the input is followed by the
+   * grid itself (tabindex=0), so an input-anchored step would resolve to the grid, focus would
+   * never leave the component and no touch would ever be reported.
    */
   private hidePanelAndFocusNext() {
-    NavUtils.FocusNext(this.inputRef().nativeElement);
+    NavUtils.FocusNext(this.calendarGridRef().nativeElement);
     this.hidePanel();
   }
 

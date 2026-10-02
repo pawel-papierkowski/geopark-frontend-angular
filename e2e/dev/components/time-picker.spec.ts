@@ -739,11 +739,12 @@ test.describe('TimePicker', () => {
       // Act: Shift+Tab again — one press must close panel AND move focus out backwards.
       await page.keyboard.press('Shift+Tab');
 
-      // Assert: Focus moved to previous component (the standalone date row's date input, which
-      // auto-opens its calendar on focus); our panel closed and our input no longer holds focus.
+      // Assert: Focus moved to previous component (the standalone date row's date input), which
+      // auto-opens its calendar on focus and moves focus into its calendar grid (parity with our
+      // own open behaviour); our panel closed and our input no longer holds focus.
       const previousPicker = page.getByTestId('dateId_datePicker_input');
-      await expect(previousPicker).toBeFocused();
       await expect(previousPicker).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.getByTestId('dateId_datePicker_panel').locator('.calendar-grid')).toBeFocused();
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
       await expect(timePicker).not.toBeFocused();
     });
