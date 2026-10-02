@@ -8,6 +8,8 @@ import { NavUtils } from '@/core/utils/NavUtils';
 import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
 import { forRender } from '@/shared/utils/render/after-render';
 
+import { EnCalendarCellType, CalendarCell } from '@/shared/ui/other/types';
+
 /**
  * Placement of the calendar panel relative to its input - single source of truth for both the
  * baseline reset on open and the flip decision (see `WindowUtils.resolvePanelPlacement`).
@@ -69,7 +71,9 @@ const panelPlacement: PanelPlacement = {
   templateUrl: './date-picker.html',
 })
 export class DatePicker implements FormValueControl<Date | null> {
-    private injector = inject(Injector);
+  public readonly EnCalendarCellType = EnCalendarCellType;
+
+  private injector = inject(Injector);
   /** For programmatic translations. */
   private readonly translateService = inject(TranslateService);
   /** Injectable document, used for the global focus check in `handleMousedown`. */
@@ -99,6 +103,9 @@ export class DatePicker implements FormValueControl<Date | null> {
   public readonly invalid = input<boolean>(false);
   /** Informs that user blurred out of component. */
   public touch = output<void>();
+
+  /** Shortcuts for days of week used in lang keys. */
+  public daysOfWeek = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
   // REFERENCES
 
@@ -151,6 +158,39 @@ export class DatePicker implements FormValueControl<Date | null> {
    */
   public placeholderDateValue = computed(() => this.translateService.instant('dateTimePicker.placeholder.date'));
 
+  /** Compute header text (year and name of month). */
+  public headerText = computed(() => {
+    const viewDate = this.viewDate();
+    if (viewDate === null) return '';
+    const monthIx = viewDate.getUTCMonth(); // Reminder that for some reason month is zero-indexed.
+    return viewDate.getUTCFullYear() + ' ' + this.translateService.instant('dateTimePicker.month.' + monthIx);
+  });
+
+  /** Find out amount of columns needed for calendar. */
+  public gridColumns = computed(() => (this.showWeeks() ? 8 : 7));
+  /** Find out grid style. */
+  public gridStyle = computed(() => ({
+    gridTemplateColumns: `repeat(${this.gridColumns() || 7}, 1fr)`,
+  }));
+
+  /** Compute ID of the focused cell for aria-activedescendant. */
+  public activeDescendantId = computed(() => {
+    if (!this.focusedDate()) return undefined;
+    const index = this.calendarCells().findIndex(
+      (cell) =>
+        cell.type === EnCalendarCellType.Date &&
+        cell.day === this.focusedDate()!.getUTCDate() &&
+        cell.month === this.focusedDate()!.getUTCMonth() &&
+        cell.year === this.focusedDate()!.getUTCFullYear(),
+    );
+    return index >= 0 ? `${this.ident()}_cell_${index}` : undefined;
+  });
+
+  /** Recalculate cells shown in calendar. */
+  public calendarCells = computed<CalendarCell[]>(() => {
+    return this.calcCalendarCells();
+  });
+
   constructor() {
     // Watch `disabled` field: close calendar panel when component becomes disabled.
     effect(() => {
@@ -199,10 +239,267 @@ export class DatePicker implements FormValueControl<Date | null> {
    * Values themselves stay timezone-agnostic (UTC-carried), see class doc.
    */
   private findViewDate() {
-    //const date = new Date();
-    // TODO
-    //this.viewHour.set(date.getHours());
-    //this.viewMinute.set(date.getMinutes());
+    this.viewDate.set(this.selectedDate() ? new Date(this.selectedDate()!) : new Date());
+  }
+
+  //
+
+  /**
+   * Calculate cells for calendar.
+   * @returns Array of cells for entire calendar.
+   */
+  private calcCalendarCells(): CalendarCell[] {
+    const cells: CalendarCell[] = this.calcDays();
+
+    if (this.showWeeks()) {
+      // Insert week number cells, always six weeks.
+      for (let i = 0; i < 6; i++) {
+        const dayIx = i * 8; // Always on monday, will be used for splicing at the end.
+        const firstDayOfWeek: CalendarCell = cells[dayIx]!;
+        // Show week number properly at week common for both years depending on which year is in focus.
+        // For example, last week of December will be (usually) 53rd week, while the first week of January
+        // (exactly same week as last week of December) is always 1st week.
+        const dayOfWeekIx = this.viewDate()?.getUTCFullYear() === firstDayOfWeek.year ? dayIx : dayIx + 6;
+        const lastDayOfWeek: CalendarCell = cells[dayOfWeekIx]!;
+
+        const weekNumber = TimeUtils.getWeekNumber(lastDayOfWeek.year, lastDayOfWeek.month, lastDayOfWeek.day);
+        const weekCell: CalendarCell = {
+          testid: `${this.ident()}_w${weekNumber}`,
+          type: EnCalendarCellType.Week,
+          day: weekNumber,
+          month: 0,
+          year: 0,
+          isCurrentMonth: false,
+        };
+        cells.splice(dayIx, 0, weekCell);
+      }
+    }
+    return cells;
+  }
+
+  /**
+   * Calculate days for calendar.
+   * @returns Array of day cells.
+   */
+  private calcDays(): CalendarCell[] {
+    const viewDate = this.viewDate();
+    if (viewDate === null) return [];
+    const year = viewDate.getUTCFullYear();
+    const month = viewDate.getUTCMonth();
+
+    const firstDay = TimeUtils.getUTCFirstDayOfMonth(year, month);
+    const daysInMonth = TimeUtils.getUTCDaysInMonth(year, month);
+
+    const days: CalendarCell[] = [];
+    let ix = 0;
+
+    // Padding for previous month. Note that if a month has the first day on Monday, the entire previous week will be shown.
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const d = new Date(Date.UTC(year, month, -i));
+      days.push({
+        testid: `${this.ident()}_${ix}`,
+        type: EnCalendarCellType.Date,
+        day: d.getUTCDate(),
+        month: d.getUTCMonth(),
+        year: d.getUTCFullYear(),
+        isCurrentMonth: false,
+      });
+      ix++;
+    }
+
+    // Current month days.
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        testid: `${this.ident()}_${ix}`,
+        type: EnCalendarCellType.Date,
+        day: i,
+        month: month,
+        year: year,
+        isCurrentMonth: true,
+      });
+      ix++;
+    }
+
+    // Padding for next month.
+    const remainingCells = 42 - days.length; // 6 rows * 7 days
+    for (let i = 1; i <= remainingCells; i++) {
+      const d = new Date(Date.UTC(year, month + 1, i));
+      days.push({
+        testid: `${this.ident()}_${ix}`,
+        type: EnCalendarCellType.Date,
+        day: d.getUTCDate(),
+        month: d.getUTCMonth(),
+        year: d.getUTCFullYear(),
+        isCurrentMonth: false,
+      });
+      ix++;
+    }
+
+    return days;
+  }
+
+  /**
+   * Change current month.
+   * @param delta How to change month.
+   */
+  public changeMonth(delta: number) {
+    const viewDate = this.viewDate();
+    if (viewDate === null) return;
+    const newDateTime = new Date(Date.UTC(viewDate.getUTCFullYear(), viewDate.getUTCMonth() + delta, 1));
+    this.viewDate.set(newDateTime);
+  }
+
+  /**
+   * Change current year.
+   * @param delta How to change year.
+   */
+  public changeYear(delta: number) {
+    const viewDate = this.viewDate();
+    if (viewDate === null) return;
+    const newDateTime = new Date(Date.UTC(viewDate.getUTCFullYear() + delta, viewDate.getUTCMonth(), 1));
+    this.viewDate.set(newDateTime);
+  }
+
+  //
+
+  /**
+   * Converts pickable calendar cell to Date (only year, month, day).
+   * @param pickableCell Pickable calendar cell.
+   * @returns Date.
+   */
+  private calendarCellToDate(pickableCell: CalendarCell): Date {
+    return new Date(Date.UTC(pickableCell.year, pickableCell.month, pickableCell.day, 0, 0, 0, 0));
+  }
+
+  /**
+   * Select a specific date (shared by click and keyboard).
+   * @param date Date to select.
+   */
+  private selectDate(date: Date) {
+    if (this.disabled()) return;
+    if (!this.canPick(date)) return;
+
+    const newDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+
+    if (
+      this.selectedDate() &&
+      this.selectedDate()!.getUTCFullYear() === newDate.getUTCFullYear() &&
+      this.selectedDate()!.getUTCMonth() === newDate.getUTCMonth() &&
+      this.selectedDate()!.getUTCDate() === newDate.getUTCDate()
+    ) {
+      // Selected same date again, deselect date.
+      if (this.canNull()) this.selectedDate.set(null);
+      else return;
+    } else {
+      // Select new date without touching time.
+      const prevDateTime = this.selectedDate();
+      if (prevDateTime) {
+        newDate.setUTCHours(prevDateTime.getUTCHours());
+        newDate.setUTCMinutes(prevDateTime.getUTCMinutes());
+        newDate.setUTCSeconds(prevDateTime.getUTCSeconds());
+        newDate.setUTCMilliseconds(prevDateTime.getUTCMilliseconds());
+      }
+      this.selectedDate.set(newDate);
+    }
+
+    // Now update actual value.
+    this.value.set(this.selectedDate());
+    // Hide calendar panel.
+    this.hidePanelAndRefocus();
+  }
+
+  /**
+   * User clicks cell in calendar.
+   * @param calendarCell Calendar cell that was clicked.
+   */
+  public selectCell(calendarCell: CalendarCell) {
+    if (calendarCell.type !== EnCalendarCellType.Date) return;
+    this.selectDate(this.calendarCellToDate(calendarCell));
+  }
+
+  /**
+   * Check if can pick given date.
+   * @param date Date.
+   * @returns True if can pick, otherwise false.
+   */
+  private canPick(date: Date): boolean {
+    if (this.dateMin() != null && date < this.dateMin()!) return false;
+    if (this.dateMax() != null && date > this.dateMax()!) return false;
+    return true;
+  }
+
+  //
+
+  /**
+   * Find out class of calendar cell in calendar grid.
+   * @param calendarCell Calendar cell.
+   * @returns Data about calendar cell.
+   */
+  public resolveCellClass(calendarCell: CalendarCell) {
+    if (calendarCell.type === EnCalendarCellType.Week) return { weekNum: true };
+    return {
+      day: true,
+      'not-current': !calendarCell.isCurrentMonth,
+      today: this.isToday(calendarCell),
+      selected: this.isDaySelected(calendarCell),
+      disabled: this.isDayDisabled(calendarCell),
+      focused: this.isDayFocused(calendarCell),
+    };
+  }
+
+  /**
+   * Check if given date is today.
+   * @param calendarCell Calendar cell. Should be Date.
+   * @returns True if given calendar cell is date and is for today.
+   */
+  private isToday(calendarCell: CalendarCell): boolean {
+    if (calendarCell.type !== EnCalendarCellType.Date) return false;
+    const today = new Date();
+    return (
+      calendarCell.day === today.getUTCDate() &&
+      calendarCell.month === today.getUTCMonth() &&
+      calendarCell.year === today.getUTCFullYear()
+    );
+  }
+
+  /**
+   * Check if given date is selected.
+   * @param calendarCell Calendar cell. Should be Date.
+   * @returns True if given calendar cell is date and is selected.
+   */
+  public isDaySelected(calendarCell: CalendarCell): boolean {
+    if (calendarCell.type !== EnCalendarCellType.Date) return false;
+    if (!this.selectedDate()) return false;
+    return (
+      calendarCell.day === this.selectedDate()!.getUTCDate() &&
+      calendarCell.month === this.selectedDate()!.getUTCMonth() &&
+      calendarCell.year === this.selectedDate()!.getUTCFullYear()
+    );
+  }
+
+  /**
+   * Check if given date cannot be picked.
+   * @param calendarCell Calendar cell. Should be Date.
+   * @returns True if given calendar cell is date and is disabled.
+   */
+  public isDayDisabled(calendarCell: CalendarCell): boolean {
+    if (calendarCell.type !== EnCalendarCellType.Date) return false;
+    const givenDay = this.calendarCellToDate(calendarCell);
+    return !this.canPick(givenDay);
+  }
+
+  /**
+   * Check if given date is keyboard-focused.
+   * @param calendarCell Calendar cell. Should be Date.
+   * @returns True if given calendar cell is date and is focused.
+   */
+  private isDayFocused(calendarCell: CalendarCell): boolean {
+    if (!this.focusedDate() || calendarCell.type !== EnCalendarCellType.Date) return false;
+    return (
+      calendarCell.day === this.focusedDate()!.getUTCDate() &&
+      calendarCell.month === this.focusedDate()!.getUTCMonth() &&
+      calendarCell.year === this.focusedDate()!.getUTCFullYear()
+    );
   }
 
   // EVENTS: MOUSE HANDLERS
@@ -276,6 +573,129 @@ export class DatePicker implements FormValueControl<Date | null> {
       e.preventDefault();
       this.keyPressClear();
     }
+  }
+
+  /** Handle keyboard on the calendar grid. */
+  onGridKeydown(e: KeyboardEvent) {
+    if (this.disabled()) return;
+
+    // If no focus is set yet (panel opened via click), set it now without doing anything else.
+    if (this.focusedDate() === null) {
+      if (
+        e.key === 'ArrowUp' ||
+        e.key === 'ArrowDown' ||
+        e.key === 'ArrowLeft' ||
+        e.key === 'ArrowRight' ||
+        e.key === 'Home' ||
+        e.key === 'End' ||
+        e.key === 'PageUp' ||
+        e.key === 'PageDown' ||
+        e.key === 'Enter' ||
+        e.key === ' '
+      ) {
+        e.preventDefault();
+        this.setupFocus(false);
+        return;
+      }
+    }
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        this.shiftFocus(-1);
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        this.shiftFocus(1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        this.shiftFocus(-7);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        this.shiftFocus(7);
+        break;
+      case 'Home':
+        e.preventDefault();
+        this.focusedDate.set(new Date(Date.UTC(this.viewDate()!.getUTCFullYear(), this.viewDate()!.getUTCMonth(), 1)));
+        break;
+      case 'End':
+        e.preventDefault();
+        this.focusedDate.set(new Date(
+          Date.UTC(
+            this.viewDate()!.getUTCFullYear(),
+            this.viewDate()!.getUTCMonth(),
+            TimeUtils.getUTCDaysInMonth(this.viewDate()!.getUTCFullYear(), this.viewDate()!.getUTCMonth()),
+          ),
+        ));
+        break;
+      case 'PageUp':
+        e.preventDefault();
+        this.changeMonth(-1);
+        if (this.focusedDate()) {
+          const newDate = new Date(this.focusedDate()!);
+          newDate.setUTCMonth(newDate.getUTCMonth() - 1);
+          this.focusedDate.set(newDate);
+        }
+        break;
+      case 'PageDown':
+        e.preventDefault();
+        this.changeMonth(1);
+        if (this.focusedDate()) {
+          const newDate = new Date(this.focusedDate()!);
+          newDate.setUTCMonth(newDate.getUTCMonth() + 1);
+          this.focusedDate.set(newDate);
+        }
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        void this.keyPressSelectDate();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        this.hidePanelAndRefocus();
+        break;
+    }
+  }
+
+  /**
+   * Helper to shift focusedDate by a number of days.
+   * @param days Number of days to move by.
+   */
+  shiftFocus(days: number) {
+    const newDate = new Date(this.focusedDate()!);
+    newDate.setUTCDate(newDate.getUTCDate() + days);
+    this.ensureViewShows(newDate);
+    this.focusedDate.set(newDate);
+  }
+
+  /**
+   * If navigation moves to a different month, update viewDate to show that month.
+   * @param date The date to ensure is visible.
+   */
+  ensureViewShows(date: Date) {
+    const viewYear = this.viewDate()!.getUTCFullYear();
+    const viewMonth = this.viewDate()!.getUTCMonth();
+    if (date.getUTCFullYear() !== viewYear || date.getUTCMonth() !== viewMonth) {
+      this.viewDate.set(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)));
+    }
+  }
+
+  //
+
+  /** React to selecting date via key press. */
+  async keyPressSelectDate() {
+    if (!this.focusedDate()) return;
+
+    const prevDateTime = this.selectedDate();
+    this.selectDate(this.focusedDate()!);
+
+    await forRender(this.injector);
+
+    // Only close and refocus if the selection actually changed (or was cleared).
+    if (this.selectedDate() !== prevDateTime) this.hidePanelAndFocusNext();
   }
 
   /**

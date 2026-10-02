@@ -57,6 +57,87 @@
     [attr.aria-label]="'dateTimePicker.datePicker' | translate"
 
     (mousedown)="handlePanelMousedown($event)">
-    DATE PICKER CALENDAR PANEL PLACEHOLDER
+
+    <div class="calendar-header">
+      <div class="header-nav">
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
+        <div
+          class="header-navbtn"
+          [attr.data-testid]="`${ident()}_yearMinus`"
+          [attr.aria-label]="'dateTimePicker.yearMinus' | translate"
+          (click)="changeYear(-1)">
+          ⏪
+        </div>
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
+        <div
+          class="header-navbtn"
+          [attr.data-testid]="`${ident()}_monthMinus`"
+          [attr.aria-label]="'dateTimePicker.monthMinus' | translate"
+          (click)="changeMonth(-1)">
+          ◀️
+        </div>
+      </div>
+      <div class="header-title" aria-live="polite">
+        {{ headerText() }}
+      </div>
+      <div class="header-nav">
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
+        <div
+          class="header-navbtn"
+          [attr.data-testid]="`${ident()}_monthPlus`"
+          [attr.aria-label]="'dateTimePicker.monthPlus' | translate"
+          (click)="changeMonth(1)">
+          ▶️
+        </div>
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
+        <div
+          class="header-navbtn"
+          [attr.data-testid]="`${ident()}_yearPlus`"
+          [attr.aria-label]="'dateTimePicker.yearPlus' | translate"
+          (click)="changeYear(1)">
+          ⏩
+        </div>
+      </div>
+    </div>
+
+    <div
+      #calendarGridRef
+      class="calendar-grid"
+      tabindex="0"
+      [style]="gridStyle()"
+      role="grid"
+      [aria-label]="headerText()"
+      [aria-activedescendant]="activeDescendantId()"
+      (keydown)="onGridKeydown($event)">
+
+      <!-- This row shows days of week. -->
+      @if(showWeeks()) {
+        <div aria-hidden="true"></div> <!-- we need empty cell here for layout with week numbers -->
+      }
+      @for(day of daysOfWeek; track day) {
+        <div class="weekday" aria-hidden="true">
+          {{ 'dateTimePicker.dayOfWeek.' + day | translate }}
+        </div>
+      }
+
+      <!-- Rest shows week number (if present) and seven days in row. -->
+      @for(calendarCell of calendarCells(); track $index) {
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- navigation handled on calendarGridRef div -->
+        <div
+          [id]="calendarCell.type === EnCalendarCellType.Date ? `${ident()}_cell_${$index}` : undefined"
+          [attr.data-testid]="calendarCell.testid"
+          [class]="resolveCellClass(calendarCell)"
+          role="gridcell"
+          [attr.aria-selected]="calendarCell.type === EnCalendarCellType.Date ? isDaySelected(calendarCell) : undefined"
+          [attr.aria-disabled]="calendarCell.type === EnCalendarCellType.Date ? isDayDisabled(calendarCell) || undefined : undefined"
+          [attr.aria-label]="
+            calendarCell.type === EnCalendarCellType.Date
+              ? `${calendarCell.year} ${'dateTimePicker.month.' + calendarCell.month | translate} ${calendarCell.day}`
+              : undefined"
+          (click)="selectCell(calendarCell)">
+          {{ calendarCell.day }}
+        </div>
+      }
+    </div>
   </div>
 </div>

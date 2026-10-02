@@ -181,6 +181,12 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   // COMPUTED
 
+  /** `value` when it carries a real time, otherwise null. Prevents showing NaN on invalid Date and similar bugs. */
+  private normalizedValue = computed<Date | null>(() => {
+    const value = this.value();
+    return value !== null && !Number.isNaN(value.getTime()) ? value : null;
+  });
+
   /**
    * Currently highlighted hour in the column: this session's pick when one was made, the
    * committed value's hour while the column is `'untouched'`, nothing after it was discarded.
@@ -199,12 +205,6 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (typeof session === 'number') return session;
     if (session === 'discarded') return null;
     return this.normalizedValue()?.getUTCMinutes() ?? null;
-  });
-
-  /** `value` when it carries a real time, otherwise null. Prevents showing NaN on invalid Date and similar bugs. */
-  private normalizedValue = computed<Date | null>(() => {
-    const value = this.value();
-    return value !== null && !Number.isNaN(value.getTime()) ? value : null;
   });
 
   /**

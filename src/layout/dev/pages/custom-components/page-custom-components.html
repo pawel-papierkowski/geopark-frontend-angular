@@ -35,17 +35,17 @@
         </div>
         <div class="form-subform-triple">
           <label id="cc-dateTimePicker-label" data-testid="cc-dateTimePicker-label" for="cc-dateTimePicker">{{ 'customComponents.form.dateTimePicker.label' | translate }}</label>
-          <date-time-picker ident="cc-dateTimePicker" label="cc-dateTimePicker-label" [formField]="compForm.dateTimePicker" mode="datetime" /> <!-- Placeholder, ignore for now -->
+          <date-time-picker ident="cc-dateTimePicker" label="cc-dateTimePicker-label" [formField]="compForm.dateTimePicker" mode="datetime" />
           <div data-testid="cc-dateTimePicker-value">{{ show(compForm.dateTimePicker().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-datePicker-label" data-testid="cc-datePicker-label" for="datePicker">{{ 'customComponents.form.datePicker.label' | translate }}</label>
-          <date-time-picker ident="datePicker" label="cc-datePicker-label" [formField]="compForm.datePicker" mode="date" /> <!-- Placeholder, ignore for now -->
+          <date-time-picker ident="datePicker" label="cc-datePicker-label" [formField]="compForm.datePicker" mode="date" />
           <div data-testid="cc-datePicker-value">{{ show(compForm.datePicker().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-timePicker-label" data-testid="cc-timePicker-label" for="cc-timePicker">{{ 'customComponents.form.timePicker.label' | translate }}</label>
-          <date-time-picker ident="cc-timePicker" label="cc-timePicker-label" [formField]="compForm.timePicker" mode="time" /> <!-- Placeholder, ignore for now -->
+          <date-time-picker ident="cc-timePicker" label="cc-timePicker-label" [formField]="compForm.timePicker" mode="time" />
           <div data-testid="cc-timePicker-value">{{ show(compForm.timePicker().value()) }}</div>
         </div>
 
@@ -59,12 +59,12 @@
         </div>
         <div class="form-subform-triple">
           <label id="cc-dateTimePickerNull-label" data-testid="cc-dateTimePickerNull-label" for="cc-dateTimePickerNull">{{ 'customComponents.form.dateTimePicker.labelNull' | translate }}</label>
-          <date-time-picker ident="cc-dateTimePickerNull" label="cc-dateTimePickerNull-label" [formField]="compForm.dateTimePickerNull" mode="datetime" [canNull]="true" /> <!-- Placeholder, ignore for now -->
+          <date-time-picker ident="cc-dateTimePickerNull" label="cc-dateTimePickerNull-label" [formField]="compForm.dateTimePickerNull" mode="datetime" [canNull]="true" [showWeeks]="true" />
           <div data-testid="cc-dateTimePickerNull-value">{{ show(compForm.dateTimePickerNull().value()) }}</div>
         </div>
         <div class="form-subform-triple">
           <label id="cc-datePickerNull-label" data-testid="cc-datePickerNull-label" for="datePickerNull">{{ 'customComponents.form.datePicker.labelNull' | translate }}</label>
-          <date-time-picker ident="datePickerNull" label="cc-datePickerNull-label" [formField]="compForm.datePickerNull" mode="date" [canNull]="true" /> <!-- Placeholder, ignore for now -->
+          <date-time-picker ident="datePickerNull" label="cc-datePickerNull-label" [formField]="compForm.datePickerNull" mode="date" [canNull]="true" />
           <div data-testid="cc-datePickerNull-value">{{ show(compForm.datePickerNull().value()) }}</div>
         </div>
         <div class="form-subform-triple">
