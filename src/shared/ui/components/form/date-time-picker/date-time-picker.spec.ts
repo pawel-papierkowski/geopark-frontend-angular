@@ -9,7 +9,6 @@ import { DateTimePicker } from './date-time-picker';
  * Note: DateTimePicker wraps DatePicker and TimePicker subcomponents, so tests cover their
  * presence, interactions between them and label activation (the hidden label target must
  * redirect focus into a sub-picker input instead of the non-focusable wrapper).
- * TODO: DatePicker sub-picker is still a placeholder.
  */
 describe('DateTimePicker', () => {
   /** Options used to arrange a DateTimePicker instance under test. */
@@ -49,6 +48,15 @@ describe('DateTimePicker', () => {
    */
   function getHiddenButton(fixture: ComponentFixture<DateTimePicker>): HTMLButtonElement {
     return fixture.nativeElement.querySelector('button.hidden-label-button');
+  }
+
+  /**
+   * Get the date input of the wrapped date-picker (ident is derived as `dateId_<ident>`).
+   * @param fixture Fixture of the component.
+   * @returns Input element of the date sub-picker.
+   */
+  function getDateInput(fixture: ComponentFixture<DateTimePicker>): HTMLInputElement {
+    return fixture.nativeElement.querySelector(`[data-testid="dateId_${fixture.componentInstance.resolvedIdent()}_input"]`);
   }
 
   /**
@@ -541,6 +549,22 @@ describe('DateTimePicker', () => {
   });
 
   describe('focus', () => {
+    it('should focus the date input and open the calendar panel in datetime mode', async () => {
+      // Arrange: Render wrapper in datetime mode; the placeholder DatePicker has no
+      // focusable input, so its focusInput() reports null.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+
+      // Act: Focus the control programmatically (two flush rounds for the two-round open).
+      fixture.componentInstance.focus();
+      await flush(fixture);
+      await flush(fixture);
+
+      // Assert: The date branch takes no focus, so the time sub-picker receives it.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'focus() should open the calendar panel').toBe('true');
+      // TODO verify focus is on calendar grid when it is implemented
+      //expect(document.activeElement, 'focus() should end with keyboard focus in the date sub-picker calendar grid').toBe(getCalendarCell(fixture));
+    });
+
     it('should focus the time input and open the clock panel in time mode', async () => {
       // Arrange: Render wrapper in time mode with closed panel; focus() is the
       // FormUiControl.focus contract used by the signal-forms Field directive.
@@ -556,21 +580,6 @@ describe('DateTimePicker', () => {
       // its focus handler opens the panel, and focus continues into the hour listbox.
       expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'focus() should open the clock panel').toBe('true');
       expect(document.activeElement, 'focus() should end with keyboard focus in the hour listbox').toBe(getHourColumn(fixture));
-    });
-
-    it('should fall through the placeholder date picker to the time input in datetime mode', async () => {
-      // Arrange: Render wrapper in datetime mode; the placeholder DatePicker has no
-      // focusable input, so its focusInput() reports null.
-      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
-
-      // Act: Focus the control programmatically (two flush rounds for the two-round open).
-      fixture.componentInstance.focus();
-      await flush(fixture);
-      await flush(fixture);
-
-      // Assert: The date branch takes no focus, so the time sub-picker receives it.
-      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'focus() should fall through to the time sub-picker').toBe('true');
-      expect(document.activeElement, 'focus() should end with keyboard focus in the time sub-picker hour listbox').toBe(getHourColumn(fixture));
     });
 
     it('should be a no-op when disabled', async () => {

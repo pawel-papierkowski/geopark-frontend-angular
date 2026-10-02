@@ -3,5 +3,60 @@
   class="picker-date"
   [class.invalid]="invalid()"
   (focusout)="handleFocusOut($event)">
-  DATE PICKER
+
+  <input
+    #inputRef
+    [id]="`${ident()}_input`"
+    [attr.data-testid]="`${ident()}_input`"
+    type="text"
+    class="picker-input-date"
+    [class.disabled]="disabled()"
+    [class.invalid]="invalid()"
+
+    [value]="displayDateValue()"
+    [placeholder]="placeholderDateValue()"
+    [disabled]="disabled()"
+    readonly
+    autocomplete="off"
+    role="combobox"
+    [tabindex]="disabled() ? -1 : 0"
+
+    aria-haspopup="dialog"
+    [attr.aria-expanded]="isCalendarVisible()"
+    [attr.aria-controls]="`${ident()}_panel`"
+    [attr.aria-label]="label() ? null : ('dateTimePicker.date' | translate)"
+    [attr.aria-labelledby]="label() || null"
+    [attr.aria-required]="required() || null"
+    [attr.aria-invalid]="invalid() || null"
+    [attr.aria-disabled]="disabled() || null"
+
+    (mousedown)="handleMousedown($event)"
+    (focus)="handleInputFocus()"
+    (click)="handleClick()"
+    (keydown)="onInputKeydown($event)" />
+
+  <!-- Decorative calendar glyph: kept OUT of the input value and placeholder because a screen
+       reader announces the field's value and would read "calendar face one-thirty" before the
+       date. aria-hidden keeps it out of browse mode as well; positioned over the input's
+       left padding (pointer-events: none in CSS, so clicks still reach the input). -->
+  <span
+    class="picker-date-icon"
+    [attr.data-testid]="`${ident()}_icon`"
+    aria-hidden="true">📅</span>
+
+  <!-- Date picker: calendar panel. Named by a dedicated key - it is a dialog of its own. -->
+  <div
+    #calendarPanelRef
+    [id]="`${ident()}_panel`"
+    [attr.data-testid]="`${ident()}_panel`"
+    class="calendar-container"
+    [style]="containerStyle()"
+    [style.display]="isCalendarVisible() ? '' : 'none'"
+    role="dialog"
+
+    [attr.aria-label]="'dateTimePicker.datePicker' | translate"
+
+    (mousedown)="handlePanelMousedown($event)">
+    DATE PICKER CALENDAR PANEL PLACEHOLDER
+  </div>
 </div>

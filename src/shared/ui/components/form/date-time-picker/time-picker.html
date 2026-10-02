@@ -4,8 +4,6 @@
   [class.invalid]="invalid()"
   (focusout)="handleFocusOut($event)">
 
-  <!-- Input: aria-label is a FALLBACK name applied only when no label is given - aria-labelledby
-       (label input) and a native <label> must take precedence over it (accname order). -->
   <input
     #inputRef
     [id]="`${ident()}_input`"
@@ -46,95 +44,95 @@
     [attr.data-testid]="`${ident()}_icon`"
     aria-hidden="true">🕜</span>
 
-    <!-- Time picker: clock panel. Named by a dedicated key - it is a dialog of its own, the
-         placeholder ("hh:mm") is a format hint, not a name. -->
-    <div
-      #clockPanelRef
-      [id]="`${ident()}_panel`"
-      [attr.data-testid]="`${ident()}_panel`"
-      class="clock-container"
-      [style]="containerStyle()"
-      [style.display]="isClockVisible() ? '' : 'none'"
-      role="dialog"
+  <!-- Time picker: clock panel. Named by a dedicated key - it is a dialog of its own, the
+        placeholder ("hh:mm") is a format hint, not a name. -->
+  <div
+    #clockPanelRef
+    [id]="`${ident()}_panel`"
+    [attr.data-testid]="`${ident()}_panel`"
+    class="clock-container"
+    [style]="containerStyle()"
+    [style.display]="isClockVisible() ? '' : 'none'"
+    role="dialog"
 
-      [attr.aria-label]="'dateTimePicker.timePicker' | translate"
+    [attr.aria-label]="'dateTimePicker.timePicker' | translate"
 
-      (mousedown)="handlePanelMousedown($event)">
+    (mousedown)="handlePanelMousedown($event)">
 
-      <div class="clock-columns">
+    <div class="clock-columns">
 
-        <!-- Hours column: static header above the scroller (header lives OUTSIDE the scroll
-             container, so it never overlays the options while they scroll). -->
-        <div class="clock-column-group">
-          <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.hour' | translate }}</div>
-          <div
-            #hourRef
-            class="clock-column"
-            role="listbox"
-            aria-orientation="vertical"
-            tabindex="-1"
-            [attr.aria-label]="'dateTimePicker.hour' | translate"
-            [attr.aria-activedescendant]="hourActiveDesc()"
-            (keydown)="onHourKeydown($event)"
-            (focus)="activeColumn.set('hour')">
-            <!-- aria-current mirrors the `curr` class: it exposes the wall-clock "now" option to
-                 assistive tech as the current item of the set (token `time`), a state distinct from
-                 aria-selected (chosen value) and aria-activedescendant (keyboard cursor). null
-                 removes the attribute until findViewTime seeds the viewed time on panel open.
-                 The minute column binds viewMinute the same way. -->
-            @for (h of hours; track h) {
+      <!-- Hours column: static header above the scroller (header lives OUTSIDE the scroll
+            container, so it never overlays the options while they scroll). -->
+      <div class="clock-column-group">
+        <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.hour' | translate }}</div>
+        <div
+          #hourRef
+          class="clock-column"
+          role="listbox"
+          aria-orientation="vertical"
+          tabindex="-1"
+          [attr.aria-label]="'dateTimePicker.hour' | translate"
+          [attr.aria-activedescendant]="hourActiveDesc()"
+          (keydown)="onHourKeydown($event)"
+          (focus)="activeColumn.set('hour')">
+          <!-- aria-current mirrors the `curr` class: it exposes the wall-clock "now" option to
+                assistive tech as the current item of the set (token `time`), a state distinct from
+                aria-selected (chosen value) and aria-activedescendant (keyboard cursor). null
+                removes the attribute until findViewTime seeds the viewed time on panel open.
+                The minute column binds viewMinute the same way. -->
+          @for (h of hours; track h) {
 <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- options are focus-managed by the parent listbox via aria-activedescendant, not individually focusable -->
-              <div
-                [id]="`${ident()}_opt_h${h}`"
-                [attr.data-testid]="`${ident()}_h${h}`"
-                class="time-item time-hour"
-                [class.selected]="selectedHour() === h"
-                [class.curr]="viewHour() === h"
-                [class.focused]="activeColumn() === 'hour' && focusedHour() === h"
-                role="option"
-                [attr.aria-selected]="selectedHour() === h"
-                [attr.aria-current]="viewHour() === h ? 'time' : null"
-                (mousedown)="handleMousedownOption('hour', h)"
-                (click)="handleHourClick(h)">
-                {{ h.toString().padStart(2, '0') }}
-              </div>
-            }
-          </div>
+            <div
+              [id]="`${ident()}_opt_h${h}`"
+              [attr.data-testid]="`${ident()}_h${h}`"
+              class="time-item time-hour"
+              [class.selected]="selectedHour() === h"
+              [class.curr]="viewHour() === h"
+              [class.focused]="activeColumn() === 'hour' && focusedHour() === h"
+              role="option"
+              [attr.aria-selected]="selectedHour() === h"
+              [attr.aria-current]="viewHour() === h ? 'time' : null"
+              (mousedown)="handleMousedownOption('hour', h)"
+              (click)="handleHourClick(h)">
+              {{ h.toString().padStart(2, '0') }}
+            </div>
+          }
         </div>
-
-        <!-- Minutes column: same header-above-scroller layout as the hours column. -->
-        <div class="clock-column-group">
-          <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.minute' | translate }}</div>
-          <div
-            #minuteRef
-            class="clock-column"
-            role="listbox"
-            aria-orientation="vertical"
-            tabindex="-1"
-            [attr.aria-label]="'dateTimePicker.minute' | translate"
-            [attr.aria-activedescendant]="minuteActiveDesc()"
-            (keydown)="onMinuteKeydown($event)"
-            (focus)="activeColumn.set('minute')">
-            @for (m of minutes; track m) {
-<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- options are focus-managed by the parent listbox via aria-activedescendant, not individually focusable -->
-              <div
-                [id]="`${ident()}_opt_m${m}`"
-                [attr.data-testid]="`${ident()}_m${m}`"
-                class="time-item time-minute"
-                [class.selected]="selectedMinute() === m"
-                [class.curr]="viewMinute() === m"
-                [class.focused]="activeColumn() === 'minute' && focusedMinute() === m"
-                role="option"
-                [attr.aria-selected]="selectedMinute() === m"
-                [attr.aria-current]="viewMinute() === m ? 'time' : null"
-                (mousedown)="handleMousedownOption('minute', m)"
-                (click)="handleMinuteClick(m)">
-                {{ m.toString().padStart(2, '0') }}
-              </div>
-            }
-          </div>
-        </div>
-
       </div>
+
+      <!-- Minutes column: same header-above-scroller layout as the hours column. -->
+      <div class="clock-column-group">
+        <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.minute' | translate }}</div>
+        <div
+          #minuteRef
+          class="clock-column"
+          role="listbox"
+          aria-orientation="vertical"
+          tabindex="-1"
+          [attr.aria-label]="'dateTimePicker.minute' | translate"
+          [attr.aria-activedescendant]="minuteActiveDesc()"
+          (keydown)="onMinuteKeydown($event)"
+          (focus)="activeColumn.set('minute')">
+          @for (m of minutes; track m) {
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- options are focus-managed by the parent listbox via aria-activedescendant, not individually focusable -->
+            <div
+              [id]="`${ident()}_opt_m${m}`"
+              [attr.data-testid]="`${ident()}_m${m}`"
+              class="time-item time-minute"
+              [class.selected]="selectedMinute() === m"
+              [class.curr]="viewMinute() === m"
+              [class.focused]="activeColumn() === 'minute' && focusedMinute() === m"
+              role="option"
+              [attr.aria-selected]="selectedMinute() === m"
+              [attr.aria-current]="viewMinute() === m ? 'time' : null"
+              (mousedown)="handleMousedownOption('minute', m)"
+              (click)="handleMinuteClick(m)">
+              {{ m.toString().padStart(2, '0') }}
+            </div>
+          }
+        </div>
+      </div>
+
     </div>
+  </div>
 </div>

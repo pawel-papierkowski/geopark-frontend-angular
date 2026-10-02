@@ -148,6 +148,10 @@ export class DateTimePicker implements FormValueControl<Date | null> {
         return;
       }
 
+      const datePicker = this.datePicker();
+      if (datePicker !== undefined && target instanceof Node && !this.rootRef().nativeElement.contains(target)) {
+        datePicker.hidePanel();
+      }
       const timePicker = this.timePicker();
       if (timePicker !== undefined && target instanceof Node && !this.rootRef().nativeElement.contains(target)) {
         timePicker.hidePanel();
@@ -155,6 +159,19 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     };
     this.document.addEventListener('mousedown', handleDocumentMousedown, true);
     this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', handleDocumentMousedown, true));
+  }
+
+  /**
+   * Focus the control on behalf of the signal-forms `Field` directive (the optional
+   * `FormUiControl.focus` contract - e.g. "focus first valid field").
+   * Mirrors label activation: delegates to the sub-picker that owns the focusable input
+   * (date leads, if missing falls through to time), whose focus handler auto-opens its
+   * panel like Tab does. No-op when disabled.
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
+   */
+  public focus(options?: FocusOptions): void {
+    if (this.disabled()) return;
+    this.focusSubPicker(options);
   }
 
   // INTERACTIONS
@@ -174,10 +191,17 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    */
   public handleLabelFocus() {
     if (this.disabled()) return;
+    const datePicker = this.datePicker();
+    const timePicker = this.timePicker();
+
     const decision = this.labelClickDecision();
     if (decision === 'closed') {
       // The click closed the panel - restore focus on the input without triggering auto-open.
-      this.timePicker()?.hidePanelAndRefocus();
+      if (datePicker !== undefined && datePicker.isCalendarVisible()) {
+        this.datePicker()?.hidePanelAndRefocus();
+        return;
+      }
+      if (timePicker !== undefined && timePicker.isClockVisible()) this.timePicker()?.hidePanelAndRefocus();
       return;
     }
     if (decision === 'open') {
@@ -185,9 +209,8 @@ export class DateTimePicker implements FormValueControl<Date | null> {
       this.focusSubPicker();
       return;
     }
-    const timePicker = this.timePicker();
-    // TODO: once DatePicker is a real picker, account for its panel state here as well.
-    const wasClosed = timePicker !== undefined && !timePicker.isClockVisible();
+    // We know decision is 'none'.
+    const wasClosed = datePicker !== undefined && !datePicker.isCalendarVisible() || timePicker !== undefined && !timePicker.isClockVisible();
     this.focusSubPicker();
     if (wasClosed) this.focusOpened.set(true);
   }
@@ -208,64 +231,62 @@ export class DateTimePicker implements FormValueControl<Date | null> {
       this.focusOpened.set(false);
       return;
     }
+    const datePicker = this.datePicker();
+    if (datePicker !== undefined && datePicker.isCalendarVisible()) {
+      this.labelClickDecision.set('closed');
+      datePicker.hidePanelAndRefocus();
+      return;
+    }
     const timePicker = this.timePicker();
-    // TODO: once DatePicker is a real picker, toggle its panel here as well.
     if (timePicker !== undefined && timePicker.isClockVisible()) {
       this.labelClickDecision.set('closed');
       timePicker.hidePanelAndRefocus();
       return;
     }
+
+    // Both are closed already, so we open one of them. datePicker has priority.
     this.labelClickDecision.set('open');
     this.focusSubPicker();
+
     // The redirect above opens only through the input's focus event - when the input ALREADY
     // holds focus (click-first order after a close parks it there) no event fires, so complete
     // the open explicitly to keep the click's toggle reliable (showPanel no-ops when visible).
+    if (datePicker !== undefined) {
+      void datePicker.showPanel();
+      return;
+    }
     if (timePicker !== undefined) void timePicker.showPanel();
   }
 
   /**
    * Move focus from the hidden label target into a sub-picker input - the open half of label
    * activation. Focusing the input lets its own focus handler auto-open the panel and steer
-   * keyboard focus into it. The date sub-picker leads `datetime`, but the placeholder DatePicker
-   * has no focusable input yet: its `focusInput()` returns null there, so focus falls through to
-   * the time sub-picker.
+   * keyboard focus into it.
    * @param options Native focus options (e.g. `preventScroll`), forwarded to the focused input.
    */
   private focusSubPicker(options?: FocusOptions) {
     const datePicker = this.datePicker();
-    // TODO: forward options too once the placeholder DatePicker accepts FocusOptions.
-    if (datePicker !== undefined && datePicker.focusInput() !== null) return;
+    if (datePicker !== undefined && datePicker.focusInput() !== null) {
+      this.datePicker()?.focusInput(options);
+      return;
+    }
     this.timePicker()?.focusInput(options);
-  }
-
-  /**
-   * Focus the control on behalf of the signal-forms `Field` directive (the optional
-   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Mirrors label
-   * activation: delegates to the sub-picker that owns the focusable input (date leads, the
-   * placeholder DatePicker falls through to time), whose focus handler auto-opens its panel
-   * like Tab does. No-op when disabled.
-   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
-   */
-  public focus(options?: FocusOptions): void {
-    if (this.disabled()) return;
-    this.focusSubPicker(options);
   }
 
   /**
    * Handle focus moving between the two pickers.
    * When one input receives focus, the other picker's panel is closed.
-   * TODO: placeholder, will be finished when both date and time pickers exist
    */
   public handleFocusIn(e: FocusEvent) {
     const target = e.target as HTMLElement;
 
     // If date input received focus, close time panel.
     if (target.id === `${this.dateIdent()}_input`) {
-      //this.datePicker()?.hidePanel(); TODO
+      this.timePicker()?.hidePanel();
     }
     // If time input received focus, close date panel.
     if (target.id === `${this.timeIdent()}_input`) {
-      //this.timePicker()?.hidePanel(); // TODO
+      this.datePicker()?.hidePanel();
     }
   }
 }

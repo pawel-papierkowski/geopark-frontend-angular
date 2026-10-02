@@ -103,6 +103,7 @@ type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
 })
 export class TimePicker implements FormValueControl<Date | null> {
   private injector = inject(Injector);
+  /** For programmatic translations. */
   private readonly translateService = inject(TranslateService);
   /** Injectable document, used for the global focus check in `handleMousedown`. */
   private readonly document = inject(DOCUMENT);
@@ -126,30 +127,34 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** Informs that user blurred out of component (focus left it), regardless of panel visibility. */
   public touch = output<void>();
 
-  /** Indicates visibility of clock panel. */
-  public readonly isClockVisible = signal(false);
+  /** List of hours. We use full 24-hour clock. */
+  public hours = Array.from({ length: 24 }, (_, i) => i);
+  /** List of minutes. */
+  public minutes = Array.from({ length: 60 }, (_, i) => i);
+
+  // REFERENCES
+
   /** Root focusable element. */
   private pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
+  /** Reference to the text input. */
+  private inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
   /** Reference to clock panel. */
   public clockPanelRef = viewChild.required<ElementRef<HTMLDivElement>>('clockPanelRef');
   /** Reference to hour listbox. */
   public hourRef = viewChild.required<ElementRef<HTMLDivElement>>('hourRef');
   /** Reference to minute listbox. */
   public minuteRef = viewChild.required<ElementRef<HTMLDivElement>>('minuteRef');
-  /** Reference to the text input. */
-  private inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
 
+  // SIGNALS
+
+  /** Indicates visibility of clock panel. */
+  public readonly isClockVisible = signal(false);
   /** Keyboard-focus hour index. Set when panel opens, updated via arrow navigation. */
   public focusedHour = signal<number | null>(null);
   /** Keyboard-focus minute index. Set when panel opens, updated via arrow navigation. */
   public focusedMinute = signal<number | null>(null);
   /** Which listbox column currently has keyboard focus. */
   public activeColumn = signal<'hour' | 'minute'>('hour');
-
-  /** List of hours. We use full 24-hour clock. */
-  public hours = Array.from({ length: 24 }, (_, i) => i);
-  /** List of minutes. */
-  public minutes = Array.from({ length: 60 }, (_, i) => i);
 
   /** Currently viewed hour. */
   public viewHour = signal<number | null>(null);
@@ -221,10 +226,8 @@ export class TimePicker implements FormValueControl<Date | null> {
   });
 
   /**
-   * Compute currently displayed time value in time input. Always a string (never null), so the `[value]` binding never writes null into the input.
-   * Deliberately plain text - a screen reader announces the input's VALUE, so a decorative glyph
-   * baked in here would be read out ("clock face one-thirty") before the time. The clock glyph
-   * is rendered outside the input as an `aria-hidden` span (see the template).
+   * Compute currently displayed time value in time input. Always a string (never null), so
+   * the `[value]` binding never writes null into the input.
    */
   public displayTimeValue = computed(() => TimeUtils.formatUTCTime(this.normalizedValue()));
   /**
@@ -247,7 +250,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   // GENERAL
 
-  /** Toggle visibility of time picker panel. */
+  /** Toggle visibility of time picker panel (clock). */
   private async toggleTimePickerVisibility() {
     if (this.isClockVisible()) {
       this.hidePanel();
@@ -474,7 +477,7 @@ export class TimePicker implements FormValueControl<Date | null> {
     return direction > 0 ? 0 : max;
   }
 
-  // EVENTS
+  // EVENTS: MOUSE HANDLERS
 
   /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). Set only when a click-caused focus event is actually coming. */
   private focusFromClick = false;
@@ -581,28 +584,6 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (this.disabled()) return;
     const outcome = this.applyPick('minute', m);
     if (outcome === 'committed' || outcome === 'cleared') this.hidePanelAndRefocus();
-  }
-
-  /**
-   * Handle focus leaving the picker entirely (e.g. Tab out of grid). It closes clock panel and,
-   * unless focus only moved inside the component, reports the control as touched.
-   * Note the panel visibility is intentionally not checked: internal helpers hide the panel before
-   * or after focus moves, so a closed panel must still report touch when focus really left.
-   * @param e Focus event.
-   */
-  public handleFocusOut(e: FocusEvent) {
-    const next = e.relatedTarget;
-    if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
-    // The host's hidden label target (forwarded through the `labelTarget` input) is a sibling of
-    // this component - it lives on the parent DateTimePicker's root - so containment misses it.
-    // Focus landing there means label activation is about to redirect straight back into this
-    // component (it always pairs focus with a click), so it reads as an internal move, not a
-    // user blur. Identity comparison keeps other components' hidden-label buttons (same class,
-    // different control) counting as a real blur.
-    if (next instanceof Element && next === this.labelTarget()) return;
-    this.hidePanel();
-    if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
-    this.touch.emit();
   }
 
   // EVENTS: KEYBOARD HANDLERS
@@ -893,6 +874,20 @@ export class TimePicker implements FormValueControl<Date | null> {
     return true;
   }
 
+  /**
+   * Set up focus values. Seeds from the DISPLAY selection (`selectedHour`/`selectedMinute` -
+   * session pick ?? committed value), falling back to the viewed local time.
+   * @param force If true, will override focused values. If false, will set focused values only if these are null.
+   */
+  private setupFocus(force: boolean) {
+    if (force || this.focusedHour() === null) {
+      this.focusedHour.set(this.selectedHour() ?? this.viewHour() ?? null);
+    }
+    if (force || this.focusedMinute() === null) {
+      this.focusedMinute.set(this.selectedMinute() ?? this.viewMinute() ?? null);
+    }
+  }
+
   // UTILITIES
 
   /**
@@ -985,16 +980,24 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Set up focus values. Seeds from the DISPLAY selection (`selectedHour`/`selectedMinute` -
-   * session pick ?? committed value), falling back to the viewed local time.
-   * @param force If true, will override focused values. If false, will set focused values only if these are null.
+   * Handle focus leaving the picker entirely (e.g. Tab out of grid). It closes clock panel and,
+   * unless focus only moved inside the component, reports the control as touched.
+   * Note the panel visibility is intentionally not checked: internal helpers hide the panel before
+   * or after focus moves, so a closed panel must still report touch when focus really left.
+   * @param e Focus event.
    */
-  private setupFocus(force: boolean) {
-    if (force || this.focusedHour() === null) {
-      this.focusedHour.set(this.selectedHour() ?? this.viewHour() ?? null);
-    }
-    if (force || this.focusedMinute() === null) {
-      this.focusedMinute.set(this.selectedMinute() ?? this.viewMinute() ?? null);
-    }
+  public handleFocusOut(e: FocusEvent) {
+    const next = e.relatedTarget;
+    if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
+    // The host's hidden label target (forwarded through the `labelTarget` input) is a sibling of
+    // this component - it lives on the parent DateTimePicker's root - so containment misses it.
+    // Focus landing there means label activation is about to redirect straight back into this
+    // component (it always pairs focus with a click), so it reads as an internal move, not a
+    // user blur. Identity comparison keeps other components' hidden-label buttons (same class,
+    // different control) counting as a real blur.
+    if (next instanceof Element && next === this.labelTarget()) return;
+    this.hidePanel();
+    if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
+    this.touch.emit();
   }
 }
