@@ -391,7 +391,6 @@ export class DatePicker implements FormValueControl<Date | null> {
    * or after focus moves, so a closed panel must still report touch when focus really left.
    * @param e Focus event.
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public handleFocusOut(e: FocusEvent) {
     const next = e.relatedTarget;
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;

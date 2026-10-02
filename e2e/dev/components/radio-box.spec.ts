@@ -259,32 +259,29 @@ test.describe('RadioBox', () => {
       // Act: Tab again — the whole roving-tabindex group must be skipped in one press.
       await page.keyboard.press('Tab');
 
-      // Assert: Focus moved past the radioBox to the next focusable component on the page
-      // (the datetime row's time input), which auto-opens its panel and moves focus into its
-      // hour listbox. No radio option remains focused.
-      // TODO: after we finish date-time-picker, focus will land on date-picker calendar panel, adjust test accordingly.
-      const dateTimeInput = page.getByTestId('timeId_cc-dateTimePicker_input');
-      await expect(dateTimeInput).toHaveAttribute('aria-expanded', 'true');
-      await expect(page.locator('#timeId_cc-dateTimePicker_panel .clock-column').first()).toBeFocused();
+      // Assert: Focus moved past the radioBox to the next focusable component on the page - the
+      // datetime row's date input (the row's first tab stop), which auto-opens its calendar panel.
+      // No radio option remains focused.
+      const dateTimeDateInput = page.getByTestId('dateId_cc-dateTimePicker_input');
+      await expect(dateTimeDateInput).toBeFocused();
+      await expect(dateTimeDateInput).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.getByTestId('dateId_cc-dateTimePicker_panel')).toBeVisible();
       await expect(option0).not.toBeFocused();
     });
 
-    test('should navigate backwards from time-picker to radio-box to combo-box on Shift+Tab presses', async ({ page }) => {
-      // Arrange: Navigate; start keyboard modality on the datetime row's time input (next
-      // component), which auto-opens its panel and moves focus into its hour listbox.
-      // TODO: after finishing date-time-picker, we start on date-picker in date-time-picker. Adjust test accordingly.
+    test('should navigate backwards from next component to radio-box to prev component on Shift+Tab presses', async ({ page }) => {
+      // Arrange: Navigate; start keyboard modality on the datetime row's date input (next
+      // component), which auto-opens its panel and moves focus into its calendar grid.
       await goToComponentsPage(page);
-      const dateTimeInput = page.getByTestId('timeId_cc-dateTimePicker_input');
+      const dateTimeInput = page.getByTestId('dateId_cc-dateTimePicker_input');
       await dateTimeInput.focus();
       await expect(dateTimeInput).toHaveAttribute('aria-expanded', 'true');
-      await expect(page.locator('#timeId_cc-dateTimePicker_panel .clock-column').first()).toBeFocused();
 
-      // Act: Shift+Tab backwards out of the time-picker — one press must close the panel and
-      // hand focus back to the radioBox.
+      // Act: Shift+Tab — one press must leave the whole datetime row and land in the radioBox.
       await page.keyboard.press('Shift+Tab');
 
       // Assert: Focus landed on the selected option (the group's single tab stop) with visible
-      // focus outline; selection unchanged; time-picker panel closed.
+      // focus outline; selection unchanged; calendar panel closed.
       const option0 = getOption(page, 0);
       await expect(option0).toBeFocused();
       await expect(option0).toHaveCSS('outline-style', 'solid');
@@ -292,7 +289,7 @@ test.describe('RadioBox', () => {
       await expect(option0).toHaveAttribute('aria-checked', 'true');
       await expect(dateTimeInput).toHaveAttribute('aria-expanded', 'false');
 
-      // Act: Shift+Tab again — the whole roving-tabindex group must be skipped backwards in one press.
+      // Act: Shift+Tab again — the whole radioBox must be skipped backwards in one press.
       await page.keyboard.press('Shift+Tab');
 
       // Assert: Focus moved past the radioBox to the previous focusable component (comboBox),

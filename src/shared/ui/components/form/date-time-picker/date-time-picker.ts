@@ -93,9 +93,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** What this label activation's forwarded click decided. Engines disagree on label activation
    * order: Chromium/Firefox focus the hidden button first and forward the click second, WebKit
    * does the reverse - so the focus handler that runs AFTER the click (WebKit) must only restore
-   * focus, never re-run the toggle the click already made. `none` until a forwarded click runs;
-   * reset at the start of every pointer interaction, like `focusOpened`. */
-  private labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
+   * focus, never re-run the toggle the click already made. `closed:date`/`closed:time` also record
+   * WHICH sub-picker the click closed, because by the time the focus handler runs that panel is
+   * already shut and its visibility can no longer tell the two apart. `none` until a forwarded
+   * click runs; reset at the start of every pointer interaction, like `focusOpened`. */
+  private labelClickDecision = signal<'none' | 'open' | 'closed:date' | 'closed:time'>('none');
 
   /** Date sub-picker component. Absent when `mode` does not render it, hence not `required`. */
   private datePicker = viewChild(DatePicker);
@@ -186,8 +188,8 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    *   toggling the panel closed again.
    * - Click first (WebKit): the forwarded click already recorded its decision (`open`/`closed`),
    *   so this only steers focus back from the hidden button the activation stole it for -
-   *   a closed panel stays closed (suppressed refocus via `hidePanelAndRefocus`), an open one
-   *   just gets focus returned without toggling.
+   *   a closed panel stays closed (restore via `hidePanelAndRefocus`, which suppresses the
+   *   auto-open on the input it focuses), an open one just gets focus returned without toggling.
    */
   public handleLabelFocus() {
     if (this.disabled()) return;
@@ -195,13 +197,13 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     const timePicker = this.timePicker();
 
     const decision = this.labelClickDecision();
-    if (decision === 'closed') {
-      // The click closed the panel - restore focus on the input without triggering auto-open.
-      if (datePicker !== undefined && datePicker.isCalendarVisible()) {
-        this.datePicker()?.hidePanelAndRefocus();
-        return;
-      }
-      if (timePicker !== undefined && timePicker.isClockVisible()) this.timePicker()?.hidePanelAndRefocus();
+    if (decision === 'closed:date' || decision === 'closed:time') {
+      // The click already closed this sub-picker's panel - restore focus on its input without
+      // re-running the toggle. Deliberately NOT gated on visibility: the click closed the panel
+      // BEFORE this focus handler ran (click-first order), so the panel is always shut here and
+      // a visibility check would skip the restore, parking focus on the hidden button.
+      if (decision === 'closed:date') datePicker?.hidePanelAndRefocus();
+      else timePicker?.hidePanelAndRefocus();
       return;
     }
     if (decision === 'open') {
@@ -233,13 +235,13 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     }
     const datePicker = this.datePicker();
     if (datePicker !== undefined && datePicker.isCalendarVisible()) {
-      this.labelClickDecision.set('closed');
+      this.labelClickDecision.set('closed:date');
       datePicker.hidePanelAndRefocus();
       return;
     }
     const timePicker = this.timePicker();
     if (timePicker !== undefined && timePicker.isClockVisible()) {
-      this.labelClickDecision.set('closed');
+      this.labelClickDecision.set('closed:time');
       timePicker.hidePanelAndRefocus();
       return;
     }

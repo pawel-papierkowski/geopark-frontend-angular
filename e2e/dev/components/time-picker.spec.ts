@@ -685,9 +685,12 @@ test.describe('TimePicker', () => {
     });
 
     test('should navigate from previous component to time-picker to next component on Tab presses', async ({ page }) => {
-      // Arrange: Start keyboard modality on the previous component (datetime row's time input).
+      // Arrange: Start keyboard modality on the previous component (the standalone date row's
+      // date input), whose calendar opens on focus.
       await goToComponentsPage(page);
-      await page.getByTestId('timeId_cc-dateTimePicker_input').focus();
+      const previousPicker = page.getByTestId('dateId_datePicker_input');
+      await previousPicker.focus();
+      await expect(previousPicker).toHaveAttribute('aria-expanded', 'true');
 
       // Act: Tab into the time-picker.
       await page.keyboard.press('Tab');
@@ -697,6 +700,9 @@ test.describe('TimePicker', () => {
       await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
       await expect(getPanel(page)).toBeVisible();
       await expect(getHourColumn(page)).toBeFocused();
+
+      // Assert: Focus left the previous component, so its calendar panel closed on the way out.
+      await expect(previousPicker).toHaveAttribute('aria-expanded', 'false');
 
       // Assert: Focus state is seeded on open, so the focused option is both announced
       // (aria-activedescendant) and visibly marked - regression guard: seeding used to run only
@@ -733,9 +739,10 @@ test.describe('TimePicker', () => {
       // Act: Shift+Tab again — one press must close panel AND move focus out backwards.
       await page.keyboard.press('Shift+Tab');
 
-      // Assert: Focus moved to previous component (datetime row's time input, which auto-opens on
-      // focus); our panel closed and our input no longer holds focus.
-      const previousPicker = page.getByTestId('timeId_cc-dateTimePicker_input');
+      // Assert: Focus moved to previous component (the standalone date row's date input, which
+      // auto-opens its calendar on focus); our panel closed and our input no longer holds focus.
+      const previousPicker = page.getByTestId('dateId_datePicker_input');
+      await expect(previousPicker).toBeFocused();
       await expect(previousPicker).toHaveAttribute('aria-expanded', 'true');
       await expect(timePicker).toHaveAttribute('aria-expanded', 'false');
       await expect(timePicker).not.toBeFocused();
