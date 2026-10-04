@@ -28,7 +28,7 @@ import { TimePicker } from './time-picker';
  *
  * Inputs:
  * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `date-time-picker-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
- * - label - For `aria-labelledby`. Optional.
+ * - label - Id of an external `<label>` element, forwarded to the sub-pickers for `aria-labelledby` (the visible `<label for>` targets this component's hidden button, not the inputs). In `datetime` mode each sub-input additionally appends a hidden "Date"/"Time" qualifier, so both inputs named by the same label stay distinguishable. Optional.
  * - mode - Mode of operation (both date and time, only date, only time). Optional, default is 'datetime'.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.

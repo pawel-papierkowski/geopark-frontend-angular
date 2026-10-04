@@ -14,6 +14,9 @@
   <button #labelBtnRef type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
     (focus)="handleLabelFocus()" (click)="handleLabelClick()"></button>
 
+  <!-- Qualifier is needed ONLY in datetime mode: there the same visible <label> names BOTH
+       sub-inputs, so each one appends its own hidden "Date"/"Time" suffix to stay
+       distinguishable (single-mode pickers already carry a distinct fallback name). -->
   @if (mode() === 'datetime' || mode() === 'date') {
     <date-picker
       [(value)]="value"
@@ -21,6 +24,7 @@
 
       [ident]="dateIdent()"
       [label]="label()"
+      [qualifyLabel]="mode() === 'datetime'"
       [labelTarget]="labelBtnRef"
       [canNull]="canNull()"
       
@@ -41,6 +45,7 @@
 
       [ident]="timeIdent()"
       [label]="label()"
+      [qualifyLabel]="mode() === 'datetime'"
       [labelTarget]="labelBtnRef"
       [canNull]="canNull()"
 

@@ -15,6 +15,8 @@ describe('DateTimePicker', () => {
   interface DateTimePickerTestOptions {
     /** Identifier of the picker (used for ids and label association). */
     ident?: string;
+    /** Id of the external `<label>` element forwarded to the sub-pickers. */
+    label?: string;
     /** Mode of operation. */
     mode?: enDateTimePickerMode;
     /** Whether the picker is disabled. */
@@ -27,12 +29,13 @@ describe('DateTimePicker', () => {
    * @returns Fixture of the created component with initial change detection applied.
    */
   async function arrangeDateTimePicker(opts: DateTimePickerTestOptions = {}): Promise<ComponentFixture<DateTimePicker>> {
-    const { ident = 'test-dtp', mode = 'time', disabled = false } = opts;
+    const { ident = 'test-dtp', label = '', mode = 'time', disabled = false } = opts;
 
     await TestBed.configureTestingModule({ imports: [DateTimePicker] }).compileComponents();
 
     const fixture = TestBed.createComponent(DateTimePicker);
     fixture.componentRef.setInput('ident', ident);
+    fixture.componentRef.setInput('label', label);
     fixture.componentRef.setInput('mode', mode);
     fixture.componentRef.setInput('disabled', disabled);
     fixture.detectChanges();
@@ -387,6 +390,68 @@ describe('DateTimePicker', () => {
       } finally { // cleanup
         label.remove();
       }
+    });
+  });
+
+  describe('aria', () => {
+    it('should name both sub-inputs with the label plus distinct qualifiers in datetime mode', async () => {
+      // Arrange: Render wrapper in datetime mode with an external label id.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime', label: 'my-label' });
+
+      // Assert: Each input is labelled by the same label AND its own qualifier, so the two
+      // accessible names differ while the visible label text stays a prefix of both.
+      const dateName = getDateInput(fixture).getAttribute('aria-labelledby');
+      const timeName = getTimeInput(fixture).getAttribute('aria-labelledby');
+      expect(dateName, 'date input should be labelled by label + date qualifier').toBe('my-label dateId_test-dtp_qualifier');
+      expect(timeName, 'time input should be labelled by label + time qualifier').toBe('my-label timeId_test-dtp_qualifier');
+      expect(dateName, 'the two inputs must not share the same accessible name').not.toBe(timeName);
+      expect(getDateInput(fixture).hasAttribute('aria-label'), 'labelled date input must not carry aria-label').toBe(false);
+      expect(getTimeInput(fixture).hasAttribute('aria-label'), 'labelled time input must not carry aria-label').toBe(false);
+    });
+
+    it('should render both qualifier elements with distinct ids in datetime mode', async () => {
+      // Arrange: Render wrapper in datetime mode with an external label id.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime', label: 'my-label' });
+
+      // Assert: Both hidden qualifiers exist and their ids match the aria-labelledby references.
+      const dateQualifier = fixture.nativeElement.querySelector('#dateId_test-dtp_qualifier');
+      const timeQualifier = fixture.nativeElement.querySelector('#timeId_test-dtp_qualifier');
+      expect(dateQualifier, 'date qualifier should be rendered').not.toBeNull();
+      expect(timeQualifier, 'time qualifier should be rendered').not.toBeNull();
+      expect(dateQualifier?.textContent?.trim(), 'date qualifier should carry the date key').toBe('dateTimePicker.date');
+      expect(timeQualifier?.textContent?.trim(), 'time qualifier should carry the time key').toBe('dateTimePicker.time');
+    });
+
+    it('should label the single date input without a qualifier in date mode', async () => {
+      // Arrange: Render wrapper in date-only mode with an external label id.
+      const fixture = await arrangeDateTimePicker({ mode: 'date', label: 'my-label' });
+
+      // Assert: Only the date input exists; its name is the plain label (no qualifier needed).
+      expect(getDateInput(fixture).getAttribute('aria-labelledby'), 'date input should be labelled by the label alone').toBe('my-label');
+      expect(fixture.nativeElement.querySelector('[id="dateId_test-dtp_qualifier"]'), 'qualifier must not render in date mode').toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_input"]'), 'time input must not render in date mode').toBeNull();
+    });
+
+    it('should label the single time input without a qualifier in time mode', async () => {
+      // Arrange: Render wrapper in time-only mode with an external label id.
+      const fixture = await arrangeDateTimePicker({ mode: 'time', label: 'my-label' });
+
+      // Assert: Only the time input exists; its name is the plain label (no qualifier needed).
+      expect(getTimeInput(fixture).getAttribute('aria-labelledby'), 'time input should be labelled by the label alone').toBe('my-label');
+      expect(fixture.nativeElement.querySelector('[id="timeId_test-dtp_qualifier"]'), 'qualifier must not render in time mode').toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="dateId_test-dtp_input"]'), 'date input must not render in time mode').toBeNull();
+    });
+
+    it('should fall back to distinct aria-labels in datetime mode when no label is given', async () => {
+      // Arrange: Render wrapper in datetime mode without a label.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+
+      // Assert: Fallback names are already distinct per sub-field; no dangling aria-labelledby.
+      expect(getDateInput(fixture).hasAttribute('aria-labelledby'), 'date input must not carry aria-labelledby without label').toBe(false);
+      expect(getTimeInput(fixture).hasAttribute('aria-labelledby'), 'time input must not carry aria-labelledby without label').toBe(false);
+      expect(getDateInput(fixture).getAttribute('aria-label'), 'date input should fall back to its date key').toBe('dateTimePicker.date');
+      expect(getTimeInput(fixture).getAttribute('aria-label'), 'time input should fall back to its time key').toBe('dateTimePicker.time');
+      expect(fixture.nativeElement.querySelector('.picker-name-qualifier'), 'no qualifier should render without label').toBeNull();
     });
   });
 

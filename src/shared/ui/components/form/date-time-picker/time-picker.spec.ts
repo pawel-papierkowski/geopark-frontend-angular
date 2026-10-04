@@ -20,6 +20,8 @@ describe('TimePicker', () => {
     ident?: string;
     /** Label reference for aria-labelledby. */
     label?: string;
+    /** Whether the accessible name gets the hidden "Time" qualifier appended. */
+    qualifyLabel?: boolean;
     /** Whether the picker allows deselecting the time. */
     canNull?: boolean;
     /** Whether the picker is required. */
@@ -42,6 +44,7 @@ describe('TimePicker', () => {
       value = null,
       ident = 'test-time',
       label = '',
+      qualifyLabel = false,
       canNull = false,
       required = false,
       disabled = false,
@@ -65,6 +68,7 @@ describe('TimePicker', () => {
     fixture.componentRef.setInput('value', value);
     fixture.componentRef.setInput('ident', ident);
     fixture.componentRef.setInput('label', label);
+    fixture.componentRef.setInput('qualifyLabel', qualifyLabel);
     fixture.componentRef.setInput('canNull', canNull);
     fixture.componentRef.setInput('required', required);
     fixture.componentRef.setInput('disabled', disabled);
@@ -93,6 +97,15 @@ describe('TimePicker', () => {
    */
   function getInput(fixture: ComponentFixture<TimePicker>): HTMLInputElement {
     return fixture.nativeElement.querySelector('[data-testid="test-time_input"]');
+  }
+
+  /**
+   * Get the hidden accessible-name qualifier span of given fixture (uses the default ident).
+   * @param fixture Fixture of the component.
+   * @returns Qualifier element, or null when it is not rendered.
+   */
+  function getQualifier(fixture: ComponentFixture<TimePicker>): HTMLElement | null {
+    return fixture.nativeElement.querySelector('[id="test-time_qualifier"]');
   }
 
   /**
@@ -1773,6 +1786,49 @@ describe('TimePicker', () => {
 
         // Assert: Input is labelled by the given label reference.
         expect(getInput(fixture).getAttribute('aria-labelledby'), 'aria-labelledby should match label input').toBe('my-label');
+      });
+
+      it('should append the qualifier id to aria-labelledby when qualifyLabel is set', async () => {
+        // Arrange: Create labelled component asking for the datetime-mode qualifier.
+        const fixture = await arrangeTimePicker({ label: 'my-label', qualifyLabel: true });
+
+        // Assert: Name is the label first (visible label stays a prefix) then the qualifier.
+        expect(getInput(fixture).getAttribute('aria-labelledby'), 'aria-labelledby should list label then qualifier').toBe('my-label test-time_qualifier');
+        expect(getInput(fixture).hasAttribute('aria-label'), 'labelled input must not carry an aria-label fallback').toBe(false);
+      });
+
+      it('should render the qualifier as a hidden element with translated text', async () => {
+        // Arrange: Create qualified component with translations registered before creation.
+        const fixture = await arrangeTimePicker({
+          label: 'my-label',
+          qualifyLabel: true,
+          translations: { dateTimePicker: { time: 'Time' } },
+        });
+
+        // Assert: Qualifier exists, carries the translated sub-field name and is visually hidden.
+        const qualifier = getQualifier(fixture);
+        expect(qualifier, 'qualifier element should be rendered').not.toBeNull();
+        expect(qualifier?.textContent?.trim(), 'qualifier should carry the translated time name').toBe('Time');
+        expect(qualifier?.className, 'qualifier should use the visually hidden class').toBe('picker-name-qualifier');
+      });
+
+      it('should not render the qualifier when qualifyLabel is not set', async () => {
+        // Arrange: Create labelled component without the qualifier flag.
+        const fixture = await arrangeTimePicker({ label: 'my-label', qualifyLabel: false });
+
+        // Assert: Single name source, no orphan qualifier element.
+        expect(getInput(fixture).getAttribute('aria-labelledby'), 'aria-labelledby should stay a single id').toBe('my-label');
+        expect(getQualifier(fixture), 'qualifier must not render without qualifyLabel').toBeNull();
+      });
+
+      it('should not render the qualifier or aria-labelledby when label is empty even with qualifyLabel set', async () => {
+        // Arrange: Create component qualified but without a label reference.
+        const fixture = await arrangeTimePicker({ label: '', qualifyLabel: true });
+
+        // Assert: Input falls back to aria-label; an orphan qualifier id would be unreferenced.
+        expect(getInput(fixture).hasAttribute('aria-labelledby'), 'aria-labelledby must be absent without label').toBe(false);
+        expect(getInput(fixture).getAttribute('aria-label'), 'input should fall back to the dedicated time key').toBe('dateTimePicker.time');
+        expect(getQualifier(fixture), 'qualifier must not render without label').toBeNull();
       });
 
       it('should not set aria-labelledby when label is empty', async () => {

@@ -11,3 +11,16 @@
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* Visually hidden sub-field qualifier ("Date"/"Time") appended to the accessible name of a
+   date-time-picker sub-input in datetime mode. Same clip technique as the button above. */
+.picker-name-qualifier {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

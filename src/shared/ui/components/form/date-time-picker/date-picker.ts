@@ -47,7 +47,8 @@ const panelPlacement: PanelPlacement = {
  *
  * Inputs:
  * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Always provided by parent DateTimePicker, this component is not meant to be used alone.
- * - label - For `aria-labelledby`. Optional.
+ * - label - Id of an external element (usually `<label>`) used for `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. Optional.
+ * - qualifyLabel - If true and `label` is set, appends a hidden "Date" qualifier id to `aria-labelledby`, so both sub-fields stay distinguishable when DateTimePicker runs in `datetime` mode. Always provided by parent DateTimePicker. Optional, default false.
  * - labelTarget - The host's hidden label-activation target, which lives OUTSIDE this component's subtree (a sibling on the parent's root). Focus landing on it during label activation reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.
@@ -81,8 +82,10 @@ export class DatePicker implements FormValueControl<Date | null> {
   public value = model<Date | null>(null);
   /** Identifier for this component. */
   public ident = input<string>('');
-  /** Label reference. */
+  /** Label reference: id of an external element (usually `<label>`) used for `aria-labelledby`. */
   public label = input<string>('');
+  /** If true, append a hidden "Date" qualifier to the accessible name (see `nameRefs`). */
+  public qualifyLabel = input<boolean>(false);
   /** Host's hidden label-activation target. */
   public labelTarget = input<Element | null>(null);
   /** If true, allow deselecting date. */
@@ -117,6 +120,18 @@ export class DatePicker implements FormValueControl<Date | null> {
   public calendarGridRef = viewChild.required<ElementRef<HTMLDivElement>>('calendarGridRef');
 
   // SIGNALS
+
+  /**
+   * Value of the input's `aria-labelledby`: the external label id, plus (when `qualifyLabel`)
+   * this sub-field's hidden qualifier id; null when no label is set (the input then falls back
+   * to `aria-label`). The qualified name reads "<label> Date" - the label text stays a prefix,
+   * so the visible label remains inside the accessible name (WCAG 2.5.3) for voice control.
+   */
+  public readonly nameRefs = computed<string | null>(() => {
+    const label = this.label();
+    if (label === '') return null;
+    return this.qualifyLabel() ? `${label} ${this.ident()}_qualifier` : label;
+  });
 
   /** Indicates visibility of calendar panel. */
   public readonly isCalendarVisible = signal(false);

@@ -25,7 +25,7 @@
     [attr.aria-expanded]="isCalendarVisible()"
     [attr.aria-controls]="`${ident()}_panel`"
     [attr.aria-label]="label() ? null : ('dateTimePicker.date' | translate)"
-    [attr.aria-labelledby]="label() || null"
+    [attr.aria-labelledby]="nameRefs()"
     [attr.aria-required]="required() || null"
     [attr.aria-invalid]="invalid() || null"
     [attr.aria-disabled]="disabled() || null"
@@ -43,6 +43,13 @@
     class="picker-date-icon"
     [attr.data-testid]="`${ident()}_icon`"
     aria-hidden="true">📅</span>
+
+  <!-- Hidden accessible-name qualifier: referenced as the second id of the input's
+       `aria-labelledby` (see `nameRefs`) so the date input stays distinguishable from the
+       time input in `datetime` mode, where both are named after the same visible <label>. -->
+  @if (label() && qualifyLabel()) {
+    <span [id]="`${ident()}_qualifier`" class="picker-name-qualifier">{{ 'dateTimePicker.date' | translate }}</span>
+  }
 
   <!-- Date picker: calendar panel. Named by a dedicated key - it is a dialog of its own. -->
   <div
