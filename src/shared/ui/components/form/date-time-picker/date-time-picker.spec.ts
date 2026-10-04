@@ -95,6 +95,17 @@ describe('DateTimePicker', () => {
   }
 
   /**
+   * Get the calendar grid of the wrapped date-picker (the focus target of the open path).
+   * Day cells are not focusable (the grid announces its cursor via aria-activedescendant),
+   * so DOM focus lands on the grid container itself.
+   * @param fixture Fixture of the component.
+   * @returns Grid element of the date sub-picker.
+   */
+  function getCalendarGrid(fixture: ComponentFixture<DateTimePicker>): HTMLElement {
+    return fixture.nativeElement.querySelector('.calendar-grid');
+  }
+
+  /**
    * Flush pending component work: panel opening awaits `forRender` internally, so
    * interaction tests need stability flushes before asserting focus and panel state.
    * @param fixture Fixture of the component.
@@ -648,8 +659,9 @@ describe('DateTimePicker', () => {
 
   describe('focus', () => {
     it('should focus the date input and open the calendar panel in datetime mode', async () => {
-      // Arrange: Render wrapper in datetime mode; the placeholder DatePicker has no
-      // focusable input, so its focusInput() reports null.
+      // Arrange: Render wrapper in datetime mode - both sub-pickers are present and the date
+      // one leads, so focus() must delegate to its (enabled) input. focus() is the
+      // FormUiControl.focus contract used by the signal-forms Field directive.
       const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
 
       // Act: Focus the control programmatically (two flush rounds for the two-round open).
@@ -657,10 +669,11 @@ describe('DateTimePicker', () => {
       await flush(fixture);
       await flush(fixture);
 
-      // Assert: The date branch takes no focus, so the time sub-picker receives it.
+      // Assert: The date input took focus, its focus handler opened the calendar panel, and
+      // keyboard focus continued into the calendar grid so arrow navigation works right away.
       expect(getDateInput(fixture).getAttribute('aria-expanded'), 'focus() should open the calendar panel').toBe('true');
-      // TODO verify focus is on calendar grid when it is implemented
-      //expect(document.activeElement, 'focus() should end with keyboard focus in the date sub-picker calendar grid').toBe(getCalendarCell(fixture));
+      expect(document.activeElement, 'focus() should end with keyboard focus in the date sub-picker calendar grid').toBe(getCalendarGrid(fixture));
+      expect(getCalendarGrid(fixture).getAttribute('aria-activedescendant'), 'grid should announce the seeded keyboard cursor').not.toBeNull();
     });
 
     it('should focus the time input and open the clock panel in time mode', async () => {

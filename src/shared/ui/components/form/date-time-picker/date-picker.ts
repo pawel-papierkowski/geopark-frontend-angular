@@ -598,7 +598,6 @@ export class DatePicker implements FormValueControl<Date | null> {
    * not focusable, so the browser's focus fixup would move focus to <body>; the panel's focusout
    * handler would read that as "focus left the component" and close the panel while emitting a
    * spurious touch. Cancelling the default keeps focus where it was.
-   * TODO: verify it is even needed at all.
    * @param e Mouse event.
    */
   public handlePanelMousedown(e: MouseEvent) {
@@ -960,6 +959,4 @@ export class DatePicker implements FormValueControl<Date | null> {
     if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
     this.touch.emit();
   }
-
-  // TODO
 }

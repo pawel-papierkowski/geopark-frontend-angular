@@ -714,7 +714,7 @@ test.describe('DatePicker', () => {
       await expect(panel.locator('.calendar-grid')).toHaveAttribute('style', /grid-template-columns:\s*repeat\(8,\s*1fr\)/);
 
       // Assert: Six week-number cells render, each carrying an ident-based testid.
-      const weekCells = panel.locator('.weekNum');
+      const weekCells = panel.locator('.week-num');
       await expect(weekCells, 'showWeeks calendar should render six week-number cells').toHaveCount(6);
       await expect(weekCells.first()).toHaveAttribute('data-testid', /dateId_cc-dateTimePickerNull_w\d+/);
     });

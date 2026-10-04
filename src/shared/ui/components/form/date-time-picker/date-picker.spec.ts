@@ -601,7 +601,7 @@ describe('DatePicker', () => {
         // Assert: Six week cells (one per row) render with ident-based testids and the week
         // numbers of the January 2026 rows (1 - 6 under the component's week algorithm);
         // day cells keep their own testids, so the lookup helper still finds them.
-        const weekCells = fixture.nativeElement.querySelectorAll('.weekNum');
+        const weekCells = fixture.nativeElement.querySelectorAll('.week-num');
         expect(weekCells.length, 'six rows should render six week-number cells').toBe(6);
         expect([...weekCells].map((cell) => cell.textContent?.trim()), 'week numbers should follow the viewed month').toEqual(['1', '2', '3', '4', '5', '6']);
         expect(fixture.nativeElement.querySelector('[data-testid="test-date_w3"]'), 'week testid should follow the ident pattern').not.toBeNull();
@@ -1709,7 +1709,7 @@ describe('DatePicker', () => {
         const root: HTMLElement = fixture.nativeElement;
 
         // Assert: No week cell claims to be current, and every current cell is a day.
-        expect(root.querySelectorAll('.weekNum[aria-current]').length, 'week-number cells must not expose aria-current').toBe(0);
+        expect(root.querySelectorAll('.week-num[aria-current]').length, 'week-number cells must not expose aria-current').toBe(0);
         expect(
           Array.from(root.querySelectorAll('[aria-current]')).every((element) => element.classList.contains('day')),
           'only day cells may expose aria-current',

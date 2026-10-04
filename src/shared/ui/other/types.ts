@@ -52,7 +52,7 @@ export type CalendarCellView = CalendarCell & {
   ariaDisabled: true | undefined;
   /** `aria-current`: 'date' on today, null (attribute absent) otherwise. */
   ariaCurrent: 'date' | null;
-  /** True for week-number cells (drives the `weekNum` vs `day` class). */
+  /** True for week-number cells (drives the `week-num` vs `day` class). */
   isWeek: boolean;
   /** True when a date cell lies outside the viewed month. */
   notCurrent: boolean;
