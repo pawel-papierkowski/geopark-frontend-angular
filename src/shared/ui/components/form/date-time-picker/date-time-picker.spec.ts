@@ -345,6 +345,144 @@ describe('DateTimePicker', () => {
       expect(document.activeElement, 'disabled picker should not focus hour listbox').not.toBe(getHourColumn(fixture));
     });
 
+    // datetime mode: BOTH sub-pickers are rendered, so handleLabelFocus's `wasClosed` evaluates
+    // two terms (the single-mode tests above only ever exercise one). Every activation below
+    // presses the associated label first, because the wrapper's document mousedown handler is
+    // what resets focusOpened/labelClickDecision - the same fresh state a real pointer press
+    // produces. Skipping it leaves a stale `labelClickDecision`, which routes the focus handler
+    // down a different branch and hides the state computation under test.
+
+    /**
+     * Create a `<label>` whose `for` points at the fixture's hidden label target, removed
+     * together with the fixture. Real label activations press THIS element (the document
+     * handler recognizes it as the wrapper's own label and resets the activation markers
+     * instead of treating the press as an outside close).
+     * @param fixture Fixture of the wrapper under test.
+     * @returns The associated label element.
+     */
+    function appendAssociatedLabel(fixture: ComponentFixture<DateTimePicker>): HTMLLabelElement {
+      const label = document.createElement('label');
+      label.htmlFor = fixture.componentInstance.resolvedIdent();
+      document.body.appendChild(label);
+      fixture.componentRef.onDestroy(() => label.remove());
+      return label;
+    }
+
+    /**
+     * Simulate one full label activation the way focus-first engines (Chromium/Firefox)
+     * perform it: mousedown on the label, focus of its hidden target, then the forwarded click.
+     * @param label The wrapper's associated label.
+     * @param hiddenButton The label's hidden target button.
+     */
+    function activateFocusFirst(label: HTMLLabelElement, hiddenButton: HTMLButtonElement): void {
+      dispatchMousedown(label);
+      hiddenButton.focus();
+      hiddenButton.click();
+    }
+
+    /**
+     * Simulate one full label activation the way click-first engines (WebKit) perform it:
+     * mousedown on the label, the forwarded click, then the focus of its hidden target.
+     * @param label The wrapper's associated label.
+     * @param hiddenButton The label's hidden target button.
+     */
+    function activateClickFirst(label: HTMLLabelElement, hiddenButton: HTMLButtonElement): void {
+      dispatchMousedown(label);
+      hiddenButton.click();
+      hiddenButton.focus();
+    }
+
+    it('should swallow the forwarded click and keep the calendar open on first label activation in datetime mode', async () => {
+      // Arrange: Render wrapper in datetime mode with closed panels and an associated label.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      const label = appendAssociatedLabel(fixture);
+
+      // Act: One full focus-first activation (the open half of the pair).
+      activateFocusFirst(label, getHiddenButton(fixture));
+      await flush(fixture);
+      await flush(fixture);
+
+      // Assert: The focus redirect opened the calendar and the paired click was swallowed -
+      // a single activation must not toggle the panel shut again (closed -> open, exactly once).
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'first activation should leave the calendar open').toBe('true');
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'the clock must stay closed in datetime mode').toBe('false');
+      expect(document.activeElement, 'focus should end in the calendar grid').toBe(getCalendarGrid(fixture));
+    });
+
+    it('should close the calendar on second focus-first label activation in datetime mode', async () => {
+      // Arrange: Open the calendar through the first full activation.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      const label = appendAssociatedLabel(fixture);
+      const hiddenButton = getHiddenButton(fixture);
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      activateFocusFirst(label, hiddenButton);
+      await flush(fixture);
+      await flush(fixture);
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should be open before second activation').toBe('true');
+
+      // Act: Second focus-first activation - the wrapper must see the OPEN calendar (neither
+      // panel closed is false) and therefore not arm the click swallow, so the forwarded click
+      // toggles the panel shut.
+      activateFocusFirst(label, hiddenButton);
+      await flush(fixture);
+
+      // Assert: The calendar closed and focus parked on the date input; internal focus moves
+      // (grid -> hidden target -> input) never leave the component, so no touch is reported.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'second focus-first activation should close the calendar').toBe('false');
+      expect(document.activeElement, 'focus should end on the date input').toBe(getDateInput(fixture));
+      expect(touchSpy, 'label toggle should not emit touch').not.toHaveBeenCalled();
+    });
+
+    it('should close both panels when a focus-first label activation starts with the clock open in datetime mode', async () => {
+      // Arrange: datetime mode with the clock panel open (focus inside its hour listbox).
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      const label = appendAssociatedLabel(fixture);
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      getTimeInput(fixture).click();
+      await flush(fixture);
+      await flush(fixture);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock panel should be open before act').toBe('true');
+
+      // Act: Full focus-first activation. The redirect targets the date input (date leads),
+      // whose arrival closes the clock (wrapper focusin) and opens the calendar; the forwarded
+      // click must toggle that freshly opened calendar shut instead of being swallowed.
+      activateFocusFirst(label, getHiddenButton(fixture));
+      await flush(fixture);
+      await flush(fixture);
+
+      // Assert: Clock-open -> activation ends with BOTH panels closed, never with the calendar
+      // left standing after an invisible switch from the clock.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar must not survive a clock-open activation').toBe('false');
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock should be closed by the focus redirect').toBe('false');
+      expect(touchSpy, 'label toggle should not emit touch').not.toHaveBeenCalled();
+    });
+
+    it('should keep the calendar closed on second click-first label activation in datetime mode', async () => {
+      // Arrange: Open the calendar through the first activation.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      const label = appendAssociatedLabel(fixture);
+      const hiddenButton = getHiddenButton(fixture);
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      activateFocusFirst(label, hiddenButton);
+      await flush(fixture);
+      await flush(fixture);
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should be open before second activation').toBe('true');
+
+      // Act: Engines disagree on label activation order - WebKit forwards the click FIRST (the
+      // click closes the calendar) and only then focuses the hidden button, both within the
+      // same task. The focus that follows must restore focus on the input without reopening.
+      activateClickFirst(label, hiddenButton);
+      await flush(fixture);
+
+      // Assert: Panel stays closed with focus parked on the input; no touch is reported.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'click-first activation should close the calendar').toBe('false');
+      expect(document.activeElement, 'focus should end on the date input').toBe(getDateInput(fixture));
+      expect(touchSpy, 'click-first label toggle should not emit touch').not.toHaveBeenCalled();
+    });
+
     it('should prevent default on mousedown of associated label', async () => {
       // Arrange: Create component and a label targeting its hidden button.
       await arrangeDateTimePicker();

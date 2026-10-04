@@ -208,8 +208,8 @@ export class DateTimePicker implements FormValueControl<Date | null> {
       this.focusSubPicker();
       return;
     }
-    // We know decision is 'none'.
-    const wasClosed = datePicker !== undefined && !datePicker.isCalendarVisible() || timePicker !== undefined && !timePicker.isClockVisible();
+    // We know decision is 'none'. `wasClosed` means "NEITHER panel is open".
+    const wasClosed = !(datePicker?.isCalendarVisible() ?? false) && !(timePicker?.isClockVisible() ?? false);
     this.focusSubPicker();
     if (wasClosed) this.focusOpened.set(true);
   }
