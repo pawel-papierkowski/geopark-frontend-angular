@@ -9,7 +9,7 @@ import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils
 import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { forRender } from '@/shared/utils/render/after-render';
 
-import { EnCalendarCellType, CalendarCell } from '@/shared/ui/other/types';
+import { EnCalendarCellType, CalendarCell, CalendarCellView } from '@/shared/ui/other/types';
 
 /**
  * Placement of the calendar panel relative to its input - single source of truth for both the
@@ -71,8 +71,6 @@ const panelPlacement: PanelPlacement = {
   templateUrl: './date-picker.html',
 })
 export class DatePicker implements FormValueControl<Date | null> {
-  public readonly EnCalendarCellType = EnCalendarCellType;
-
   private injector = inject(Injector);
   /** For programmatic translations. */
   private readonly translateService = inject(TranslateService);
@@ -184,6 +182,15 @@ export class DatePicker implements FormValueControl<Date | null> {
     return viewDate.getUTCFullYear() + ' ' + this.translateService.instant('dateTimePicker.month.' + monthIx);
   });
 
+  /**
+   * Weekday header labels with their day keys, translated ONCE per rebuild instead of through
+   * the impure `translate` pipe on every change-detection pass. Reads `instant` inside a
+   * computed, so it stays reactive to language switches (same pattern as `headerText`).
+   */
+  public readonly weekdayLabels = computed(() =>
+    this.daysOfWeek.map((day) => ({ key: day, label: this.translateService.instant('dateTimePicker.dayOfWeek.' + day) })),
+  );
+
   /** Find out amount of columns needed for calendar. */
   public gridColumns = computed(() => (this.showWeeks() ? 8 : 7));
   /** Find out grid style. */
@@ -191,22 +198,47 @@ export class DatePicker implements FormValueControl<Date | null> {
     gridTemplateColumns: `repeat(${this.gridColumns() || 7}, 1fr)`,
   }));
 
-  /** Compute ID of the focused cell for aria-activedescendant. */
-  public activeDescendantId = computed(() => {
-    if (!this.focusedDate()) return undefined;
-    const index = this.calendarCells().findIndex(
-      (cell) =>
-        cell.type === EnCalendarCellType.Date &&
-        cell.day === this.focusedDate()!.getUTCDate() &&
-        cell.month === this.focusedDate()!.getUTCMonth() &&
-        cell.year === this.focusedDate()!.getUTCFullYear(),
-    );
-    return index >= 0 ? `${this.ident()}_cell_${index}` : undefined;
+  /**
+   * Cells of the whole calendar grid (all six rows, week cells spliced in when `showWeeks`),
+   * with presentation state precomputed (see `CalendarCellView`). All per-cell predicates that
+   * the template used to run TWICE per cell on EVERY change-detection pass - method calls,
+   * `new Date()` allocations for the today marker, and the impure `translate` pipe for the
+   * aria-label - now run once here, only when something the cells depend on changes
+   * (viewed month, selection, min/max range, ident, language).
+   */
+  public calendarCells = computed<CalendarCellView[]>(() => {
+    const cells = this.calcCalendarCells();
+    // "Today" is sampled once per rebuild. Cells rebuild on every open (`findViewDate` writes a
+    // fresh `viewDate`), so the marker always reflects the clock when the panel opens; while it
+    // stays open past midnight the marker no longer moves - the old per-render `new Date()` did,
+    // but at the cost of two Date allocations per cell per pass.
+    const now = new Date();
+    const selected = this.selectedDate();
+    return cells.map((cell, index) => this.buildCellView(cell, index, now, selected));
   });
 
-  /** Recalculate cells shown in calendar. */
-  public calendarCells = computed<CalendarCell[]>(() => {
-    return this.calcCalendarCells();
+  /**
+   * Index of the keyboard-focused cell within `calendarCells`, or -1 when no date is focused
+   * or the focused date is not on the grid. Backs both the `.focused` class and
+   * `activeDescendantId`, so focus styling and aria stay in sync with a single `findIndex`.
+   * Padding-month dates intentionally match: the cursor may sit on a day from the adjacent
+   * month that is visible in the grid.
+   */
+  public readonly focusedIndex = computed<number>(() => {
+    const focused = this.focusedDate();
+    if (focused === null) return -1;
+    const day = focused.getUTCDate();
+    const month = focused.getUTCMonth();
+    const year = focused.getUTCFullYear();
+    return this.calendarCells().findIndex(
+      (cell) => cell.type === EnCalendarCellType.Date && cell.day === day && cell.month === month && cell.year === year,
+    );
+  });
+
+  /** Compute ID of the focused cell for aria-activedescendant. */
+  public activeDescendantId = computed(() => {
+    const index = this.focusedIndex();
+    return index >= 0 ? `${this.ident()}_cell_${index}` : undefined;
   });
 
   constructor() {
@@ -268,8 +300,8 @@ export class DatePicker implements FormValueControl<Date | null> {
    * Follows the selection when one exists (the user sees their date), otherwise seeds from the
    * LOCAL calendar date so opening without a value pre-selects today's day. The seed is anchored
    * at UTC midnight of the local date: grid cells are built from the UTC parts of `viewDate`,
-   * while "today" itself stays local (see `isToday`). Values stay timezone-agnostic (UTC-carried),
-   * see class doc.
+   * while "today" itself stays local (see `buildCellView`). Values stay timezone-agnostic
+   * (UTC-carried), see class doc.
    */
   private findViewDate() {
     const selected = this.selectedDate();
@@ -317,6 +349,55 @@ export class DatePicker implements FormValueControl<Date | null> {
       }
     }
     return cells;
+  }
+
+  /**
+   * Build the render-ready view of one structural cell: all per-cell predicates the template
+   * used to evaluate on every change-detection pass are resolved here, once per cells rebuild.
+   * @param cell Structural cell built by `calcCalendarCells`.
+   * @param index Position of the cell in the final grid (matches `$index` in the template and
+   * drives the element id, which `aria-activedescendant` points at).
+   * @param now Current LOCAL date sampled once per rebuild (drives the `today` marker).
+   * @param selected Selected date, or null.
+   * @returns Cell ready for plain-data template binding.
+   */
+  private buildCellView(cell: CalendarCell, index: number, now: Date, selected: Date | null): CalendarCellView {
+    if (cell.type === EnCalendarCellType.Week) {
+      return {
+        ...cell,
+        id: undefined,
+        ariaLabel: undefined,
+        ariaSelected: undefined,
+        ariaDisabled: undefined,
+        ariaCurrent: null,
+        isWeek: true,
+        notCurrent: false,
+        today: false,
+        selected: false,
+        disabled: false,
+      };
+    }
+
+    const disabled = !this.canPick(this.calendarCellToDate(cell));
+    // Selection is carried in UTC parts (values are timezone-agnostic), the today marker compares
+    // LOCAL calendar numbers against the cell's (UTC-carried) ones, so a day only matches when it
+    // really is today for the user (see `findViewDate`).
+    const isSelected = selected !== null && cell.day === selected.getUTCDate() && cell.month === selected.getUTCMonth() && cell.year === selected.getUTCFullYear();
+    const isToday = cell.day === now.getDate() && cell.month === now.getMonth() && cell.year === now.getFullYear();
+    return {
+      ...cell,
+      id: `${this.ident()}_cell_${index}`,
+      // Same key the impure pipe resolved: `('dateTimePicker.month.' + month) | translate`.
+      ariaLabel: `${cell.year} ${this.translateService.instant('dateTimePicker.month.' + cell.month)} ${cell.day}`,
+      ariaSelected: isSelected,
+      ariaDisabled: disabled ? true : undefined,
+      ariaCurrent: isToday ? 'date' : null,
+      isWeek: false,
+      notCurrent: !cell.isCurrentMonth,
+      today: isToday,
+      selected: isSelected,
+      disabled,
+    };
   }
 
   /**
@@ -471,83 +552,6 @@ export class DatePicker implements FormValueControl<Date | null> {
     if (this.dateMin() != null && date < this.dateMin()!) return false;
     if (this.dateMax() != null && date > this.dateMax()!) return false;
     return true;
-  }
-
-  //
-
-  /**
-   * Find out class of calendar cell in calendar grid.
-   * @param calendarCell Calendar cell.
-   * @returns Data about calendar cell.
-   */
-  public resolveCellClass(calendarCell: CalendarCell) {
-    if (calendarCell.type === EnCalendarCellType.Week) return { weekNum: true };
-    return {
-      day: true,
-      'not-current': !calendarCell.isCurrentMonth,
-      today: this.isToday(calendarCell),
-      selected: this.isDaySelected(calendarCell),
-      disabled: this.isDayDisabled(calendarCell),
-      focused: this.isDayFocused(calendarCell),
-    };
-  }
-
-  /**
-   * Check if given date is today.
-   * Compares against the LOCAL calendar date (what the user's clock/calendar shows), while the
-   * cells themselves carry the UTC parts of the viewed month - both sides are plain calendar
-   * numbers, so a day only matches when it is really today for the user.
-   * @param calendarCell Calendar cell. Should be Date.
-   * @returns True if given calendar cell is date and is for today.
-   */
-  public isToday(calendarCell: CalendarCell): boolean {
-    if (calendarCell.type !== EnCalendarCellType.Date) return false;
-    const today = new Date();
-    return (
-      calendarCell.day === today.getDate() &&
-      calendarCell.month === today.getMonth() &&
-      calendarCell.year === today.getFullYear()
-    );
-  }
-
-  /**
-   * Check if given date is selected.
-   * @param calendarCell Calendar cell. Should be Date.
-   * @returns True if given calendar cell is date and is selected.
-   */
-  public isDaySelected(calendarCell: CalendarCell): boolean {
-    if (calendarCell.type !== EnCalendarCellType.Date) return false;
-    if (!this.selectedDate()) return false;
-    return (
-      calendarCell.day === this.selectedDate()!.getUTCDate() &&
-      calendarCell.month === this.selectedDate()!.getUTCMonth() &&
-      calendarCell.year === this.selectedDate()!.getUTCFullYear()
-    );
-  }
-
-  /**
-   * Check if given date cannot be picked.
-   * @param calendarCell Calendar cell. Should be Date.
-   * @returns True if given calendar cell is date and is disabled.
-   */
-  public isDayDisabled(calendarCell: CalendarCell): boolean {
-    if (calendarCell.type !== EnCalendarCellType.Date) return false;
-    const givenDay = this.calendarCellToDate(calendarCell);
-    return !this.canPick(givenDay);
-  }
-
-  /**
-   * Check if given date is keyboard-focused.
-   * @param calendarCell Calendar cell. Should be Date.
-   * @returns True if given calendar cell is date and is focused.
-   */
-  private isDayFocused(calendarCell: CalendarCell): boolean {
-    if (!this.focusedDate() || calendarCell.type !== EnCalendarCellType.Date) return false;
-    return (
-      calendarCell.day === this.focusedDate()!.getUTCDate() &&
-      calendarCell.month === this.focusedDate()!.getUTCMonth() &&
-      calendarCell.year === this.focusedDate()!.getUTCFullYear()
-    );
   }
 
   // EVENTS: MOUSE HANDLERS

@@ -1497,6 +1497,28 @@ describe('DatePicker', () => {
       expect(fixture.nativeElement.querySelector('.header-title').textContent?.trim(), 'header month should switch to Polish text').toBe('2026 Styczeń');
       expect(fixture.nativeElement.querySelector('.weekday').textContent, 'weekday header should switch to Polish text').toContain('pon');
     });
+
+    it('should update per-cell aria-labels on language switch', async () => {
+      // Arrange: Create component with English month translation, open at a known date. Cell
+      // names are precomputed into the cells now (no impure translate pipe in the template),
+      // so this guards that they stay reactive to language switches anyway.
+      const fixture = await withMockedNow(utcDate(2026, 0, 15, 11), async () => {
+        const created = await arrangeDatePicker({ translations: { dateTimePicker: { month: { 0: 'January' } } } });
+        await openPanel(created);
+        return created;
+      });
+      const translateService = TestBed.inject(TranslateService);
+      translateService.setTranslation('pl', { dateTimePicker: { month: { 0: 'Styczeń' } } });
+      expect(findCell(fixture, 2026, 0, 15)?.getAttribute('aria-label'), 'precondition: cell should be named with the English month').toBe('2026 January 15');
+
+      // Act: Activate Polish while the component is alive and panel is open.
+      await firstValueFrom(translateService.use('pl'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: The opened grid shows the month name in the new language.
+      expect(findCell(fixture, 2026, 0, 15)?.getAttribute('aria-label'), 'cell aria-label should switch to Polish text').toBe('2026 Styczeń 15');
+    });
   });
 
   describe('accessibility', () => {

@@ -117,31 +117,37 @@
       [aria-activedescendant]="activeDescendantId()"
       (keydown)="onGridKeydown($event)">
 
-      <!-- This row shows days of week. -->
+      <!-- This row shows days of week. Labels come precomputed from `weekdayLabels` (plain
+           property reads keep the impure translate pipe out of the per-pass hot path). -->
       @if(showWeeks()) {
         <div aria-hidden="true"></div> <!-- we need empty cell here for layout with week numbers -->
       }
-      @for(day of daysOfWeek; track day) {
+      @for(weekday of weekdayLabels(); track weekday.key) {
         <div class="weekday" aria-hidden="true">
-          {{ 'dateTimePicker.dayOfWeek.' + day | translate }}
+          {{ weekday.label }}
         </div>
       }
 
-      <!-- Rest shows week number (if present) and seven days in row. -->
+      <!-- Rest shows week number (if present) and seven days in row. All flags are precomputed
+           in `calendarCells`, so each binding is a plain data read (no method calls, no pipes
+           re-evaluated on every change-detection pass). -->
       @for(calendarCell of calendarCells(); track $index) {
 <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- navigation handled on calendarGridRef div -->
         <div
-          [id]="calendarCell.type === EnCalendarCellType.Date ? `${ident()}_cell_${$index}` : undefined"
+          [id]="calendarCell.id"
           [attr.data-testid]="calendarCell.testid"
-          [class]="resolveCellClass(calendarCell)"
+          [class.weekNum]="calendarCell.isWeek"
+          [class.day]="!calendarCell.isWeek"
+          [class.not-current]="calendarCell.notCurrent"
+          [class.today]="calendarCell.today"
+          [class.selected]="calendarCell.selected"
+          [class.disabled]="calendarCell.disabled"
+          [class.focused]="$index === focusedIndex()"
           role="gridcell"
-          [attr.aria-selected]="calendarCell.type === EnCalendarCellType.Date ? isDaySelected(calendarCell) : undefined"
-          [attr.aria-disabled]="calendarCell.type === EnCalendarCellType.Date ? isDayDisabled(calendarCell) || undefined : undefined"
-          [attr.aria-current]="calendarCell.type === EnCalendarCellType.Date && isToday(calendarCell) ? 'date' : null"
-          [attr.aria-label]="
-            calendarCell.type === EnCalendarCellType.Date
-              ? `${calendarCell.year} ${'dateTimePicker.month.' + calendarCell.month | translate} ${calendarCell.day}`
-              : undefined"
+          [attr.aria-selected]="calendarCell.ariaSelected"
+          [attr.aria-disabled]="calendarCell.ariaDisabled"
+          [attr.aria-current]="calendarCell.ariaCurrent"
+          [attr.aria-label]="calendarCell.ariaLabel"
           (mousedown)="handleCellMousedown(calendarCell)"
           (click)="selectCell(calendarCell)">
           {{ calendarCell.day }}
