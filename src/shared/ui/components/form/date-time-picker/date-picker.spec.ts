@@ -615,11 +615,14 @@ describe('DatePicker', () => {
         await openPanel(fixture);
         const weekdays = [...fixture.nativeElement.querySelectorAll('.weekday')] as HTMLElement[];
 
-        // Assert: Seven headers in Monday-first order, hidden from assistive technology.
+        // Assert: Seven headers in Monday-first order, exposed as the grid's column headers -
+        // the day cells' aria-label carries only year/month/day, so the weekday context comes
+        // from these cells (they must stay in the ARIA grid -> row -> cell hierarchy).
         expect(weekdays.length, 'should render seven weekday headers').toBe(7);
         expect(weekdays[0].textContent, 'first header should be the monday key').toContain('dateTimePicker.dayOfWeek.mon');
         expect(weekdays[6].textContent, 'last header should be the sunday key').toContain('dateTimePicker.dayOfWeek.sun');
-        expect(weekdays.every((header) => header.getAttribute('aria-hidden') === 'true'), 'weekday headers are decorative (cells carry full labels)').toBe(true);
+        expect(weekdays.every((header) => header.getAttribute('role') === 'columnheader'), 'weekday headers should be columnheader cells').toBe(true);
+        expect(weekdays.every((header) => header.parentElement?.getAttribute('role') === 'row'), 'column headers should sit in the header row').toBe(true);
       });
     });
 
@@ -1637,6 +1640,31 @@ describe('DatePicker', () => {
 
         // Assert: The open grid becomes the activedescendant-managed tab stop.
         expect(grid.getAttribute('tabindex'), 'open grid should be a tab stop').toBe('0');
+      });
+
+      it('should nest every cell in a role=row owned by the grid', async () => {
+        // Arrange: Open the panel - rows only render while the grid has content.
+        const fixture = await arrangeDatePicker();
+        await openPanel(fixture);
+        const grid = fixture.nativeElement.querySelector('.calendar-grid');
+
+        // Act: Read the rendered row/cell hierarchy.
+        const rows = [...grid.children].filter((child) => child.getAttribute('role') === 'row');
+        const cells = [...grid.querySelectorAll('[role="gridcell"], [role="columnheader"]')] as HTMLElement[];
+
+        // Assert: ARIA requires grid -> row -> gridcell/columnheader (the axe rules
+        // aria-required-children and aria-required-parent run ENABLED in the e2e suite, so a
+        // flat grid with cells hanging directly off role="grid" fails there).
+        expect(rows.length, 'grid should own one weekday row plus six week rows').toBe(7);
+        expect(cells.length, 'grid should hold 7 column headers plus 42 day cells').toBe(49);
+        expect(
+          cells.every((cell) => cell.parentElement?.getAttribute('role') === 'row'),
+          'every cell must sit inside a role=row wrapper',
+        ).toBe(true);
+        expect(
+          grid.querySelector('[role="gridcell"]')?.parentElement?.parentElement,
+          'the row wrappers must be owned by the grid itself',
+        ).toBe(grid);
       });
 
       it('should label the grid with the header text when open', async () => {

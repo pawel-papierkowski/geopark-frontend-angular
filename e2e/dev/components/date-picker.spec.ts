@@ -844,13 +844,10 @@ test.describe('DatePicker', () => {
       await getDatePicker(page).click();
       await expect(getPanel(page)).toBeVisible();
 
-      // Act: Run axe against the page with the panel open. The two aria rules are disabled
-      // because the calendar is a single flat CSS grid (day cells are direct children of
-      // role="grid" with no role="row" wrappers); fixing that needs a DOM/CSS restructuring
-      // tracked separately from this test suite. color-contrast stays enabled and passing.
-      const results = await new AxeBuilder({ page })
-        .disableRules(['aria-required-children', 'aria-required-parent'])
-        .analyze();
+      // Act: Run axe with EVERY rule enabled - notably aria-required-children and
+      // aria-required-parent, which the calendar grid satisfies through its role="row" wrappers
+      // (day cells are gridcells of rows, weekday labels are columnheaders of the header row).
+      const results = await new AxeBuilder({ page }).analyze();
 
       // Assert: No accessibility violations.
       expect(results.violations).toEqual([]);

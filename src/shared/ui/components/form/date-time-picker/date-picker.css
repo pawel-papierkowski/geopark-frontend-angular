@@ -114,6 +114,19 @@
   text-align: center;
 }
 
+/**
+ * One calendar week (weekday header row included): a real box that lays out as a SUBGRID of
+ * `.calendar-grid`, so every row reuses the container's column tracks - declared once, inline,
+ * via `gridStyle()` (7 columns, 8 with week numbers). Keeping the `role="row"` wrappers in the
+ * layout (instead of `display: contents`, which browsers may strip from the accessibility tree)
+ * is what makes the grid's ARIA hierarchy hold in real screen readers, not just in axe.
+ */
+.calendar-row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+}
+
 /** Suppress native focus ring on the grid container itself (we use aria-activedescendant). */
 .calendar-grid:focus-visible {
   outline: none;

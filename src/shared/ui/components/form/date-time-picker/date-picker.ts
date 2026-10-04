@@ -254,8 +254,8 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   /**
    * Index of the keyboard-focused cell within `calendarCells`, or -1 when no date is focused
-   * or the focused date is not on the grid. Backs both the `.focused` class and
-   * `activeDescendantId`, so focus styling and aria stay in sync with a single `findIndex`.
+   * or the focused date is not on the grid. Feeds `activeDescendantId` and `focusedTestId`,
+   * so focus styling and aria stay in sync with a single `findIndex`.
    * Padding-month dates intentionally match: the cursor may sit on a day from the adjacent
    * month that is visible in the grid.
    */
@@ -268,6 +268,34 @@ export class DatePicker implements FormValueControl<Date | null> {
     return this.calendarCells().findIndex(
       (cell) => cell.type === EnCalendarCellType.Date && cell.day === day && cell.month === month && cell.year === year,
     );
+  });
+
+  /**
+   * `calendarCells` chunked into semantic ROWS - one per calendar week (always six; seven cells
+   * each, eight when week numbers are shown). The template wraps every chunk in a `role="row"`
+   * element: ARIA requires `grid -> row -> cell`, and a flat grid (cells as direct children of
+   * `role="grid"`) trips axe's `aria-required-children` on the grid plus `aria-required-parent`
+   * on each cell. Chunking here keeps index arithmetic out of the template.
+   */
+  public calendarRows = computed<CalendarCellView[][]>(() => {
+    const cells = this.calendarCells();
+    const columns = this.gridColumns();
+    const rows: CalendarCellView[][] = [];
+    for (let start = 0; start < cells.length; start += columns) {
+      rows.push(cells.slice(start, start + columns));
+    }
+    return rows;
+  });
+
+  /**
+   * `data-testid` of the cell carrying the keyboard cursor, or undefined when no cursor is
+   * seeded. Cells are nested in rows now, so the template matches testids instead of the flat
+   * position `focusedIndex` was computed on. Week cells always carry a testid, so they can
+   * never match an undefined cursor and steal the `.focused` class.
+   */
+  public focusedTestId = computed<string | undefined>(() => {
+    const index = this.focusedIndex();
+    return index >= 0 ? this.calendarCells()[index]?.testid : undefined;
   });
 
   /** Compute ID of the focused cell for aria-activedescendant. */
