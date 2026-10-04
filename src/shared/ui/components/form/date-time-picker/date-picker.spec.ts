@@ -143,6 +143,16 @@ describe('DatePicker', () => {
   }
 
   /**
+   * Get one calendar header navigation button of given fixture (uses its ident).
+   * @param fixture Fixture of the component.
+   * @param name Button suffix: `yearMinus` | `monthMinus` | `monthPlus` | `yearPlus`.
+   * @returns Navigation button element.
+   */
+  function getNavButton(fixture: ComponentFixture<DatePicker>, name: 'yearMinus' | 'monthMinus' | 'monthPlus' | 'yearPlus'): HTMLElement {
+    return fixture.nativeElement.querySelector(`[data-testid="${fixture.componentInstance.ident()}_${name}"]`);
+  }
+
+  /**
    * Get the hidden accessible-name qualifier span of given fixture (uses its ident).
    * @param fixture Fixture of the component.
    * @returns Qualifier element, or null when it is not rendered.
@@ -1464,6 +1474,10 @@ describe('DatePicker', () => {
             datePicker: 'Date picker',
             month: { 0: 'January' },
             dayOfWeek: { mon: 'Mon' },
+            yearMinus: 'Previous year',
+            monthMinus: 'Previous month',
+            monthPlus: 'Next month',
+            yearPlus: 'Next year',
           },
         },
       });
@@ -1475,6 +1489,10 @@ describe('DatePicker', () => {
           datePicker: 'Wybór daty',
           month: { 0: 'Styczeń' },
           dayOfWeek: { mon: 'pon' },
+          yearMinus: 'Poprzedni rok',
+          monthMinus: 'Poprzedni miesiąc',
+          monthPlus: 'Następny miesiąc',
+          yearPlus: 'Następny rok',
         },
       });
       expect(getInput(fixture).getAttribute('placeholder'), 'precondition: placeholder should show English text').toBe('yyyy-mm-dd');
@@ -1485,17 +1503,22 @@ describe('DatePicker', () => {
         await openPanel(fixture);
       });
       expect(fixture.nativeElement.querySelector('.header-title').textContent?.trim(), 'precondition: header should show English month').toBe('2026 January');
+      expect(getNavButton(fixture, 'monthPlus').getAttribute('aria-label'), 'precondition: nav button should carry the English label').toBe('Next month');
       await firstValueFrom(translateService.use('pl'));
       await fixture.whenStable();
       fixture.detectChanges();
 
-      // Assert: Placeholder follows the language; the pipe-based labels (input fallback, dialog
-      // name, header month, weekday) prove they all update together.
+      // Assert: Placeholder follows the language; the precomputed labels (input fallback, dialog
+      // name, header month, weekday, nav buttons) prove they all update together.
       expect(getInput(fixture).getAttribute('placeholder'), 'placeholder should switch to Polish text').toBe('rrrr-mm-dd');
       expect(getInput(fixture).getAttribute('aria-label'), 'input fallback should switch to Polish text').toBe('Data');
       expect(getPanel(fixture).getAttribute('aria-label'), 'dialog label should switch to Polish text').toBe('Wybór daty');
       expect(fixture.nativeElement.querySelector('.header-title').textContent?.trim(), 'header month should switch to Polish text').toBe('2026 Styczeń');
       expect(fixture.nativeElement.querySelector('.weekday').textContent, 'weekday header should switch to Polish text').toContain('pon');
+      expect(getNavButton(fixture, 'yearMinus').getAttribute('aria-label'), 'previous-year button should switch to Polish text').toBe('Poprzedni rok');
+      expect(getNavButton(fixture, 'monthMinus').getAttribute('aria-label'), 'previous-month button should switch to Polish text').toBe('Poprzedni miesiąc');
+      expect(getNavButton(fixture, 'monthPlus').getAttribute('aria-label'), 'next-month button should switch to Polish text').toBe('Następny miesiąc');
+      expect(getNavButton(fixture, 'yearPlus').getAttribute('aria-label'), 'next-year button should switch to Polish text').toBe('Następny rok');
     });
 
     it('should update per-cell aria-labels on language switch', async () => {

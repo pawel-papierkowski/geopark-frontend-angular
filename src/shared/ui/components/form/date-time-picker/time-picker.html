@@ -24,7 +24,7 @@
     aria-haspopup="dialog"
     [attr.aria-expanded]="isClockVisible()"
     [attr.aria-controls]="`${ident()}_panel`"
-    [attr.aria-label]="label() ? null : ('dateTimePicker.time' | translate)"
+    [attr.aria-label]="label() ? null : timeLabel()"
     [attr.aria-labelledby]="nameRefs()"
     [attr.aria-required]="required() || null"
     [attr.aria-invalid]="invalid() || null"
@@ -48,7 +48,7 @@
        `aria-labelledby` (see `nameRefs`) so the time input stays distinguishable from the
        date input in `datetime` mode, where both are named after the same visible <label>. -->
   @if (label() && qualifyLabel()) {
-    <span [id]="`${ident()}_qualifier`" class="picker-name-qualifier">{{ 'dateTimePicker.time' | translate }}</span>
+    <span [id]="`${ident()}_qualifier`" class="picker-name-qualifier">{{ timeLabel() }}</span>
   }
 
   <!-- Time picker: clock panel. Named by a dedicated key - it is a dialog of its own, the
@@ -62,7 +62,7 @@
     [style.display]="isClockVisible() ? '' : 'none'"
     role="dialog"
 
-    [attr.aria-label]="'dateTimePicker.timePicker' | translate"
+    [attr.aria-label]="panelLabel()"
 
     (mousedown)="handlePanelMousedown($event)">
 
@@ -71,14 +71,14 @@
       <!-- Hours column: static header above the scroller (header lives OUTSIDE the scroll
             container, so it never overlays the options while they scroll). -->
       <div class="clock-column-group">
-        <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.hour' | translate }}</div>
+        <div class="column-header" aria-hidden="true">{{ hourLabel() }}</div>
         <div
           #hourRef
           class="clock-column"
           role="listbox"
           aria-orientation="vertical"
           tabindex="-1"
-          [attr.aria-label]="'dateTimePicker.hour' | translate"
+          [attr.aria-label]="hourLabel()"
           [attr.aria-activedescendant]="hourActiveDesc()"
           (keydown)="onHourKeydown($event)"
           (focus)="activeColumn.set('hour')">
@@ -104,14 +104,14 @@
 
       <!-- Minutes column: same header-above-scroller layout as the hours column. -->
       <div class="clock-column-group">
-        <div class="column-header" aria-hidden="true">{{ 'dateTimePicker.minute' | translate }}</div>
+        <div class="column-header" aria-hidden="true">{{ minuteLabel() }}</div>
         <div
           #minuteRef
           class="clock-column"
           role="listbox"
           aria-orientation="vertical"
           tabindex="-1"
-          [attr.aria-label]="'dateTimePicker.minute' | translate"
+          [attr.aria-label]="minuteLabel()"
           [attr.aria-activedescendant]="minuteActiveDesc()"
           (keydown)="onMinuteKeydown($event)"
           (focus)="activeColumn.set('minute')">

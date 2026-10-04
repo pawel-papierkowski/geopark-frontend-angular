@@ -1,7 +1,7 @@
 import { Component, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
-import { TranslateService, TranslatePipe } from '@ngx-translate/core';
+import { TranslateService } from '@ngx-translate/core';
 
 import { TimeUtils } from '@/core/utils/TimeUtils';
 import { NavUtils } from '@/core/utils/NavUtils';
@@ -99,7 +99,6 @@ type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
  */
 @Component({
   selector: 'time-picker',
-  imports: [ TranslatePipe ],
   styleUrl: './time-picker.css',
   templateUrl: './time-picker.html',
 })
@@ -251,6 +250,20 @@ export class TimePicker implements FormValueControl<Date | null> {
    * the format hint is announced (and read) as plain `hh:mm`.
    */
   public placeholderTimeValue = computed(() => this.translateService.instant('dateTimePicker.placeholder.time'));
+
+  // Static chrome labels. Resolved through `instant` inside computeds instead of the impure
+  // `translate` pipe: same output (including the raw-key fallback when a translation is missing)
+  // and same language reactivity, but nothing is re-evaluated on change-detection passes that
+  // don't touch the language. One computed per key, shared where the key is reused.
+
+  /** Input `aria-label` fallback and hidden qualifier text (both carry the sub-field name). */
+  public readonly timeLabel = computed(() => this.translateService.instant('dateTimePicker.time'));
+  /** Accessible name of the clock dialog. */
+  public readonly panelLabel = computed(() => this.translateService.instant('dateTimePicker.timePicker'));
+  /** Hour column header text and the hour listbox's accessible name (same key). */
+  public readonly hourLabel = computed(() => this.translateService.instant('dateTimePicker.hour'));
+  /** Minute column header text and the minute listbox's accessible name (same key). */
+  public readonly minuteLabel = computed(() => this.translateService.instant('dateTimePicker.minute'));
 
   constructor() {
     // Watch `disabled` field: close clock panel when component becomes disabled.

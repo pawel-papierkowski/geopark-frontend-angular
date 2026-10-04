@@ -24,7 +24,7 @@
     aria-haspopup="dialog"
     [attr.aria-expanded]="isCalendarVisible()"
     [attr.aria-controls]="`${ident()}_panel`"
-    [attr.aria-label]="label() ? null : ('dateTimePicker.date' | translate)"
+    [attr.aria-label]="label() ? null : dateLabel()"
     [attr.aria-labelledby]="nameRefs()"
     [attr.aria-required]="required() || null"
     [attr.aria-invalid]="invalid() || null"
@@ -48,7 +48,7 @@
        `aria-labelledby` (see `nameRefs`) so the date input stays distinguishable from the
        time input in `datetime` mode, where both are named after the same visible <label>. -->
   @if (label() && qualifyLabel()) {
-    <span [id]="`${ident()}_qualifier`" class="picker-name-qualifier">{{ 'dateTimePicker.date' | translate }}</span>
+    <span [id]="`${ident()}_qualifier`" class="picker-name-qualifier">{{ dateLabel() }}</span>
   }
 
   <!-- Date picker: calendar panel. Named by a dedicated key - it is a dialog of its own. -->
@@ -61,7 +61,7 @@
     [style.display]="isCalendarVisible() ? '' : 'none'"
     role="dialog"
 
-    [attr.aria-label]="'dateTimePicker.datePicker' | translate"
+    [attr.aria-label]="panelLabel()"
 
     (mousedown)="handlePanelMousedown($event)">
 
@@ -71,7 +71,7 @@
         <div
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_yearMinus`"
-          [attr.aria-label]="'dateTimePicker.yearMinus' | translate"
+          [attr.aria-label]="yearMinusLabel()"
           (click)="changeYear(-1)">
           ⏪
         </div>
@@ -79,7 +79,7 @@
         <div
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_monthMinus`"
-          [attr.aria-label]="'dateTimePicker.monthMinus' | translate"
+          [attr.aria-label]="monthMinusLabel()"
           (click)="changeMonth(-1)">
           ◀️
         </div>
@@ -92,7 +92,7 @@
         <div
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_monthPlus`"
-          [attr.aria-label]="'dateTimePicker.monthPlus' | translate"
+          [attr.aria-label]="monthPlusLabel()"
           (click)="changeMonth(1)">
           ▶️
         </div>
@@ -100,7 +100,7 @@
         <div
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_yearPlus`"
-          [attr.aria-label]="'dateTimePicker.yearPlus' | translate"
+          [attr.aria-label]="yearPlusLabel()"
           (click)="changeYear(1)">
           ⏩
         </div>

@@ -1553,16 +1553,22 @@ describe('TimePicker', () => {
       const translateService = TestBed.inject(TranslateService);
       translateService.setTranslation('pl', { dateTimePicker: { placeholder: { time: 'gg:mm' }, time: 'Czas', timePicker: 'Wybór czasu', hour: 'Godzina', minute: 'Minuta' } });
       expect(getInput(fixture).getAttribute('placeholder'), 'precondition: placeholder should show English text').toContain('hh:mm');
+      const columnHeaders = fixture.nativeElement.querySelectorAll('.column-header');
+      expect(columnHeaders[0]?.textContent?.trim(), 'precondition: hour column header should show English text').toBe('Hour');
+      expect(columnHeaders[1]?.textContent?.trim(), 'precondition: minute column header should show English text').toBe('Minute');
 
       // Act: Activate Polish while the component is alive.
       await firstValueFrom(translateService.use('pl'));
       await fixture.whenStable();
       fixture.detectChanges();
 
-      // Assert: Placeholder follows the language; pipe-based labels (columns, input fallback and
-      // dialog name) prove they all update together.
+      // Assert: Placeholder follows the language; the labels (column headers, both column
+      // aria-labels, input fallback and dialog name) prove they all update together.
       expect(getInput(fixture).getAttribute('placeholder'), 'placeholder should switch to Polish text').toContain('gg:mm');
+      expect(columnHeaders[0]?.textContent?.trim(), 'hour column header should switch to Polish text').toBe('Godzina');
+      expect(columnHeaders[1]?.textContent?.trim(), 'minute column header should switch to Polish text').toBe('Minuta');
       expect(fixture.componentInstance.hourRef().nativeElement.getAttribute('aria-label'), 'hour label should switch to Polish text').toBe('Godzina');
+      expect(fixture.componentInstance.minuteRef().nativeElement.getAttribute('aria-label'), 'minute label should switch to Polish text').toBe('Minuta');
       expect(getInput(fixture).getAttribute('aria-label'), 'input fallback should switch to Polish text').toBe('Czas');
       expect(fixture.nativeElement.querySelector('[data-testid="test-time_panel"]').getAttribute('aria-label'), 'dialog label should switch to Polish text').toBe('Wybór czasu');
     });

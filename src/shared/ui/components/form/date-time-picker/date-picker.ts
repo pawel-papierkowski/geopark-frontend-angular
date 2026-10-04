@@ -1,7 +1,7 @@
 import { Component, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
-import { TranslateService, TranslatePipe } from '@ngx-translate/core';
+import { TranslateService } from '@ngx-translate/core';
 
 import { TimeUtils } from '@/core/utils/TimeUtils';
 import { NavUtils } from '@/core/utils/NavUtils';
@@ -66,7 +66,6 @@ const panelPlacement: PanelPlacement = {
  */
 @Component({
   selector: 'date-picker',
-  imports: [ TranslatePipe ],
   styleUrl: './date-picker.css',
   templateUrl: './date-picker.html',
 })
@@ -173,6 +172,24 @@ export class DatePicker implements FormValueControl<Date | null> {
    * the format hint is announced (and read) as plain date.
    */
   public placeholderDateValue = computed(() => this.translateService.instant('dateTimePicker.placeholder.date'));
+
+  // Static chrome labels. Resolved through `instant` inside computeds instead of the impure
+  // `translate` pipe: same output (including the raw-key fallback when a translation is missing)
+  // and same language reactivity, but nothing is re-evaluated on change-detection passes that
+  // don't touch the language. One computed per key, shared where the key is reused.
+
+  /** Input `aria-label` fallback and hidden qualifier text (both carry the sub-field name). */
+  public readonly dateLabel = computed(() => this.translateService.instant('dateTimePicker.date'));
+  /** Accessible name of the calendar dialog. */
+  public readonly panelLabel = computed(() => this.translateService.instant('dateTimePicker.datePicker'));
+  /** Accessible name of the "previous year" header button. */
+  public readonly yearMinusLabel = computed(() => this.translateService.instant('dateTimePicker.yearMinus'));
+  /** Accessible name of the "previous month" header button. */
+  public readonly monthMinusLabel = computed(() => this.translateService.instant('dateTimePicker.monthMinus'));
+  /** Accessible name of the "next month" header button. */
+  public readonly monthPlusLabel = computed(() => this.translateService.instant('dateTimePicker.monthPlus'));
+  /** Accessible name of the "next year" header button. */
+  public readonly yearPlusLabel = computed(() => this.translateService.instant('dateTimePicker.yearPlus'));
 
   /** Compute header text (year and name of month). */
   public headerText = computed(() => {
@@ -387,7 +404,8 @@ export class DatePicker implements FormValueControl<Date | null> {
     return {
       ...cell,
       id: `${this.ident()}_cell_${index}`,
-      // Same key the impure pipe resolved: `('dateTimePicker.month.' + month) | translate`.
+      // Same key the template used to resolve via the translate pipe: month names come from
+      // `('dateTimePicker.month.' + month)`.
       ariaLabel: `${cell.year} ${this.translateService.instant('dateTimePicker.month.' + cell.month)} ${cell.day}`,
       ariaSelected: isSelected,
       ariaDisabled: disabled ? true : undefined,
