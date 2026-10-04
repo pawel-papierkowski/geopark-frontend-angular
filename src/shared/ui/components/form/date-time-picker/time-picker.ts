@@ -58,7 +58,9 @@ type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
  * Use DateTimePicker with attribute mode="time".
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
  * Values are read/written through UTC accessors, but the default "current time" highlight and
- * keyboard/scroll seed (used when no value is set) come from the browser's local timezone.
+ * keyboard/scroll seed (used when no value is set) come from the browser's local timezone, and
+ * a time picked with no prior value is written onto the LOCAL calendar date (UTC-anchored), so
+ * it always lands on the day the user sees as today.
  * Designed to be used with signal-based forms.
  *
  * Features:
@@ -387,8 +389,10 @@ export class TimePicker implements FormValueControl<Date | null> {
   /**
    * Commit `value` when the session is complete and report the outcome.
    * Completes on TWO PICKS (any order) - writes the chosen hour and minute onto the current
-   * value's date (or today's date when no value is set), zeroing sub-minute parts; an
-   * unchanged result keeps the value's identity so the form is not notified spuriously.
+   * value's date (or, when no value is set, onto the LOCAL calendar date anchored at UTC
+   * midnight - the same convention as `DatePicker.findViewDate`, so a time picked on the
+   * user's today never lands on the already-passed/next UTC date), zeroing sub-minute parts;
+   * an unchanged result keeps the value's identity so the form is not notified spuriously.
    * Completes on TWO DISCARDS (both columns un-picked, only reachable with canNull) - writes
    * null. A partial session returns null and leaves `value` untouched: the panel stays open,
    * and any close without completion (Escape, outside press, focusout, disabling) resets the
@@ -401,7 +405,13 @@ export class TimePicker implements FormValueControl<Date | null> {
 
     if (typeof h === 'number' && typeof m === 'number') {
       const current = this.normalizedValue();
-      const date = current !== null ? new Date(current) : new Date();
+      // Seed the date from the LOCAL calendar date, never from the UTC calendar date of the
+      // current instant: `setUTCHours` below keeps the base's UTC date, and near local midnight
+      // that is the previous/next day for the user. The calendar's `today` marker and its
+      // `findViewDate` seed both work off the local day, so a UTC-based seed would make the
+      // committed date disagree with the day the user sees as today.
+      const localToday = new Date();
+      const date = current !== null ? new Date(current) : new Date(Date.UTC(localToday.getFullYear(), localToday.getMonth(), localToday.getDate()));
       date.setUTCHours(h, m, 0, 0); // Also zeroes seconds/milliseconds: sub-minute parts must never leave the component.
       if (current === null || date.getTime() !== current.getTime()) this.value.set(date);
       return 'committed';

@@ -12,7 +12,9 @@ import { TimePicker } from './time-picker';
  * It is wrapper for two subcomponents: `DatePicker` and `TimePicker`.
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
  * Values are read/written through UTC accessors, but the time sub-picker's default "current time"
- * highlight and keyboard/scroll seed (used when no value is set) come from the browser's local timezone.
+ * highlight and keyboard/scroll seed (used when no value is set) come from the browser's local
+ * timezone, and a time picked with no prior value is written onto the LOCAL calendar date
+ * (UTC-anchored), so it always lands on the day the user sees as today.
  * Designed to be used with signal-based forms.
  *
  * Features:

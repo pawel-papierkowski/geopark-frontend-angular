@@ -163,6 +163,24 @@ describe('TimePicker', () => {
     return input;
   }
 
+  /**
+   * Run the given body with the system clock pinned to a fixed instant (Date only - timers stay
+   * real, so Angular's stability flushes are unaffected). Needed wherever the date seeded into a
+   * committed value must not depend on when the suite runs.
+   * @param instant The instant `new Date()` should report during `run`.
+   * @param run Body executed under the mocked clock; real timers are restored afterwards.
+   * @returns Whatever `run` resolves to.
+   */
+  async function withMockedNow<T>(instant: Date, run: () => Promise<T>): Promise<T> {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(instant);
+    try {
+      return await run();
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
   /** Viewport width assumed by positioning logic (jsdom performs no layout, real value is 0). */
   const VIEWPORT_WIDTH = 1024;
   /** Viewport height assumed by positioning logic (jsdom performs no layout, real value is 0). */
@@ -202,6 +220,11 @@ describe('TimePicker', () => {
     // Drop the own-property stubs so the prototype (jsdom) definitions are back in place.
     Reflect.deleteProperty(document.documentElement, 'clientWidth');
     Reflect.deleteProperty(document.documentElement, 'clientHeight');
+  });
+
+  afterEach(() => {
+    // Safety net so a mocked clock can never leak into the next test.
+    vi.useRealTimers();
   });
 
   describe('general', () => {
@@ -675,6 +698,52 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 45').toBe(45);
         expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain hour 14').toBe(14);
         expect(fixture.componentInstance.value()?.getUTCSeconds(), 'seconds should be zeroed').toBe(0);
+      });
+
+      it('should seed the committed date from the LOCAL calendar date when no value is set', async () => {
+        // Arrange: Clock pinned to 15 January 2026, 00:30 Warsaw time - the UTC date is still
+        // 14 January, but the user's calendar shows 15 January, so a time picked with no prior
+        // value must land on the 15th (same convention as DatePicker.findViewDate).
+        const fixture = await withMockedNow(new Date('2026-01-15T00:30:00+01:00'), async () => {
+          const created = await arrangeTimePicker({ value: null });
+          await openPanel(created);
+
+          // Act: Minute first, then hour - the completing pick seeds the date.
+          created.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
+          created.detectChanges();
+          created.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+          created.detectChanges();
+          return created;
+        });
+
+        // Assert: The value carries the picked time on the LOCAL calendar date, never on the
+        // already-passed UTC date.
+        expect(fixture.componentInstance.value()?.getUTCFullYear(), 'value year should match the local calendar date').toBe(2026);
+        expect(fixture.componentInstance.value()?.getUTCMonth(), 'value month should match the local calendar date').toBe(0);
+        expect(fixture.componentInstance.value()?.getUTCDate(), 'value day should match the local calendar date').toBe(15);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain picked hour 14').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain picked minute 45').toBe(45);
+      });
+
+      it('should seed the committed date from the current day when local and UTC dates agree', async () => {
+        // Arrange: Clock pinned to midday 15 January 2026 - local and UTC calendar dates match,
+        // so this pins the baseline seeding regardless of when the suite runs.
+        const fixture = await withMockedNow(new Date('2026-01-15T11:00:00Z'), async () => {
+          const created = await arrangeTimePicker({ value: null });
+          await openPanel(created);
+
+          // Act: Complete a pick the same way as in the local/UTC-mismatch test.
+          created.nativeElement.querySelector('[data-testid="test-time_m45"]').click();
+          created.detectChanges();
+          created.nativeElement.querySelector('[data-testid="test-time_h14"]').click();
+          created.detectChanges();
+          return created;
+        });
+
+        // Assert: Value lands on the shared current day with the picked time.
+        expect(fixture.componentInstance.value()?.getUTCDate(), 'value day should be the current day').toBe(15);
+        expect(fixture.componentInstance.value()?.getUTCHours(), 'value should contain picked hour 14').toBe(14);
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain picked minute 45').toBe(45);
       });
 
       it('should discard a pending pick on Escape and restore the committed highlight on reopen', async () => {
