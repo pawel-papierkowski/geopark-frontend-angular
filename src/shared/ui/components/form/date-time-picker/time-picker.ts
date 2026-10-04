@@ -6,6 +6,7 @@ import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { TimeUtils } from '@/core/utils/TimeUtils';
 import { NavUtils } from '@/core/utils/NavUtils';
 import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
+import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { forRender } from '@/shared/utils/render/after-render';
 
 /**
@@ -83,7 +84,7 @@ type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
  *
  * Inputs:
  * - ident - Used for identification and id attributes of the input and panel (data-testid, aria-controls, aria-activedescendant etc.). Always provided by parent DateTimePicker, this component is not meant to be used alone.
- * - label - Id of an external element (usually `<label>`) used for `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. Optional.
+ * - label - Id of an external element (usually `<label>`) used for `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. The id must match an element in the document - a dangling reference silently empties the input's name, so dev mode warns on the console (see `warnDanglingLabel`). Optional.
  * - qualifyLabel - If true and `label` is set, appends a hidden "Time" qualifier id to `aria-labelledby`, so both sub-fields stay distinguishable when DateTimePicker runs in `datetime` mode. Always provided by parent DateTimePicker. Optional, default false.
  * - labelTarget - The host's hidden label-activation target, which lives OUTSIDE this component's subtree (a sibling on the parent's root). Focus landing on it during label activation reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
  * - canNull - If true, allow deselecting date. Optional, default is false.
@@ -255,6 +256,13 @@ export class TimePicker implements FormValueControl<Date | null> {
     // Watch `disabled` field: close clock panel when component becomes disabled.
     effect(() => {
       if (this.disabled() && this.isClockVisible()) this.hidePanel();
+    });
+
+    // Dev-only: catch a `label` id that matches no element. A dangling aria-labelledby leaves
+    // this input without an accessible name (its aria-label fallback is suppressed whenever
+    // label is set), which no assertion would catch. Re-runs whenever label or ident changes.
+    effect(() => {
+      warnDanglingLabel(this.document, this.label(), this.ident(), 'time-picker');
     });
 
     // Watch `isClockVisible` field: react on panel opening.

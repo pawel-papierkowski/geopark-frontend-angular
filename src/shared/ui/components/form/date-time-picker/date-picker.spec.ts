@@ -23,6 +23,9 @@ describe('DatePicker', () => {
     ident?: string;
     /** Label reference for aria-labelledby. */
     label?: string;
+    /** Whether an element with the given `label` id is created (false leaves the reference
+     * dangling, for the dev-mode warning tests). */
+    resolveLabel?: boolean;
     /** Whether the accessible name gets the hidden "Date" qualifier appended. */
     qualifyLabel?: boolean;
     /** Whether the picker allows deselecting the date. */
@@ -53,6 +56,7 @@ describe('DatePicker', () => {
       value = null,
       ident = 'test-date',
       label = '',
+      resolveLabel = true,
       qualifyLabel = false,
       canNull = false,
       showWeeks = false,
@@ -77,6 +81,17 @@ describe('DatePicker', () => {
     }
 
     const fixture = TestBed.createComponent(DatePicker);
+
+    // Give the label reference a real target before the first change detection (the component's
+    // dev-only effect checks it there), unless a test deliberately leaves it dangling.
+    // Removed together with the fixture so ids never leak into the next test.
+    if (label !== '' && resolveLabel) {
+      const labelElement = document.createElement('label');
+      labelElement.id = label;
+      document.body.appendChild(labelElement);
+      fixture.componentRef.onDestroy(() => labelElement.remove());
+    }
+
     fixture.componentRef.setInput('value', value);
     fixture.componentRef.setInput('ident', ident);
     fixture.componentRef.setInput('label', label);
@@ -1736,6 +1751,39 @@ describe('DatePicker', () => {
         // <label for> (accname gives aria-label precedence over native labelling).
         expect(getInput(fixture).hasAttribute('aria-label'), 'aria-label must be absent when a label is given').toBe(false);
         expect(getInput(fixture).getAttribute('aria-labelledby'), 'aria-labelledby should still name the input').toBe('my-label');
+      });
+
+      it('should warn in dev mode when the label id matches no element', async () => {
+        // Arrange: Spy on console.warn; label reference deliberately left dangling.
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+          // Act: Create the component - its dev-only effect checks the reference on first CD.
+          await arrangeDatePicker({ label: 'ghost-label', resolveLabel: false });
+
+          // Assert: The dangling id is reported, naming this component.
+          const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+          expect(messages, 'dangling label id should be reported in dev mode').toContain('ghost-label');
+          expect(messages, 'warning should name the emitting component').toContain('[date-picker]');
+        } finally { // cleanup
+          warnSpy.mockRestore();
+        }
+      });
+
+      it('should not warn when the label id resolves to an element', async () => {
+        // Arrange: Spy on console.warn; arrange creates the referenced label element.
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+          // Act: Create the component - its dev-only effect checks the reference on first CD.
+          await arrangeDatePicker({ label: 'my-label' });
+
+          // Assert: Resolvable reference is not a defect.
+          const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+          expect(messages, 'resolvable label id must not warn').not.toContain('[date-picker]');
+        } finally { // cleanup
+          warnSpy.mockRestore();
+        }
       });
 
       it('should label the dialog with a dedicated key instead of the placeholder', async () => {

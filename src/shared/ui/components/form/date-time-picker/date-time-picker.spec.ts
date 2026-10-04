@@ -17,6 +17,9 @@ describe('DateTimePicker', () => {
     ident?: string;
     /** Id of the external `<label>` element forwarded to the sub-pickers. */
     label?: string;
+    /** Whether an element with the given `label` id is created (false leaves the reference
+     * dangling, for the dev-mode warning tests). */
+    resolveLabel?: boolean;
     /** Mode of operation. */
     mode?: enDateTimePickerMode;
     /** Whether the picker is disabled. */
@@ -29,11 +32,22 @@ describe('DateTimePicker', () => {
    * @returns Fixture of the created component with initial change detection applied.
    */
   async function arrangeDateTimePicker(opts: DateTimePickerTestOptions = {}): Promise<ComponentFixture<DateTimePicker>> {
-    const { ident = 'test-dtp', label = '', mode = 'time', disabled = false } = opts;
+    const { ident = 'test-dtp', label = '', resolveLabel = true, mode = 'time', disabled = false } = opts;
 
     await TestBed.configureTestingModule({ imports: [DateTimePicker] }).compileComponents();
 
     const fixture = TestBed.createComponent(DateTimePicker);
+
+    // Give the label reference a real target before the first change detection (the sub-pickers'
+    // dev-only effects check it there), unless a test deliberately leaves it dangling.
+    // Removed together with the fixture so ids never leak into the next test.
+    if (label !== '' && resolveLabel) {
+      const labelElement = document.createElement('label');
+      labelElement.id = label;
+      document.body.appendChild(labelElement);
+      fixture.componentRef.onDestroy(() => labelElement.remove());
+    }
+
     fixture.componentRef.setInput('ident', ident);
     fixture.componentRef.setInput('label', label);
     fixture.componentRef.setInput('mode', mode);
@@ -452,6 +466,25 @@ describe('DateTimePicker', () => {
       expect(getDateInput(fixture).getAttribute('aria-label'), 'date input should fall back to its date key').toBe('dateTimePicker.date');
       expect(getTimeInput(fixture).getAttribute('aria-label'), 'time input should fall back to its time key').toBe('dateTimePicker.time');
       expect(fixture.nativeElement.querySelector('.picker-name-qualifier'), 'no qualifier should render without label').toBeNull();
+    });
+
+    it('should warn from both sub-pickers when the forwarded label id matches no element', async () => {
+      // Arrange: Spy on console.warn; datetime mode renders both sub-pickers and the label
+      // reference is deliberately left dangling.
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        // Act: Create the wrapper - each sub-picker checks the forwarded reference on first CD.
+        await arrangeDateTimePicker({ mode: 'datetime', label: 'ghost-label', resolveLabel: false });
+
+        // Assert: Both sub-pickers reported the dangling id, each naming its own input.
+        const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+        expect(messages, 'date sub-picker should report the dangling id').toContain('(ident "dateId_test-dtp")');
+        expect(messages, 'time sub-picker should report the dangling id').toContain('(ident "timeId_test-dtp")');
+        expect(messages, 'warning should name the dangling id').toContain('ghost-label');
+      } finally { // cleanup
+        warnSpy.mockRestore();
+      }
     });
   });
 
