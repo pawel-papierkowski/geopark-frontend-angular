@@ -103,7 +103,9 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** Time sub-picker component. Absent when `mode` does not render it, hence not `required`. */
   private timePicker = viewChild(TimePicker);
   /** Root element of the wrapper - the containment boundary deciding whether a pointer press
-   * landed "outside" the component (see the outside-press close in the constructor). */
+   * landed "outside" the component (see the outside-press close in the constructor), and the
+   * boundary the sub-pickers use for focus containment (forwarded as their `container` input),
+   * so focus moving between them never reads as a blur. */
   private rootRef = viewChild.required<ElementRef<HTMLDivElement>>('rootRef');
 
   /** Identifiers of sub-pickers, derived from resolved ident so they follow it when it changes. */

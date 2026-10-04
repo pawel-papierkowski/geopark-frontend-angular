@@ -88,7 +88,7 @@ type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
  * - ident - Used for identification and id attributes of the input and panel (data-testid, aria-controls, aria-activedescendant etc.). Always provided by parent DateTimePicker, this component is not meant to be used alone.
  * - label - Id of an external element (usually `<label>`) used for `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. The id must match an element in the document - a dangling reference silently empties the input's name, so dev mode warns on the console (see `warnDanglingLabel`). Optional.
  * - qualifyLabel - If true and `label` is set, appends a hidden "Time" qualifier id to `aria-labelledby`, so both sub-fields stay distinguishable when DateTimePicker runs in `datetime` mode. Always provided by parent DateTimePicker. Optional, default false.
- * - labelTarget - The host's hidden label-activation target, which lives OUTSIDE this component's subtree (a sibling on the parent's root). Focus landing on it during label activation reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
+ * - container - Root element of the host DateTimePicker wrapper. It holds this sub-picker, the sibling sub-picker and the wrapper's hidden label-activation target, so it is the real component boundary: focus moving to anything inside it reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  *
  * Outputs:
@@ -119,8 +119,8 @@ export class TimePicker implements FormValueControl<Date | null> {
   public label = input<string>('');
   /** If true, append a hidden "Time" qualifier to the accessible name (see `nameRefs`). */
   public qualifyLabel = input<boolean>(false);
-  /** Host's hidden label-activation target. */
-  public labelTarget = input<Element | null>(null);
+  /** Root element of the host DateTimePicker wrapper - the component boundary for focus containment. */
+  public container = input<Element | null>(null);
   /** If true, allow deselecting: re-clicking the picked option un-picks its column; the value is cleared (and the panel closes) once both columns are un-picked. */
   public canNull = input<boolean>(false);
   /** Is component required? */
@@ -1008,7 +1008,8 @@ export class TimePicker implements FormValueControl<Date | null> {
   /**
    * Hide panel and move focus to the next focusable element on page.
    * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
-   * focus leaving the component, closes the panel and reports touch.
+   * focus leaving the wrapper - nothing of the wrapper follows the input (the date sub-picker
+   * precedes it and the panel's columns carry tabindex=-1) - closes the panel and reports touch.
    */
   private hidePanelAndFocusNext() {
     NavUtils.FocusNext(this.inputRef().nativeElement);
@@ -1017,8 +1018,12 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /**
    * Hide panel and move focus to the previous focusable element on page.
-   * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
-   * focus leaving the component, closes the panel and reports touch.
+   * Focus moves BEFORE the panel is hidden, so the hand-off is decided by `handleFocusOut`:
+   * landing outside the wrapper it reports touch, landing on the sibling date input of the same
+   * wrapper (datetime mode - this sub-picker is the last tab stop, so one step back is it) it
+   * stays quiet, because leaving the wrapper is what `touch` reports. The explicit hidePanel
+   * below closes the clock either way; on the sibling arrival the wrapper's focusin handler
+   * would close it too.
    */
   private hidePanelAndFocusPrev() {
     NavUtils.FocusPrev(this.inputRef().nativeElement);
@@ -1026,7 +1031,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Handle focus leaving the picker entirely (e.g. Tab out of grid). It closes clock panel and,
+   * Handle focus leaving the picker (e.g. Tab out of listbox). It closes clock panel and,
    * unless focus only moved inside the component, reports the control as touched.
    * Note the panel visibility is intentionally not checked: internal helpers hide the panel before
    * or after focus moves, so a closed panel must still report touch when focus really left.
@@ -1034,14 +1039,17 @@ export class TimePicker implements FormValueControl<Date | null> {
    */
   public handleFocusOut(e: FocusEvent) {
     const next = e.relatedTarget;
+    // Own root covers the standalone case (no wrapper input configured, e.g. isolated tests).
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
-    // The host's hidden label target (forwarded through the `labelTarget` input) is a sibling of
-    // this component - it lives on the parent DateTimePicker's root - so containment misses it.
-    // Focus landing there means label activation is about to redirect straight back into this
-    // component (it always pairs focus with a click), so it reads as an internal move, not a
-    // user blur. Identity comparison keeps other components' hidden-label buttons (same class,
-    // different control) counting as a real blur.
-    if (next instanceof Element && next === this.labelTarget()) return;
+    // The host DateTimePicker's root (forwarded through the `container` input) is the real
+    // component boundary the `touch` contract talks about: it contains this sub-picker, the
+    // sibling sub-picker and the wrapper's hidden label target. Focus reaching any of them
+    // (Tab between the time and date inputs, Shift+Tab back out of the clock onto the date
+    // input, label activation relaying through the hidden button) is an internal move, not a
+    // blur. Elements outside it - including other components' hidden-label buttons - still
+    // count as leaving.
+    const container = this.container();
+    if (next instanceof Node && container !== null && container.contains(next)) return;
     this.hidePanel();
     if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
     this.touch.emit();

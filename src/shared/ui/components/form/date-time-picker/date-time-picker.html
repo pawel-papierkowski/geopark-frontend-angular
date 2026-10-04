@@ -7,10 +7,10 @@
   <!-- Engines disagree on label activation order: Chromium/Firefox focus this button then forward
         the click, WebKit forwards the click first. handleLabelFocus redirects focus into the
         sub-picker (open half on focus-first engines, restore-only when a click-first engine's
-        toggle already ran); handleLabelClick swallows the paired click or toggles the panel.
-        Its #labelBtnRef reference is forwarded to the time sub-picker (labelTarget input) so its
-        focusout can recognize label activation - the button is a sibling of the sub-picker, so
-        plain containment inside the sub-picker misses it. -->
+        toggle already ran); handleLabelClick swallows the paired click or toggles the panel. It is
+        a sibling of the sub-pickers, so their focusout containment uses this root (forwarded to
+        them as the `container` input) instead of their own subtree - that also covers focus
+        moving between the two sub-pickers, which is an internal move, not a blur. -->
   <button #labelBtnRef type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
     (focus)="handleLabelFocus()" (click)="handleLabelClick()"></button>
 
@@ -25,7 +25,7 @@
       [ident]="dateIdent()"
       [label]="label()"
       [qualifyLabel]="mode() === 'datetime'"
-      [labelTarget]="labelBtnRef"
+      [container]="rootRef"
       [canNull]="canNull()"
 
       [showWeeks]="showWeeks()"
@@ -46,7 +46,7 @@
       [ident]="timeIdent()"
       [label]="label()"
       [qualifyLabel]="mode() === 'datetime'"
-      [labelTarget]="labelBtnRef"
+      [container]="rootRef"
       [canNull]="canNull()"
 
       [required]="required()"

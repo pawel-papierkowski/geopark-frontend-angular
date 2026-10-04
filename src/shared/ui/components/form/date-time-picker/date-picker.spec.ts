@@ -1094,35 +1094,45 @@ describe('DatePicker', () => {
         expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
       });
 
-      it('should keep panel open without touch when focus moves to the configured labelTarget', async () => {
-        // Arrange: Create component, configure its host's label target, open panel, spy on touch.
+      it('should keep panel open without touch when focus moves to an element inside the configured container', async () => {
+        // Arrange: Create component, configure the host wrapper's root as its containment
+        // boundary (its hidden label target lives inside that root, outside this sub-picker),
+        // open panel, spy on touch.
         const fixture = await arrangeDatePicker();
-        const labelTarget = document.createElement('button');
-        document.body.appendChild(labelTarget);
-        fixture.componentRef.setInput('labelTarget', labelTarget);
+        const container = document.createElement('div');
+        const target = document.createElement('button');
+        container.appendChild(target);
+        document.body.appendChild(container);
+        fixture.componentRef.setInput('container', container);
         fixture.detectChanges();
         const touchSpy = vi.fn();
         fixture.componentInstance.touch.subscribe(touchSpy);
         await openPanel(fixture);
 
         try {
-          // Act: Simulate label activation moving focus from inside the picker to the target.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: labelTarget }));
+          // Act: Simulate label activation moving focus from inside the picker to the wrapper's
+          // hidden label target - a sibling of this sub-picker, inside the wrapper root.
+          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: target }));
           fixture.detectChanges();
 
-          // Assert: The configured label target is the host's own relay - still "internal", so
+          // Assert: The wrapper root is the component boundary, so this is still "internal" -
           // it must neither close the panel nor report the control as touched.
-          expect(fixture.componentInstance.isCalendarVisible(), 'panel should stay open when focus moves to labelTarget').toBe(true);
-          expect(touchSpy, 'touch should not be emitted when focus moves to labelTarget').not.toHaveBeenCalled();
+          expect(fixture.componentInstance.isCalendarVisible(), 'panel should stay open when focus moves inside the container').toBe(true);
+          expect(touchSpy, 'touch should not be emitted when focus moves inside the container').not.toHaveBeenCalled();
         } finally { // cleanup
-          labelTarget.remove();
+          container.remove();
         }
       });
 
       it('should treat focus move to a foreign hidden-label-button as a real blur', async () => {
-        // Arrange: Create component, open panel, spy on touch and create a foreign element that
-        // carries the shared hidden-label-button class but is NOT this picker's label target.
+        // Arrange: Create component, configure the host wrapper's root as its containment
+        // boundary, open panel, spy on touch and create a foreign element that carries the
+        // shared hidden-label-button class but sits OUTSIDE that boundary.
         const fixture = await arrangeDatePicker();
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        fixture.componentRef.setInput('container', container);
+        fixture.detectChanges();
         const touchSpy = vi.fn();
         fixture.componentInstance.touch.subscribe(touchSpy);
         await openPanel(fixture);
@@ -1135,12 +1145,13 @@ describe('DatePicker', () => {
           getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: foreign }));
           fixture.detectChanges();
 
-          // Assert: The class belongs to other components' label targets too, so it must count
-          // as leaving - panel closed and touch emitted once.
+          // Assert: The class belongs to other components' label targets too, and the button is
+          // outside this wrapper - it must count as leaving: panel closed, touch emitted once.
           expect(fixture.componentInstance.isCalendarVisible(), 'panel should close when focus leaves to a foreign hidden-label-button').toBe(false);
           expect(touchSpy, 'touch should be emitted when focus leaves to a foreign hidden-label-button').toHaveBeenCalledTimes(1);
         } finally { // cleanup
           foreign.remove();
+          container.remove();
         }
       });
 

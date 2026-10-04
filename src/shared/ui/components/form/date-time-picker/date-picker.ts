@@ -50,7 +50,7 @@ const panelPlacement: PanelPlacement = {
  * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Always provided by parent DateTimePicker, this component is not meant to be used alone.
  * - label - Id of an external element (usually `<label>`) used for `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. The id must match an element in the document - a dangling reference silently empties the input's name, so dev mode warns on the console (see `warnDanglingLabel`). Optional.
  * - qualifyLabel - If true and `label` is set, appends a hidden "Date" qualifier id to `aria-labelledby`, so both sub-fields stay distinguishable when DateTimePicker runs in `datetime` mode. Always provided by parent DateTimePicker. Optional, default false.
- * - labelTarget - The host's hidden label-activation target, which lives OUTSIDE this component's subtree (a sibling on the parent's root). Focus landing on it during label activation reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
+ * - container - Root element of the host DateTimePicker wrapper. It holds this sub-picker, the sibling sub-picker and the wrapper's hidden label-activation target, so it is the real component boundary: focus moving to anything inside it reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.
  * - dateMin - If not null, defines earliest allowed date. Interpreted as a calendar day: the bound's LOCAL date part (time-of-day ignored), so `new Date()` means "from today". Optional, default is null.
@@ -84,8 +84,8 @@ export class DatePicker implements FormValueControl<Date | null> {
   public label = input<string>('');
   /** If true, append a hidden "Date" qualifier to the accessible name (see `nameRefs`). */
   public qualifyLabel = input<boolean>(false);
-  /** Host's hidden label-activation target. */
-  public labelTarget = input<Element | null>(null);
+  /** Root element of the host DateTimePicker wrapper - the component boundary for focus containment. */
+  public container = input<Element | null>(null);
   /** If true, allow deselecting date. */
   public canNull = input<boolean>(false);
   /** If true, show weeks. */
@@ -849,8 +849,9 @@ export class DatePicker implements FormValueControl<Date | null> {
       // never left the component).
       this.hidePanelAndRefocus();
     } else {
-      // Committed pick: the interaction is complete - hand focus to the next control and let
-      // the resulting focusout report the real blur (touch).
+      // Committed pick: the interaction is complete - hand focus on. Outside the wrapper the
+      // resulting focusout reports the real blur (touch); in datetime mode the next control is
+      // the sibling time input, so focus stays inside the wrapper and no touch is reported.
       this.hidePanelAndFocusNext();
     }
   }
@@ -945,11 +946,14 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   /**
    * Hide panel and move focus to the next focusable element on page.
-   * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
-   * focus leaving the component, closes the panel and reports touch.
+   * Focus moves BEFORE the panel is hidden, so the hand-off is decided by `handleFocusOut`:
+   * landing outside the wrapper it reports touch, landing on the sibling time input of the same
+   * wrapper (datetime mode) it stays quiet - leaving the wrapper is what `touch` reports. The
+   * explicit hidePanel below closes the calendar either way; on the sibling arrival the
+   * wrapper's focusin handler would close it too.
    * Anchored on the GRID, not the input: while the panel is open the input is followed by the
    * grid itself (tabindex=0), so an input-anchored step would resolve to the grid, focus would
-   * never leave the component and no touch would ever be reported.
+   * never leave this sub-picker and the hand-off would be a no-op.
    */
   private hidePanelAndFocusNext() {
     NavUtils.FocusNext(this.calendarGridRef().nativeElement);
@@ -959,7 +963,8 @@ export class DatePicker implements FormValueControl<Date | null> {
   /**
    * Hide panel and move focus to the previous focusable element on page.
    * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
-   * focus leaving the component, closes the panel and reports touch.
+   * focus leaving the wrapper (the hidden label target ahead of the input has tabindex=-1, so it
+   * is skipped), closes the panel and reports touch.
    */
   private hidePanelAndFocusPrev() {
     NavUtils.FocusPrev(this.inputRef().nativeElement);
@@ -967,7 +972,7 @@ export class DatePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Handle focus leaving the picker entirely (e.g. Tab out of grid). It closes calendar panel and,
+   * Handle focus leaving the picker (e.g. Tab out of grid). It closes calendar panel and,
    * unless focus only moved inside the component, reports the control as touched.
    * Note the panel visibility is intentionally not checked: internal helpers hide the panel before
    * or after focus moves, so a closed panel must still report touch when focus really left.
@@ -975,14 +980,17 @@ export class DatePicker implements FormValueControl<Date | null> {
    */
   public handleFocusOut(e: FocusEvent) {
     const next = e.relatedTarget;
+    // Own root covers the standalone case (no wrapper input configured, e.g. isolated tests).
     if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
-    // The host's hidden label target (forwarded through the `labelTarget` input) is a sibling of
-    // this component - it lives on the parent DateTimePicker's root - so containment misses it.
-    // Focus landing there means label activation is about to redirect straight back into this
-    // component (it always pairs focus with a click), so it reads as an internal move, not a
-    // user blur. Identity comparison keeps other components' hidden-label buttons (same class,
-    // different control) counting as a real blur.
-    if (next instanceof Element && next === this.labelTarget()) return;
+    // The host DateTimePicker's root (forwarded through the `container` input) is the real
+    // component boundary the `touch` contract talks about: it contains this sub-picker, the
+    // sibling sub-picker and the wrapper's hidden label target. Focus reaching any of them
+    // (Tab between the date and time inputs, Shift+Tab back out of the clock onto the date
+    // input, label activation relaying through the hidden button) is an internal move, not a
+    // blur. Elements outside it - including other components' hidden-label buttons - still
+    // count as leaving.
+    const container = this.container();
+    if (next instanceof Node && container !== null && container.contains(next)) return;
     this.hidePanel();
     if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
     this.touch.emit();

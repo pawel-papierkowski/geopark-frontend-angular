@@ -923,5 +923,85 @@ describe('DateTimePicker', () => {
       expect(focusSpy, 'focus() must focus the time input in a single call').toHaveBeenCalledTimes(1);
       expect(focusSpy, 'focus() should pass the given options through to the time input').toHaveBeenCalledWith({ preventScroll: true });
     });
+
+    // Both sub-pickers live inside ONE wrapper root in datetime mode, so moving focus between
+    // them never leaves the component the `touch` output talks about. The sub-pickers decide
+    // that with their focusout containment, which used to be "own root + label target" only -
+    // the sibling sub-picker was neither, so a Tab (or a Shift+Tab back out of the clock)
+    // reported a spurious blur mid-interaction.
+    describe('focus containment between sub-pickers', () => {
+      it('should not emit touch when focus moves from the date input to the time input of the same wrapper', async () => {
+        // Arrange: datetime mode (both sub-pickers present), calendar open with keyboard focus
+        // in its grid, spy on the wrapper's touch output.
+        const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        fixture.componentInstance.focus();
+        await flush(fixture);
+        await flush(fixture);
+        expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should be open before the act').toBe('true');
+
+        // Act: Tab-equivalent - focus the sibling time input directly.
+        getTimeInput(fixture).focus();
+        await flush(fixture);
+        await flush(fixture);
+
+        // Assert: Staying inside the wrapper is not a blur, but the wrapper still closes the
+        // opposite panel (its focusin handler) and the arrival opens the clock.
+        expect(touchSpy, 'focus move between sub-picker inputs of one wrapper must not report touch').not.toHaveBeenCalled();
+        expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should close when focus moves to the time input').toBe('false');
+        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock should open when focus arrives at the time input').toBe('true');
+        expect(document.activeElement, 'focus should continue into the hour listbox').toBe(getHourColumn(fixture));
+      });
+
+      it('should not emit touch when focus moves from the clock back to the date input of the same wrapper', async () => {
+        // Arrange: datetime mode with the clock open (keyboard sits in the hour listbox), spy
+        // on the wrapper's touch output. This is the Shift+Tab-out-of-the-clock target.
+        const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        getTimeInput(fixture).focus();
+        await flush(fixture);
+        await flush(fixture);
+        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock should be open before the act').toBe('true');
+        expect(document.activeElement, 'keyboard should sit in the hour listbox before the act').toBe(getHourColumn(fixture));
+
+        // Act: Shift+Tab-equivalent - focus the sibling date input directly.
+        getDateInput(fixture).focus();
+        await flush(fixture);
+        await flush(fixture);
+
+        // Assert: The hand-off back into the same wrapper must not report touch, while the
+        // wrapper still closes the clock and the arrival auto-opens the calendar.
+        expect(touchSpy, 'Shift+Tab back into the date sub-picker of one wrapper must not report touch').not.toHaveBeenCalled();
+        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock should close when focus moves to the date input').toBe('false');
+        expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should auto-open when focus arrives at the date input').toBe('true');
+        expect(document.activeElement, 'focus should continue into the calendar grid').toBe(getCalendarGrid(fixture));
+      });
+
+      it('should emit touch when focus leaves the wrapper entirely', async () => {
+        // Arrange: datetime mode with the calendar open, plus an element outside the wrapper.
+        const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        fixture.componentInstance.focus();
+        await flush(fixture);
+        await flush(fixture);
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+
+        try {
+          // Act: Focus the element outside the wrapper.
+          outside.focus();
+          await flush(fixture);
+
+          // Assert: Containment on the wrapper root must not swallow a real blur.
+          expect(touchSpy, 'focus leaving the wrapper should report touch once').toHaveBeenCalledTimes(1);
+          expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should close when focus leaves the wrapper').toBe('false');
+        } finally { // cleanup
+          outside.remove();
+        }
+      });
+    });
   });
 });
