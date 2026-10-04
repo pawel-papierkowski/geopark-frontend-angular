@@ -40,7 +40,7 @@ const panelPlacement: PanelPlacement = {
  * - Can select date.
  * - Can disable or mark as invalid.
  * - Component is integrated with i18n.
- * - Keyboard navigation supported via arrows (open panel or change day/month), enter/space (pick date) and esc (close panel).
+ * - Keyboard navigation supported via arrows (open panel or change day/month), page up/down (change month, with shift change year), enter/space (pick date) and esc (close panel).
  * - Supports <label>.
  * - Supports WAI-ARIA.
  *
@@ -656,11 +656,11 @@ export class DatePicker implements FormValueControl<Date | null> {
         e.preventDefault();
         this.shiftFocus(7);
         break;
-      case 'Home':
+      case 'Home': // Go to first day of month.
         e.preventDefault();
         this.focusedDate.set(new Date(Date.UTC(this.viewDate()!.getUTCFullYear(), this.viewDate()!.getUTCMonth(), 1)));
         break;
-      case 'End':
+      case 'End': // Go to last day of month.
         e.preventDefault();
         this.focusedDate.set(new Date(
           Date.UTC(
@@ -670,15 +670,25 @@ export class DatePicker implements FormValueControl<Date | null> {
           ),
         ));
         break;
-      case 'PageUp':
+      case 'PageUp': // Move to previous month, or previous year when Shift is held.
         e.preventDefault();
-        this.changeMonth(-1);
-        this.shiftFocusedMonth(-1);
+        if (e.shiftKey) {
+          this.changeYear(-1);
+          this.shiftFocusedMonth(-12);
+        } else {
+          this.changeMonth(-1);
+          this.shiftFocusedMonth(-1);
+        }
         break;
-      case 'PageDown':
+      case 'PageDown': // Move to next month, or next year when Shift is held.
         e.preventDefault();
-        this.changeMonth(1);
-        this.shiftFocusedMonth(1);
+        if (e.shiftKey) {
+          this.changeYear(1);
+          this.shiftFocusedMonth(12);
+        } else {
+          this.changeMonth(1);
+          this.shiftFocusedMonth(1);
+        }
         break;
       case 'Tab':
         // Only Shift+Tab needs handling: native backward traversal would land on the input
@@ -699,13 +709,8 @@ export class DatePicker implements FormValueControl<Date | null> {
         this.hidePanelAndRefocus();
         break;
       case 'Delete':
-      case 'Backspace':
-        // Default prevented unconditionally (same contract as the input): Backspace must never
-        // reach the browser's legacy history-back handling (Firefox), even when canNull forbids
-        // the clear.
+      case 'Backspace': // Clears date if allowed.
         e.preventDefault();
-        // The open grid is where the keyboard actually sits, so it offers the same clear as the
-        // input: a successful clear completes the interaction (close + internal refocus).
         if (this.keyPressClear()) this.hidePanelAndRefocus();
         break;
     }
@@ -724,11 +729,13 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   /**
    * Helper to shift focusedDate by whole months, clamping the day to the target month's length.
+   *
    * A plain `setUTCMonth` would overflow the day (31 January + 1 month becomes 2/3 March via
    * "Feb 31"), parking the cursor outside the shown grid - its cell and therefore the grid's
    * aria-activedescendant would disappear. The day is anchored on the 1st first so the month
    * step itself can never overflow either.
-   * @param delta Month step (sign of the move).
+   * @param delta Month step (sign of the move). May be 12/-12 to step a whole year - the month
+   * arithmetic rolls over into neighbouring years and the same clamp handles 29 February.
    */
   private shiftFocusedMonth(delta: number): void {
     const focused = this.focusedDate();

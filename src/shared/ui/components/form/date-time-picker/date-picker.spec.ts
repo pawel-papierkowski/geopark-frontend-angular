@@ -1991,6 +1991,73 @@ describe('DatePicker', () => {
         expect(fixture.componentInstance.focusedDate()?.toISOString(), 'PageUp from 31 March should clamp to 28 February').toBe('2026-02-28T00:00:00.000Z');
       });
 
+      it('should move the cursor and the viewed year by one year on Shift+PageDown and Shift+PageUp', async () => {
+        // Arrange: Open grid at 15 January 2026 with the cursor parked mid-month.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedGrid({}, utcDate(2026, 0, 15, 11));
+        fixture.componentInstance.focusedDate.set(utcDate(2026, 0, 15));
+
+        // Act: Shift+PageDown.
+        await user.keyboard('{Shift>}{PageDown}{/Shift}');
+        await flush(fixture);
+
+        // Assert: Cursor and view both moved one year forward, keeping month and day.
+        expect(fixture.componentInstance.focusedDate()?.toISOString(), 'Shift+PageDown should move the cursor one year forward').toBe('2027-01-15T00:00:00.000Z');
+        expect(fixture.componentInstance.viewDate()?.toISOString(), 'Shift+PageDown should show the target year').toBe('2027-01-01T00:00:00.000Z');
+
+        // Act: Shift+PageUp.
+        await user.keyboard('{Shift>}{PageUp}{/Shift}');
+        await flush(fixture);
+
+        // Assert: Back in 2026.
+        expect(fixture.componentInstance.focusedDate()?.toISOString(), 'Shift+PageUp should move the cursor one year back').toBe('2026-01-15T00:00:00.000Z');
+        expect(fixture.componentInstance.viewDate()?.toISOString(), 'Shift+PageUp should show the target year').toBe('2026-01-01T00:00:00.000Z');
+      });
+
+      it('should clamp the cursor to 29 February when stepping a year across a leap day', async () => {
+        // Arrange: 29 February exists only in leap years - a year step must clamp onto 28 February
+        // of the target year instead of overflowing into March, which would park the cursor outside
+        // the shown grid and drop its aria-activedescendant (same rationale as the month clamp).
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedGrid({}, utcDate(2024, 1, 15, 11));
+        fixture.componentInstance.focusedDate.set(utcDate(2024, 1, 29));
+
+        // Act: Step one year forward from the leap day.
+        await user.keyboard('{Shift>}{PageDown}{/Shift}');
+        await flush(fixture);
+
+        // Assert: Cursor clamps onto 28 February 2025 and stays on the shown grid.
+        expect(fixture.componentInstance.focusedDate()?.toISOString(), 'Shift+PageDown from 29 February 2024 should clamp to 28 February 2025').toBe('2025-02-28T00:00:00.000Z');
+        expect(fixture.componentInstance.viewDate()?.toISOString(), 'the view should follow into February 2025').toBe('2025-02-01T00:00:00.000Z');
+        expect(fixture.componentInstance.activeDescendantId(), 'the clamped cursor must stay on the shown grid').not.toBeUndefined();
+        expect(findCell(fixture, 2025, 1, 28), 'the clamped day should be rendered on the new grid').not.toBeNull();
+
+        // Act: Put the view and the leap-day cursor back and page a year back.
+        fixture.componentInstance.changeYear(-1);
+        fixture.componentInstance.focusedDate.set(utcDate(2024, 1, 29));
+        await user.keyboard('{Shift>}{PageUp}{/Shift}');
+        await flush(fixture);
+
+        // Assert: Cursor clamps onto 28 February 2023 (also not a leap year) on the way back too.
+        expect(fixture.componentInstance.focusedDate()?.toISOString(), 'Shift+PageUp from 29 February 2024 should clamp to 28 February 2023').toBe('2023-02-28T00:00:00.000Z');
+        expect(fixture.componentInstance.activeDescendantId(), 'the clamped cursor must stay on the shown grid after paging back').not.toBeUndefined();
+      });
+
+      it('should only seed the cursor without navigating on Shift+PageDown when no cursor is set', async () => {
+        // Arrange: Open grid at 15 January 2026 and drop the cursor (the reset-after-close state).
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedGrid({}, utcDate(2026, 0, 15, 11));
+        fixture.componentInstance.focusedDate.set(null);
+
+        // Act: First navigation key with no cursor to move.
+        await user.keyboard('{Shift>}{PageDown}{/Shift}');
+        await flush(fixture);
+
+        // Assert: The key only seeds the cursor on the viewed date instead of jumping a year.
+        expect(fixture.componentInstance.focusedDate()?.toISOString().slice(0, 10), 'first navigation key should seed the cursor without moving it').toBe('2026-01-15');
+        expect(fixture.componentInstance.viewDate()?.toISOString().slice(0, 10), 'seeding must not change the viewed month').toBe('2026-01-15');
+      });
+
       it('should only seed the cursor without navigating on the first navigation key when no cursor is set', async () => {
         // Arrange: Open grid at 15 January 2026 and drop the cursor (the reset-after-close
         // state).
@@ -2255,18 +2322,28 @@ describe('DatePicker', () => {
         const grid = fixture.componentInstance.calendarGridRef().nativeElement;
 
         // Act: Dispatch cancelable keydowns directly (the event object is needed for the flag).
-        const keys = ['ArrowRight', 'Home', 'End', 'PageDown', 'PageUp', 'Escape'];
-        const events = keys.map((key) => {
-          const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+        const keys: { key: string; shiftKey?: boolean }[] = [
+          { key: 'ArrowRight' },
+          { key: 'Home' },
+          { key: 'End' },
+          { key: 'PageDown' },
+          { key: 'PageUp' },
+          { key: 'PageDown', shiftKey: true },
+          { key: 'PageUp', shiftKey: true },
+          { key: 'Escape' },
+        ];
+        const events = keys.map(({ key, shiftKey }) => {
+          const event = new KeyboardEvent('keydown', { key, shiftKey: shiftKey ?? false, bubbles: true, cancelable: true });
           grid.dispatchEvent(event);
           return event;
         });
         await flush(fixture);
 
         // Assert: Every key is swallowed - native Home/End would move DOM focus and
-        // PageUp/PageDown would scroll the page.
+        // PageUp/PageDown (with or without Shift) would scroll the page.
         events.forEach((event, index) => {
-          expect(event.defaultPrevented, `${keys[index]} should be default-prevented on the grid`).toBe(true);
+          const label = keys[index].shiftKey ? `Shift+${keys[index].key}` : keys[index].key;
+          expect(event.defaultPrevented, `${label} should be default-prevented on the grid`).toBe(true);
         });
       });
     });

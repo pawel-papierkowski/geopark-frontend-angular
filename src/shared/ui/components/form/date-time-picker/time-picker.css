@@ -65,7 +65,7 @@
   left: 0;
 
   margin: var(--datetimepicker-clock-offset);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-xs);
   min-width: 160px;
 
   background: var(--datetimepicker-clock-background);
@@ -82,7 +82,7 @@
 
 .clock-columns {
   display: flex;
-  height: 200px;
+  height: 230px;
 }
 
 /* One column's vertical stack: static header on top, scroller filling the rest.
