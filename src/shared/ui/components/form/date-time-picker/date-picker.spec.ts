@@ -1628,6 +1628,42 @@ describe('DatePicker', () => {
         expect(root.querySelector('[data-testid="test-date_14"]')?.hasAttribute('aria-current'), 'non-current day must not expose aria-current').toBe(false);
       });
 
+      it('should never expose aria-current on week-number cells', async () => {
+        // Arrange: Week numbers share the grid with day cells, so the today marker must never
+        // leak onto a cell that does not carry a date.
+        const fixture = await arrangeDatePicker({ showWeeks: true });
+        await openPanel(fixture);
+        const root: HTMLElement = fixture.nativeElement;
+
+        // Assert: No week cell claims to be current, and every current cell is a day.
+        expect(root.querySelectorAll('.weekNum[aria-current]').length, 'week-number cells must not expose aria-current').toBe(0);
+        expect(
+          Array.from(root.querySelectorAll('[aria-current]')).every((element) => element.classList.contains('day')),
+          'only day cells may expose aria-current',
+        ).toBe(true);
+      });
+
+      it('should mark today with aria-current when today renders as an adjacent-month padding day', async () => {
+        // Arrange: The grid views January 2026 (seeded from the value) while "today" is
+        // 1 February 2026, so today lands in the trailing padding of the January grid.
+        const fixture = await withMockedNow(utcDate(2026, 1, 1, 12), async () => {
+          const created = await arrangeDatePicker({ value: utcDate(2026, 0, 20) });
+          await openPanel(created);
+          return created;
+        });
+        const root: HTMLElement = fixture.nativeElement;
+        const paddingToday = findCell(fixture, 2026, 1, 1);
+
+        // Assert: The cell really is an adjacent-month day, and ARIA mirrors the visual
+        // `.today` mark wherever today renders, so assistive tech hears the same cell that
+        // sighted users see highlighted.
+        expect(paddingToday, 'precondition: 1 February 2026 should render as padding of January').not.toBeNull();
+        expect(paddingToday?.classList.contains('not-current'), 'precondition: the cell must sit outside the viewed month').toBe(true);
+        expect(paddingToday?.classList.contains('today'), 'padding cell should carry the today mark').toBe(true);
+        expect(paddingToday?.getAttribute('aria-current'), 'padding cell should expose aria-current').toBe('date');
+        expect(root.querySelectorAll('[aria-current]').length, 'exactly one cell should expose aria-current').toBe(1);
+      });
+
       it('should set cell ids following the ident_cell pattern', async () => {
         // Arrange: Create component with custom ident and open the panel.
         const fixture = await arrangeDatePicker({ ident: 'my-date' });

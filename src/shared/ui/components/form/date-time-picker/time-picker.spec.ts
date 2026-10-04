@@ -136,6 +136,18 @@ describe('TimePicker', () => {
   }
 
   /**
+   * Close the clock panel with a mouse click on the input and flush pending component work.
+   * Mirrors the flushing of the `openPanel` helper so the async close cycle fully settles.
+   * @param fixture Fixture of the component.
+   */
+  async function closePanel(fixture: ComponentFixture<TimePicker>): Promise<void> {
+    getInput(fixture).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  /**
    * Focus the input without triggering focus-driven panel opening, mimicking focus
    * that follows a mousedown (component skips auto-open for such focus). Uses the real
    * production path: a dispatched mousedown marks the upcoming focus as click-caused,
@@ -1309,18 +1321,6 @@ describe('TimePicker', () => {
         vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({ top } as DOMRect);
       }
 
-      /**
-       * Close the clock panel with a mouse click on the input and flush pending component work.
-       * Mirrors the flushing of the `openPanel` helper so the async close cycle fully settles.
-       * @param fixture Fixture of the component.
-       */
-      async function closePanel(fixture: ComponentFixture<TimePicker>): Promise<void> {
-        getInput(fixture).click();
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
-      }
-
       it('should right-align panel when it would overflow the viewport', async () => {
         // Arrange: Create component and stub panel geometry to report horizontal overflow only.
         const fixture = await arrangeTimePicker();
@@ -1734,8 +1734,24 @@ describe('TimePicker', () => {
         // Arrange: Create component with value while the panel stays closed.
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
 
-        // Assert: No option claims to be current before findViewTime ran.
-        expect(fixture.nativeElement.querySelectorAll('[aria-current]').length, 'no option should expose aria-current while the panel is closed').toBe(0);
+        // Assert: No option claims to be current before findViewTime ever ran.
+        expect(fixture.nativeElement.querySelectorAll('[aria-current]').length, 'no option should expose aria-current before the first open').toBe(0);
+      });
+
+      it('should clear aria-current when the panel closes', async () => {
+        // Arrange: Open the panel so findViewTime seeds the viewed (wall-clock) time.
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
+        await openPanel(fixture);
+        const root: HTMLElement = fixture.nativeElement;
+        expect(root.querySelectorAll('[aria-current]').length, 'precondition: open panel should expose aria-current').toBeGreaterThan(0);
+
+        // Act: Close the panel through the input click toggle.
+        await closePanel(fixture);
+
+        // Assert: Neither the component state nor the DOM still claims a current time.
+        expect(fixture.componentInstance.viewHour(), 'close should reset the viewed hour').toBeNull();
+        expect(fixture.componentInstance.viewMinute(), 'close should reset the viewed minute').toBeNull();
+        expect(root.querySelectorAll('[aria-current]').length, 'closed panel must not expose aria-current').toBe(0);
       });
 
       it('should keep aria-current alongside aria-selected when the value equals the current time', async () => {

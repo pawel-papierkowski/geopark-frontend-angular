@@ -924,9 +924,7 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   /**
    * Hide clock panel with hours and minutes.
-   * Also resets the pick session: a close WITHOUT a completed selection (Escape, outside
-   * press, focusout, disabling) silently discards any partial pick - `value` is only ever
-   * written by `tryCommit` when both columns resolved.
+   * Also resets internals.
    */
   public hidePanel() {
     if (!this.isClockVisible()) return; // already hidden
@@ -936,6 +934,8 @@ export class TimePicker implements FormValueControl<Date | null> {
     this.focusedMinute.set(null);
     this.hourSession.set('untouched');
     this.minuteSession.set('untouched');
+    this.viewHour.set(null);
+    this.viewMinute.set(null);
   }
 
   /**
