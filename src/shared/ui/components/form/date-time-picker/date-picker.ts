@@ -339,9 +339,11 @@ export class DatePicker implements FormValueControl<Date | null> {
   private calcCalendarCells(): CalendarCell[] {
     const cells: CalendarCell[] = this.calcDays();
 
-    // Before the first open no month has been viewed yet, so the day list is empty - there are
-    // no rows to attach week numbers to. The panel content is always built (only its display
-    // toggles), so this state must not throw. Skip the week pass.
+    // The grid content only renders while the panel is open (and `findViewDate` seeds a month
+    // before that), so the template never sees an empty day list - but `calendarCells` is still
+    // read directly before any month has been viewed (e.g. tests calling `findCell` on a
+    // never-opened picker), where there are no rows to attach week numbers to. Skip the week
+    // pass instead of reading `cells[0]` of an empty array.
     if (this.showWeeks() && cells.length > 0) {
       // Insert week number cells, always six weeks.
       for (let i = 0; i < 6; i++) {

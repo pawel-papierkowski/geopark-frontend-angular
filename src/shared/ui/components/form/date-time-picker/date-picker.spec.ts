@@ -319,6 +319,28 @@ describe('DatePicker', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="test-date_41"]'), 'last cell testid should follow ident pattern').not.toBeNull();
       });
 
+      it('should keep the grid element but not its content while the panel is closed', async () => {
+        // Arrange: Create component with default ident - panel closed, grid shell already rendered.
+        const fixture = await arrangeDatePicker();
+        const grid = fixture.nativeElement.querySelector('.calendar-grid');
+        expect(grid, 'precondition: grid element should exist while closed').not.toBeNull();
+        expect(grid.querySelectorAll('.day').length, 'precondition: closed grid must not render day cells').toBe(0);
+        expect(grid.querySelectorAll('.weekday').length, 'precondition: closed grid must not render weekday headers').toBe(0);
+
+        // Act: Open the panel, capture the rendered counts, then close it again.
+        await openPanel(fixture);
+        const openDayCount = grid.querySelectorAll('.day').length;
+        const openWeekdayCount = grid.querySelectorAll('.weekday').length;
+        await closePanel(fixture);
+
+        // Assert: Content mounts only while the panel is shown - open fills the fixed grid,
+        // closing unmounts it again, so closed-state change detection has no cells to touch.
+        expect(openDayCount, 'open grid should render 6 rows x 7 day cells').toBe(42);
+        expect(openWeekdayCount, 'open grid should render 7 weekday headers').toBe(7);
+        expect(grid.querySelectorAll('.day').length, 'closing should unmount the day cells again').toBe(0);
+        expect(grid.querySelectorAll('.weekday').length, 'closing should unmount the weekday headers again').toBe(0);
+      });
+
       it('should show January 2026 grid with correct boundary cells when opened at a mocked date', async () => {
         // Arrange/Act: Open the panel while the clock reads 15 January 2026 - January 1st is a
         // Thursday, so the grid pads 3 days of December and finishes with 8 days of February.
@@ -566,10 +588,10 @@ describe('DatePicker', () => {
       });
 
       it('should render 6 week-number cells with ident testids when showWeeks is set', async () => {
-        // Arrange: The panel content is always built (only style.display toggles), so the cell
-        // list is evaluated while no month has been viewed yet - the week-number pass must cope
-        // with the empty list instead of reading cells[0] and throwing. A showWeeks picker must
-        // render without throwing.
+        // Arrange: Grid content is only built while the panel is shown, so the cells are built
+        // for a real viewed month here. The empty-cell day list (direct `calendarCells` reads
+        // before any open) still must not crash the week-number pass - the guard in
+        // `calcCalendarCells` covers that; this test pins the rendered result.
         const fixture = await withMockedNow(utcDate(2026, 0, 15, 11), async () => {
           const created = await arrangeDatePicker({ showWeeks: true });
           await openPanel(created);
@@ -936,9 +958,11 @@ describe('DatePicker', () => {
       });
 
       it('should ignore day selection when disabled', async () => {
-        // Arrange: Create component with value, open it so cells exist, then disable it (the
-        // disabling effect closes the panel, but the cells remain in the DOM - only display is
-        // toggled - so the disabled guard is checked through events).
+        // Arrange: Create component with value, open it so the cell model is built, then disable
+        // it (the disabling effect closes the panel, which unmounts the grid content - so, unlike
+        // before, there is no hidden cell left to click). The disabled guard is therefore driven
+        // through the cell's pick handler directly, same precedent as `handleClick` below: the
+        // browser cannot deliver an event to something that is not rendered.
         const fixture = await arrangeDatePicker({ value: utcDate(2026, 0, 15) });
         await openPanel(fixture);
         fixture.componentRef.setInput('disabled', true);
@@ -947,8 +971,12 @@ describe('DatePicker', () => {
         fixture.detectChanges();
         const before = fixture.componentInstance.value();
 
-        // Act: Click a hidden day cell directly.
-        fixture.nativeElement.querySelector('[data-testid="test-date_10"]').click();
+        // Act: Pick 10 January through the handler the cell click would call.
+        const cell = fixture.componentInstance.calendarCells().find(
+          (candidate) => candidate.type === EnCalendarCellType.Date && candidate.year === 2026 && candidate.month === 0 && candidate.day === 10,
+        );
+        expect(cell, 'precondition: 10 January should be in the built cell model').toBeDefined();
+        fixture.componentInstance.selectCell(cell!);
         fixture.detectChanges();
 
         // Assert: Value is untouched by the disabled pick.
