@@ -843,5 +843,39 @@ describe('DateTimePicker', () => {
       expect(document.activeElement, 'focus() must not focus a disabled control').not.toBe(getTimeInput(fixture));
       expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'focus() must not open the panel when disabled').toBe('false');
     });
+
+    it('should focus the date input exactly once, forwarding the given options', async () => {
+      // Arrange: datetime mode - the date sub-picker leads, so it receives the contract's
+      // options. A first bare probe focus would scroll the page (defeating preventScroll)
+      // and leave a second, options-carrying call a no-op on the already-focused input.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      const focusSpy = vi.spyOn(getDateInput(fixture), 'focus');
+
+      // Act: Invoke the FormUiControl.focus contract with preventScroll, then settle the
+      // panel open the focus handler started.
+      fixture.componentInstance.focus({ preventScroll: true });
+      await flush(fixture);
+      await flush(fixture);
+
+      // Assert: Exactly one focus call, and it carries the caller's options.
+      expect(focusSpy, 'focus() must focus the date input in a single call').toHaveBeenCalledTimes(1);
+      expect(focusSpy, 'focus() should pass the given options through to the date input').toHaveBeenCalledWith({ preventScroll: true });
+    });
+
+    it('should focus the time input exactly once, forwarding the given options', async () => {
+      // Arrange: time mode - only the time sub-picker is rendered, so it owns the delegation.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      const focusSpy = vi.spyOn(getTimeInput(fixture), 'focus');
+
+      // Act: Invoke the FormUiControl.focus contract with preventScroll, then settle the
+      // panel open the focus handler started.
+      fixture.componentInstance.focus({ preventScroll: true });
+      await flush(fixture);
+      await flush(fixture);
+
+      // Assert: Exactly one focus call, and it carries the caller's options.
+      expect(focusSpy, 'focus() must focus the time input in a single call').toHaveBeenCalledTimes(1);
+      expect(focusSpy, 'focus() should pass the given options through to the time input').toHaveBeenCalledWith({ preventScroll: true });
+    });
   });
 });

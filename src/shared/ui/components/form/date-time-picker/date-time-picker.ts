@@ -265,10 +265,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    */
   private focusSubPicker(options?: FocusOptions) {
     const datePicker = this.datePicker();
-    if (datePicker !== undefined && datePicker.focusInput() !== null) {
-      this.datePicker()?.focusInput(options);
-      return;
-    }
+    if (datePicker !== undefined && datePicker.focusInput(options) !== null) return;
     this.timePicker()?.focusInput(options);
   }
 
