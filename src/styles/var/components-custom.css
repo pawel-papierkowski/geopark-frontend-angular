@@ -90,7 +90,9 @@
   --datetimepicker-navbtn-filter: hue-rotate(200deg) brightness(1.6);
   --datetimepicker-navbtn-hover-filter: hue-rotate(200deg) brightness(1.9);
 
-  --datetimepicker-week-color: #777777;
+  /* Darkened from #777777 (3.85:1) to keep WCAG AA 4.5:1 against the #eeeeee background -
+     these are active weekday/week-number labels, not inactive UI. */
+  --datetimepicker-week-color: #666666;
   --datetimepicker-week-background: #eeeeee;
 
   --datetimepicker-day-color: #444444;

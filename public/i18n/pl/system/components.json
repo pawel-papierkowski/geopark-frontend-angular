@@ -8,6 +8,8 @@
       "date": "RRRR-MM-DD",
       "time": "gg:mm"
     },
+    "date": "Data",
+    "datePicker": "Wybór daty",
     "time": "Czas",
     "timePicker": "Wybór czasu",
     "hour": "Godzina",

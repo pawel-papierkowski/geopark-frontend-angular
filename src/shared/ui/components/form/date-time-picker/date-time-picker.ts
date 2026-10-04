@@ -15,9 +15,6 @@ import { TimePicker } from './time-picker';
  * highlight and keyboard/scroll seed (used when no value is set) come from the browser's local timezone.
  * Designed to be used with signal-based forms.
  *
- * Note: DatePicker sub-picker is still a placeholder (only its shell renders), so `mode="date"` and
- * the date part of `mode="datetime"` are not usable yet. `mode="time"` is fully functional.
- *
  * Features:
  * - Can select date, time or both date and time.
  * - Can disable or mark as invalid.

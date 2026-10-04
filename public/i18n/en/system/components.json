@@ -8,6 +8,8 @@
       "date": "YYYY-MM-DD",
       "time": "hh:mm"
     },
+    "date": "Date",
+    "datePicker": "Date picker",
     "time": "Time",
     "timePicker": "Time picker",
     "hour": "Hour",

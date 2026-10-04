@@ -34,8 +34,6 @@ const panelPlacement: PanelPlacement = {
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
  * Designed to be used with signal-based forms.
  *
- * CURRENTLY PLACEHOLDER.
- *
  * Features:
  * - Can select date.
  * - Can disable or mark as invalid.
