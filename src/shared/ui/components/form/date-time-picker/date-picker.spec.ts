@@ -1953,6 +1953,110 @@ describe('DatePicker', () => {
           expect(fixture.componentInstance.value()?.toISOString().slice(0, 10), 'an in-range day should still commit').toBe('2026-01-15');
         });
       });
+
+      it('should treat dateMin as the local calendar day so dateMin = new Date() keeps its own day pickable', async () => {
+        // Arrange: Clock pinned to 15 January 2026 midday, dateMin passed as "now" the way a
+        // consumer would pass it. The bound's time-of-day must not shift the boundary day.
+        await withMockedNow(utcDate(2026, 0, 15, 11), async () => {
+          const fixture = await arrangeDatePicker({ value: null, dateMin: new Date() });
+          await openPanel(fixture);
+
+          // Assert: The bound resolves to its calendar day (15 January): the day before stays
+          // disabled, the min day itself stays pickable.
+          const yesterday = findCell(fixture, 2026, 0, 14);
+          const today = findCell(fixture, 2026, 0, 15);
+          expect(yesterday?.getAttribute('aria-disabled'), 'day before the min day should be aria-disabled').toBe('true');
+          expect(today?.hasAttribute('aria-disabled'), 'dateMin = new Date() must keep its own day pickable').toBe(false);
+
+          // Act: Click the min day itself.
+          today?.click();
+          fixture.detectChanges();
+
+          // Assert: The boundary day commits.
+          expect(fixture.componentInstance.value()?.toISOString().slice(0, 10), 'the min day itself should commit').toBe('2026-01-15');
+        });
+      });
+
+      it('should treat dateMax as the local calendar day so dateMax = new Date() keeps its own day pickable', async () => {
+        // Arrange: Clock pinned to 15 January 2026 midday, dateMax passed as "now".
+        await withMockedNow(utcDate(2026, 0, 15, 11), async () => {
+          const fixture = await arrangeDatePicker({ value: null, dateMax: new Date() });
+          await openPanel(fixture);
+
+          // Assert: The bound resolves to its calendar day (15 January): its own day stays
+          // pickable, the next day becomes disabled.
+          const today = findCell(fixture, 2026, 0, 15);
+          const tomorrow = findCell(fixture, 2026, 0, 16);
+          expect(today?.hasAttribute('aria-disabled'), 'dateMax = new Date() must keep its own day pickable').toBe(false);
+          expect(tomorrow?.getAttribute('aria-disabled'), 'day after the max day should be aria-disabled').toBe('true');
+
+          // Act: Click the max day itself.
+          today?.click();
+          fixture.detectChanges();
+
+          // Assert: The boundary day commits.
+          expect(fixture.componentInstance.value()?.toISOString().slice(0, 10), 'the max day itself should commit').toBe('2026-01-15');
+        });
+      });
+
+      it('should keep the local today pickable under dateMax = new Date() right after local midnight', async () => {
+        // Arrange: Clock at 15 January 2026, 00:30 Warsaw time - the local calendar day is
+        // 15 January while the UTC date is still 14 January, so the raw timestamp of
+        // "dateMax = new Date()" sits BEFORE today's cell (15 January 00:00 UTC).
+        await withMockedNow(new Date('2026-01-15T00:30:00+01:00'), async () => {
+          const fixture = await arrangeDatePicker({ value: null, dateMax: new Date() });
+          await openPanel(fixture);
+
+          // Assert: The local today is the last pickable day - the timestamp's UTC date
+          // (14 January) must not become the boundary.
+          const today = findCell(fixture, 2026, 0, 15);
+          const tomorrow = findCell(fixture, 2026, 0, 16);
+          expect(today?.hasAttribute('aria-disabled'), 'local today must stay pickable when dateMax = new Date() right after local midnight').toBe(false);
+          expect(tomorrow?.getAttribute('aria-disabled'), 'the day after local today should be aria-disabled').toBe('true');
+
+          // Act: Click the local today.
+          today?.click();
+          fixture.detectChanges();
+
+          // Assert: The local today commits.
+          expect(fixture.componentInstance.value()?.toISOString().slice(0, 10), 'the local today should commit').toBe('2026-01-15');
+        });
+      });
+
+      it('should bound the next day when dateMax is an end-of-day local timestamp', async () => {
+        // Arrange: dateMax built the way consumers build it - end of the local day of
+        // 15 January 2026 (23:59:59.999 local), not a UTC-midnight date.
+        await withMockedNow(utcDate(2026, 0, 15, 11), async () => {
+          const now = new Date();
+          const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+          const fixture = await arrangeDatePicker({ value: null, dateMax: endOfToday });
+          await openPanel(fixture);
+
+          // Assert: The bound resolves to its local calendar day: 15 January pickable,
+          // 16 January disabled.
+          const today = findCell(fixture, 2026, 0, 15);
+          const tomorrow = findCell(fixture, 2026, 0, 16);
+          expect(today?.hasAttribute('aria-disabled'), 'the end-of-day max must keep its own day pickable').toBe(false);
+          expect(tomorrow?.getAttribute('aria-disabled'), 'the day after an end-of-day local max should be aria-disabled').toBe('true');
+        });
+      });
+
+      it('should commit the keyboard-picked boundary day when the cursor carries a time from the value', async () => {
+        // Arrange: Value at 14:30 on 14 January with dateMax on 15 January. The keyboard cursor
+        // is seeded from the value and arrow navigation copies its time along, so the cursor
+        // lands on "15 January 14:30" - a timestamp past the raw midnight max, while the cell
+        // itself renders pickable.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedGrid({ value: utcDate(2026, 0, 14, 14, 30), dateMax: utcDate(2026, 0, 15) }, utcDate(2026, 0, 15, 11));
+
+        // Act: Move the cursor one day right (onto the max boundary day) and pick with Enter.
+        await user.keyboard('{ArrowRight}');
+        await user.keyboard('{Enter}');
+        await flush(fixture);
+
+        // Assert: The boundary day commits - the carried time must not block the pick.
+        expect(fixture.componentInstance.value()?.toISOString().slice(0, 10), 'boundary day picked via keyboard should commit despite the carried time').toBe('2026-01-15');
+      });
     });
 
     describe('keyboard: input', () => {

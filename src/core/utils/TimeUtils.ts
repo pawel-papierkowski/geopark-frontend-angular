@@ -122,6 +122,29 @@ export class TimeUtils {
   }
 
   /**
+   * Reduce a date to UTC midnight of its UTC calendar day (time-of-day stripped).
+   * Use for dates that already carry the UTC-carried calendar identity (calendar cells,
+   * keyboard cursor), so a value carrying a time compares as its DAY instead of its timestamp.
+   * @param date Date.
+   * @returns Date at 00:00:00.000 UTC of the same UTC calendar day. Invalid input propagates as Invalid Date.
+   */
+  public static startOfUTCDay(date: Date): Date {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+
+  /**
+   * Reduce a date to UTC midnight of its LOCAL calendar day.
+   * Use for consumer-provided bounds (e.g. `dateMin`/`dateMax`): callers think in the calendar
+   * days their own clock shows (`new Date()`, an end-of-day local timestamp), so the bound's
+   * LOCAL date part - not its timestamp or its UTC date - is the intended boundary day.
+   * @param date Date.
+   * @returns Date at 00:00:00.000 UTC of the same LOCAL calendar day. Invalid input propagates as Invalid Date.
+   */
+  public static startOfLocalDay(date: Date): Date {
+    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  }
+
+  /**
    * Get how many days are present in given year and month. Ignores timezone.
    * @param year Year.
    * @param month Month.

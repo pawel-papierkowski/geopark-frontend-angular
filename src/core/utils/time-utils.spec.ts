@@ -352,6 +352,76 @@ describe('TimeUtils', () => {
     });
   });
 
+  describe('startOfUTCDay', () => {
+    it('should strip the time-of-day using UTC parts', () => {
+      // Arrange: UTC datetime carrying non-zero time parts.
+      const date = utc(2026, 5, 28, 13, 45, 30, 7);
+
+      // Act: Reduce to the start of the day.
+      const result = TimeUtils.startOfUTCDay(date);
+
+      // Assert: Same UTC calendar day, exactly midnight.
+      expect(result.toISOString(), 'time-of-day should be zeroed on the UTC calendar day').toBe('2026-06-28T00:00:00.000Z');
+    });
+
+    it('should keep the UTC day when the local date already rolled over', () => {
+      // Arrange: 4 January 2026, 23:30 UTC - in Europe/Warsaw (UTC+1) the local date is 5 January.
+      const date = utc(2026, 0, 4, 23, 30);
+
+      // Act: Reduce to the start of the day.
+      const result = TimeUtils.startOfUTCDay(date);
+
+      // Assert: UTC parts decide - the day stays 4 January, not the rolled-over local 5 January.
+      expect(result.toISOString(), 'UTC calendar day must win over the rolled-over local date').toBe('2026-01-04T00:00:00.000Z');
+    });
+
+    it('should propagate invalid input as Invalid Date', () => {
+      // Arrange: Date carrying NaN time.
+      const date = new Date(Number.NaN);
+
+      // Act: Reduce the invalid date.
+      const result = TimeUtils.startOfUTCDay(date);
+
+      // Assert: No calendar day is fabricated from NaN parts.
+      expect(Number.isNaN(result.getTime()), 'invalid input should stay invalid').toBe(true);
+    });
+  });
+
+  describe('startOfLocalDay', () => {
+    it('should map the local calendar day to UTC midnight', () => {
+      // Arrange: Noon UTC in June - local and UTC calendar dates agree (Warsaw is UTC+2).
+      const date = utc(2026, 5, 28, 12, 30);
+
+      // Act: Reduce to the start of the local day.
+      const result = TimeUtils.startOfLocalDay(date);
+
+      // Assert: Local day carried as UTC midnight, time-of-day dropped.
+      expect(result.toISOString(), 'local day should be carried as UTC midnight').toBe('2026-06-28T00:00:00.000Z');
+    });
+
+    it('should use the rolled-over local date when it differs from the UTC date', () => {
+      // Arrange: 4 January 2026, 23:30 UTC = 5 January 00:30 in Europe/Warsaw.
+      const date = utc(2026, 0, 4, 23, 30);
+
+      // Act: Reduce to the start of the local day.
+      const result = TimeUtils.startOfLocalDay(date);
+
+      // Assert: The result resolves to the day the caller's clock shows (5 January).
+      expect(result.toISOString(), 'local calendar date should decide the boundary day').toBe('2026-01-05T00:00:00.000Z');
+    });
+
+    it('should propagate invalid input as Invalid Date', () => {
+      // Arrange: Date carrying NaN time.
+      const date = new Date(Number.NaN);
+
+      // Act: Reduce the invalid date.
+      const result = TimeUtils.startOfLocalDay(date);
+
+      // Assert: No calendar day is fabricated from NaN parts.
+      expect(Number.isNaN(result.getTime()), 'invalid input should stay invalid').toBe(true);
+    });
+  });
+
   describe('getUTCDaysInMonth', () => {
     it('should return 28 days for February of a common year', () => {
       // Arrange: February 2026 (not a leap year).

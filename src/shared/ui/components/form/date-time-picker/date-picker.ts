@@ -53,8 +53,8 @@ const panelPlacement: PanelPlacement = {
  * - labelTarget - The host's hidden label-activation target, which lives OUTSIDE this component's subtree (a sibling on the parent's root). Focus landing on it during label activation reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.
- * - dateMin - If not null, defines earliest allowed date. Optional, default is null.
- * - dateMax - If not null, defines latest allowed date. Optional, default is null.
+ * - dateMin - If not null, defines earliest allowed date. Interpreted as a calendar day: the bound's LOCAL date part (time-of-day ignored), so `new Date()` means "from today". Optional, default is null.
+ * - dateMax - If not null, defines latest allowed date. Same calendar-day rule as `dateMin`. Optional, default is null.
  *
  * Outputs:
  * - touch - Informs that user blurred out of component.
@@ -90,9 +90,9 @@ export class DatePicker implements FormValueControl<Date | null> {
   public canNull = input<boolean>(false);
   /** If true, show weeks. */
   public showWeeks = input<boolean>(false);
-  /** If not null, defines earliest allowed date. */
+  /** If not null, defines earliest allowed date. Interpreted as the bound's LOCAL calendar day (time-of-day ignored). */
   public dateMin = input<Date | null>(null);
-  /** If not null, defines latest allowed date. */
+  /** If not null, defines latest allowed date. Interpreted as the bound's LOCAL calendar day (time-of-day ignored). */
   public dateMax = input<Date | null>(null);
   /** Is component required? */
   public readonly required = input<boolean>(false);
@@ -160,6 +160,24 @@ export class DatePicker implements FormValueControl<Date | null> {
   private normalizedValue = computed<Date | null>(() => {
     const value = this.value();
     return value !== null && !Number.isNaN(value.getTime()) ? value : null;
+  });
+
+  /**
+   * `dateMin` reduced to UTC midnight of its LOCAL calendar day (see `canPick`). Bounds are
+   * consumer input: callers think in the calendar days their own clock shows (`new Date()`,
+   * an end-of-day local timestamp), so the bound's local date part - not its time-of-day or
+   * its UTC date - is the intended boundary day. Invalid bounds become Invalid Date, which
+   * keeps every comparison false and the bound inert (the pre-normalization behavior).
+   */
+  private readonly normalizedDateMin = computed<Date | null>(() => {
+    const min = this.dateMin();
+    return min === null ? null : TimeUtils.startOfLocalDay(min);
+  });
+
+  /** `dateMax` reduced to UTC midnight of its LOCAL calendar day. Same rule as `normalizedDateMin`. */
+  private readonly normalizedDateMax = computed<Date | null>(() => {
+    const max = this.dateMax();
+    return max === null ? null : TimeUtils.startOfLocalDay(max);
   });
 
   /**
@@ -565,12 +583,22 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   /**
    * Check if can pick given date.
+   * Both sides are compared as CALENDAR DAYS at UTC midnight, never as raw timestamps:
+   * - the candidate goes through `startOfUTCDay` (cells are already UTC midnight; the keyboard
+   *   cursor may carry a time when it was seeded from a value that preserves one - see
+   *   `selectDate`), so a boundary day can never be blocked by a stray time-of-day,
+   * - the bounds come pre-normalized from `normalizedDateMin`/`normalizedDateMax` (local
+   *   calendar day carried as UTC midnight), so a consumer passing `dateMin = new Date()` or an
+   *   end-of-day-local `dateMax` bounds the intended days instead of shifting the boundary.
    * @param date Date.
    * @returns True if can pick, otherwise false.
    */
   private canPick(date: Date): boolean {
-    if (this.dateMin() != null && date < this.dateMin()!) return false;
-    if (this.dateMax() != null && date > this.dateMax()!) return false;
+    const day = TimeUtils.startOfUTCDay(date);
+    const min = this.normalizedDateMin();
+    const max = this.normalizedDateMax();
+    if (min !== null && day < min) return false;
+    if (max !== null && day > max) return false;
     return true;
   }
 

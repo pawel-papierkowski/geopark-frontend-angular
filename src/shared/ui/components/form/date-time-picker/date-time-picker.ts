@@ -34,8 +34,8 @@ import { TimePicker } from './time-picker';
  * - mode - Mode of operation (both date and time, only date, only time). Optional, default is 'datetime'.
  * - canNull - If true, allow deselecting date. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.
- * - dateMin - If not null, defines earliest allowed date. Optional, default is null.
- * - dateMax - If not null, defines latest allowed date. Optional, default is null.
+ * - dateMin - If not null, defines earliest allowed date. Interpreted as a calendar day: the bound's LOCAL date part (time-of-day ignored), so `new Date()` means "from today". Optional, default is null.
+ * - dateMax - If not null, defines latest allowed date. Same calendar-day rule as `dateMin`. Optional, default is null.
  *
  * Outputs:
  * - touch - Informs that user blurred out of component.
@@ -71,9 +71,9 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   public canNull = input<boolean>(false);
   /** If true, show weeks. */
   public showWeeks = input<boolean>(false);
-  /** If not null, defines earliest allowed date. */
+  /** If not null, defines earliest allowed date. Interpreted as the bound's LOCAL calendar day (time-of-day ignored). */
   public dateMin = input<Date | null>(null);
-  /** If not null, defines latest allowed date. */
+  /** If not null, defines latest allowed date. Interpreted as the bound's LOCAL calendar day (time-of-day ignored). */
   public dateMax = input<Date | null>(null);
   /** Is component required? */
   public readonly required = input<boolean>(false);
