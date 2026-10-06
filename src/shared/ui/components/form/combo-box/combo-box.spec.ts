@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
+import { registerLabelPreventionTests } from '@/shared/ui/components/form/popup-panel/testing/label-guard-tests';
+
 import { ComboBox } from './combo-box';
 
 /**
@@ -1239,83 +1241,12 @@ describe('ComboBox', () => {
     });
 
     describe('label', () => {
-      /**
-       * Dispatch a real mousedown on given label so it bubbles to the document.
-       * @param label Label element to dispatch the event on.
-       * @returns The dispatched event, for defaultPrevented assertions.
-       */
-      function dispatchMousedown(label: HTMLElement): Event {
-        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-        label.dispatchEvent(event);
-        return event;
-      }
-
-      it('should prevent default on mousedown of associated label', async () => {
-        // Arrange: Create component and a label targeting its hidden button.
-        await arrangeComboBox();
-        const label = document.createElement('label');
-        label.htmlFor = 'test-combo';
-        document.body.appendChild(label);
-
-        // Act: Dispatch mousedown as a real pointer interaction would.
-        const event = dispatchMousedown(label);
-
-        // Assert: Default canceled, so focus is not stolen from the combobox root.
-        expect(event.defaultPrevented, 'mousedown on associated label should be default-prevented').toBe(true);
-
-        // Cleanup: Remove label element.
-        label.remove();
-      });
-
-      it('should not prevent default on mousedown of foreign label', async () => {
-        // Arrange: Create component and a label targeting an unrelated control.
-        await arrangeComboBox();
-        const label = document.createElement('label');
-        label.htmlFor = 'other-control';
-        document.body.appendChild(label);
-
-        // Act: Dispatch mousedown on the foreign label.
-        const event = dispatchMousedown(label);
-
-        // Assert: Default untouched, unrelated labels keep native behavior.
-        expect(event.defaultPrevented, 'mousedown on foreign label should keep its default').toBe(false);
-
-        // Cleanup: Remove label element.
-        label.remove();
-      });
-
-      it('should not prevent default on label mousedown after component is destroyed', async () => {
-        // Arrange: Create component, then destroy it (removes the document listener).
-        const fixture = await arrangeComboBox();
-        const label = document.createElement('label');
-        label.htmlFor = 'test-combo';
-        document.body.appendChild(label);
-        fixture.destroy();
-
-        // Act: Dispatch mousedown after destroy.
-        const event = dispatchMousedown(label);
-
-        // Assert: Listener was cleaned up with the component.
-        expect(event.defaultPrevented, 'destroyed component should not prevent label mousedown').toBe(false);
-
-        // Cleanup: Remove label element.
-        label.remove();
-      });
-
-      it('should not prevent default on mousedown when ident is empty', async () => {
-        // Arrange: Create component without ident (its generated ident never matches labels without for).
-        await arrangeComboBox({ ident: '' });
-        const label = document.createElement('label');
-        document.body.appendChild(label);
-
-        // Act: Dispatch mousedown on a label without for attribute.
-        const event = dispatchMousedown(label);
-
-        // Assert: Generated ident never matches empty htmlFor, defaults preserved.
-        expect(event.defaultPrevented, 'generated ident should not match label without for').toBe(false);
-
-        // Cleanup: Remove label element.
-        label.remove();
+      registerLabelPreventionTests({
+        ident: 'test-combo',
+        arrange: async (ident) => {
+          const fixture = await arrangeComboBox(ident === undefined ? {} : { ident });
+          return { destroy: () => fixture.destroy() };
+        },
       });
     });
 

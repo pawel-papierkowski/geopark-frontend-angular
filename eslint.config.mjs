@@ -75,4 +75,13 @@ export default defineConfig([
       'no-restricted-globals': 'off',
     },
   },
+  {
+    // Test-only suite factories and helpers in `testing/` folders hold verbatim spec bodies
+    // shared between component specs (register* suites), so they drive the global document
+    // exactly like specs do - and must stay free of component/DI context to remain portable.
+    files: ['src/**/testing/**/*.ts'],
+    rules: {
+      'no-restricted-globals': 'off',
+    },
+  },
 ]);

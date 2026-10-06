@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { enDateTimePickerMode } from '@/shared/ui/other/types';
+import { registerLabelPreventionTests } from '@/shared/ui/components/form/popup-panel/testing/label-guard-tests';
 
 import { DateTimePicker } from './date-time-picker';
 
@@ -501,76 +502,12 @@ describe('DateTimePicker', () => {
       expect(touchSpy, 'click-first label toggle should not emit touch').not.toHaveBeenCalled();
     });
 
-    it('should prevent default on mousedown of associated label', async () => {
-      // Arrange: Create component and a label targeting its hidden button.
-      await arrangeDateTimePicker();
-      const label = document.createElement('label');
-      label.htmlFor = 'test-dtp';
-      document.body.appendChild(label);
-
-      try {
-        // Act: Dispatch mousedown as a real pointer interaction would.
-        const event = dispatchMousedown(label);
-
-        // Assert: Default canceled, so focus is not stolen from the sub-picker input.
-        expect(event.defaultPrevented, 'mousedown on associated label should be default-prevented').toBe(true);
-      } finally { // cleanup
-        label.remove();
-      }
-    });
-
-    it('should not prevent default on mousedown of foreign label', async () => {
-      // Arrange: Create component and a label targeting an unrelated control.
-      await arrangeDateTimePicker();
-      const label = document.createElement('label');
-      label.htmlFor = 'other-control';
-      document.body.appendChild(label);
-
-      try {
-        // Act: Dispatch mousedown on the foreign label.
-        const event = dispatchMousedown(label);
-
-        // Assert: Default untouched, unrelated labels keep native behavior.
-        expect(event.defaultPrevented, 'mousedown on foreign label should keep its default').toBe(false);
-      } finally { // cleanup
-        label.remove();
-      }
-    });
-
-    it('should not prevent default on label mousedown after component is destroyed', async () => {
-      // Arrange: Create component, then destroy it (removes the document listener).
-      const fixture = await arrangeDateTimePicker();
-      const label = document.createElement('label');
-      label.htmlFor = 'test-dtp';
-      document.body.appendChild(label);
-      fixture.destroy();
-
-      try {
-        // Act: Dispatch mousedown after destroy.
-        const event = dispatchMousedown(label);
-
-        // Assert: Listener was cleaned up with the component.
-        expect(event.defaultPrevented, 'destroyed component should not prevent label mousedown').toBe(false);
-      } finally { // cleanup
-        label.remove();
-      }
-    });
-
-    it('should not prevent default on mousedown when ident is empty', async () => {
-      // Arrange: Create component without ident (its generated ident never matches labels without for).
-      await arrangeDateTimePicker({ ident: '' });
-      const label = document.createElement('label');
-      document.body.appendChild(label);
-
-      try {
-        // Act: Dispatch mousedown on a label without for attribute.
-        const event = dispatchMousedown(label);
-
-        // Assert: Generated ident never matches empty htmlFor, defaults preserved.
-        expect(event.defaultPrevented, 'generated ident should not match label without for').toBe(false);
-      } finally { // cleanup
-        label.remove();
-      }
+    registerLabelPreventionTests({
+      ident: 'test-dtp',
+      arrange: async (ident) => {
+        const fixture = await arrangeDateTimePicker(ident === undefined ? {} : { ident });
+        return { destroy: () => fixture.destroy() };
+      },
     });
   });
 
