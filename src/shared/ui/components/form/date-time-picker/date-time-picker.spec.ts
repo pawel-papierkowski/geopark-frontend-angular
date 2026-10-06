@@ -701,7 +701,8 @@ describe('DateTimePicker', () => {
       // FormUiControl.focus contract used by the signal-forms Field directive.
       const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
 
-      // Act: Focus the control programmatically (two flush rounds for the two-round open).
+      // Act: Focus the control programmatically. The calendar open awaits `forRender` once;
+      // the second flush is a harmless extra round kept to mirror the clock's two-round open.
       fixture.componentInstance.focus();
       await flush(fixture);
       await flush(fixture);

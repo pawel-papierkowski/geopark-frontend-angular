@@ -4,13 +4,6 @@
 Finish designing app and determining what we need for required functionality. It can wait, as we are right now doing stuff that we need to do regardless of design.
 
 ## Now
-- Add all needed custom components (all with unit/e2e tests, ARIA, keyboard handling etc):
-  - DateTimePicker (TODO)
-    - DatePicker (ONGOING)
-    - TimePicker (DONE)
-
-- Migrate date-picker.
-- Parity of coding style and features with time-picker (where applicable).
 
 ## Pending
 - panel-custom-components does not look good when screen is narrow: labels and components start and end at different place for each form field.

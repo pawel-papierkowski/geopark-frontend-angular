@@ -148,6 +148,10 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
    * optional second render (`secondRenderBeforeFocus`) and keyboard focus into the panel.
    * Never awaited by its callers: template event bindings do not await handlers, so the async
    * work is deliberately fire-and-forget (callers mark it with `void`).
+   * The open can be cancelled while it awaits a render (Escape, a second click toggling it
+   * closed, focusout/outside press, disabling, a sibling picker closing this one): each await
+   * is followed by a visibility guard, so an abandoned open never measures placement for nor
+   * focuses a hidden panel.
    */
   private async togglePanel(): Promise<void> {
     if (this.panelVisible()) {
@@ -166,6 +170,11 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
 
     await forRender(this.injector);
 
+    // The panel may have been closed while the render was pending: measuring a hidden panel
+    // would read a 0x0 rect and focusing its target would aim at hidden content - drop the
+    // open instead (the next open re-seeds everything from scratch anyway).
+    if (!this.panelVisible()) return;
+
     // Adjust picker position if needed to prevent window overflow (measured under baseline).
     this.positionPanel();
 
@@ -175,6 +184,9 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
     // one extra promise hop would delay focus past synchronous test/user follow-ups.
     if (this.secondRenderBeforeFocus) {
       await forRender(this.injector);
+      // Same cancellation guard as after the first render: the panel can be closed during
+      // this extra round too (double-click/Escape/outside press landing in between).
+      if (!this.panelVisible()) return;
     }
 
     // Move keyboard focus into the panel so the user can navigate immediately.

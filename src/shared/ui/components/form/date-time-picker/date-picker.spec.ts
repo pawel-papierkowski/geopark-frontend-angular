@@ -303,13 +303,24 @@ describe('DatePicker', () => {
         await fixture.whenStable();
         fixture.detectChanges();
       },
+      flush: async () => {
+        // Two stability rounds settle the open continuation (and any second render round a
+        // future two-round open would add) before the caller asserts.
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
       showPanel: async () => {
         await fixture.componentInstance.showPanel();
         await fixture.whenStable();
         fixture.detectChanges();
       },
       focus: async (options) => {
-        // Two forRender rounds: measure under baseline, apply flip, then focus.
+        // The calendar open awaits `forRender` once (measure under baseline, then focus).
+        // The second stability round is a harmless extra flush kept so this helper mirrors
+        // the clock driver's two-round open (see the shared focus-contract suite).
         fixture.componentInstance.focus(options);
         fixture.detectChanges();
         await fixture.whenStable();

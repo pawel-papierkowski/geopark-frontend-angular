@@ -239,6 +239,15 @@ describe('TimePicker', () => {
         await fixture.whenStable();
         fixture.detectChanges();
       },
+      flush: async () => {
+        // Two stability rounds settle the clock's two-round open (measure, then focus after
+        // the flip render) before the caller asserts.
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
       showPanel: async () => {
         await fixture.componentInstance.showPanel();
         await fixture.whenStable();

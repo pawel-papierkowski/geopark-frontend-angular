@@ -1,4 +1,4 @@
-import { it, expect, type Mock } from 'vitest';
+import { it, expect, vi, type Mock } from 'vitest';
 
 /** Arrange options shared by the sub-picker specs behind the driver. */
 export interface SubPickerArrangeOptions {
@@ -34,9 +34,11 @@ export interface SubPickerBaseFixture {
   setContainer(container: HTMLElement): void;
   /** Set the `disabled` input and settle (detectChanges -> whenStable -> detectChanges). */
   setDisabled(disabled: boolean): Promise<void>;
+  /** Settle pending async component work (two stability rounds, covering a two-round open). */
+  flush(): Promise<void>;
   /** Call showPanel() and settle (whenStable -> detectChanges). */
   showPanel(): Promise<void>;
-  /** Call focus(options) and settle the two-round open (detectChanges -> whenStable -> detectChanges twice). */
+  /** Call focus(options) and settle the open (two stability rounds: the clock renders twice before focus, the calendar's extra round is a harmless no-op). */
   focus(options?: FocusOptions): Promise<void>;
   /** Spy on the input's native focus() to observe forwarded options. */
   trackInputFocus(): Mock;
@@ -291,6 +293,40 @@ export function registerSubPickerCoreTests(driver: SubPickerBaseDriver): void {
     expect(fixture.isOpen(), 'showPanel must not open the panel of a disabled picker').toBe(false);
     fixture.assertNoFocusStolen?.();
   });
+
+  it('should abandon an open closed by Escape before its first render settles', async () => {
+    // Arrange: Create component and spy on the focus of the in-panel target; the open path
+    // must not focus it once the panel got closed while the open was awaiting its render.
+    const fixture = await driver.arrange();
+    const focusSpy = vi.spyOn(fixture.insideTarget(), 'focus');
+
+    // Act: Start the open with a click, close it with Escape before the awaited render
+    // settles, then let the pending open continuation run.
+    fixture.input().click();
+    fixture.input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.flush();
+
+    // Assert: The panel stays closed and the abandoned open does nothing further - it must
+    // neither measure/place nor focus a hidden panel.
+    expect(fixture.isOpen(), 'panel must stay closed after the Escape during the pending open').toBe(false);
+    expect(focusSpy, 'abandoned open must not focus the hidden in-panel target').not.toHaveBeenCalled();
+  });
+
+  it('should abandon an open closed by a second click before its first render settles', async () => {
+    // Arrange: Create component and spy on the focus of the in-panel target.
+    const fixture = await driver.arrange();
+    const focusSpy = vi.spyOn(fixture.insideTarget(), 'focus');
+
+    // Act: Two synchronous clicks - the first starts the open, the second toggles it closed
+    // while the open is still awaiting its render - then let the continuation run.
+    fixture.input().click();
+    fixture.input().click();
+    await fixture.flush();
+
+    // Assert: Same contract as the Escape variant - no work on a closed panel.
+    expect(fixture.isOpen(), 'panel must stay closed after the closing second click').toBe(false);
+    expect(focusSpy, 'abandoned open must not focus the hidden in-panel target').not.toHaveBeenCalled();
+  });
 }
 
 /**
@@ -308,8 +344,9 @@ export function registerSubPickerFocusTests(driver: SubPickerBaseDriver): void {
     // Arrange: FormUiControl.focus contract - the form-driven path (e.g. "focus first invalid field").
     const fixture = await driver.arrange();
 
-    // Act: Focus the control programmatically. The open spans two forRender rounds (measure
-    // under baseline, apply flip, then focus), so two flush rounds are needed.
+    // Act: Focus the control programmatically. The open awaits `forRender` before focus - the
+    // clock does that twice (measure under baseline, apply flip, then focus), the calendar
+    // once - so the driver's two flush rounds cover the slowest open.
     await fixture.focus();
 
     // Assert: The panel opens like Tab and focus lands where the component specifies.
