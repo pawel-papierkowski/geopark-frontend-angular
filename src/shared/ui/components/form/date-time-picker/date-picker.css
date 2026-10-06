@@ -98,14 +98,43 @@
   font-weight: bold;
 }
 
+/**
+ * Calendar header navigation button. The global `button` rules (width, padding, gradient
+ * background, border, shadow, hover/active states) must be neutralized here: these are bare
+ * emoji glyphs that used to be plain <div>s, and `.header-navbtn` (0,1,0) loses to the global
+ * `button:hover`/`button:active` selectors (0,1,1), so the resets need their own hover/active
+ * rules to win.
+ */
 .header-navbtn {
+  width: auto;
+  margin: 0;
+  padding: 0;
+
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+
   filter: var(--datetimepicker-navbtn-filter);
 
   cursor: pointer;
 }
 
 .header-navbtn:hover {
+  color: inherit;
+  background: none;
+  border: 0;
+  box-shadow: none;
+
   filter: var(--datetimepicker-navbtn-hover-filter);
+}
+
+/* The global `button:active` lift (translateY) was never part of this control as a <div>. */
+.header-navbtn:active {
+  transform: none;
+  box-shadow: none;
 }
 
 .calendar-grid {

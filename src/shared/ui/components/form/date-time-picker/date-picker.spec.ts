@@ -1328,6 +1328,29 @@ describe('DatePicker', () => {
         expect(panel.hasAttribute('aria-modal'), 'panel should not claim to be modal').toBe(false);
       });
 
+      it('should expose the header navigation controls as real non-tabbable buttons', async () => {
+        // Arrange: Create component - the header only renders inside the panel markup, which is
+        // always in the DOM (hidden via display:none), so no open is needed for the semantics.
+        const fixture = await arrangeDatePicker();
+
+        // Act: Read the four header controls back through their testids.
+        const navButtons = (['yearMinus', 'monthMinus', 'monthPlus', 'yearPlus'] as const).map((name) =>
+          getNavButton(fixture, name) as HTMLButtonElement,
+        );
+
+        // Assert: Native <button> gives them the button role (an aria-label on a role-less <div>
+        // is a prohibited name on the generic role, so AT never exposed them as controls), while
+        // tabindex="-1" keeps them out of the tab order - NavUtils.FocusNext/FocusPrev skip
+        // button[tabindex="-1"], so the input -> grid -> next control hand-off must not change.
+        expect(navButtons.every((button) => button.tagName === 'BUTTON'), 'every nav control should be a native button').toBe(true);
+        expect(navButtons.every((button) => button.getAttribute('type') === 'button'), 'nav controls must never submit a form').toBe(true);
+        expect(navButtons.every((button) => button.getAttribute('tabindex') === '-1'), 'nav controls must stay out of the tab order').toBe(true);
+        expect(
+          navButtons.every((button) => (button.getAttribute('aria-label') ?? '').length > 0),
+          'every nav control should carry its accessible name',
+        ).toBe(true);
+      });
+
       it('should have grid role and tabindex on the calendar grid, silent before the panel opens', async () => {
         // Arrange: Create component with closed panel.
         const fixture = await arrangeDatePicker();

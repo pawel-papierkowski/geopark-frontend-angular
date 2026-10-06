@@ -949,13 +949,20 @@ test.describe('TimePicker', () => {
       await getTimePicker(page).click();
       await expect(getPanel(page)).toBeVisible();
 
-      // Act: Run axe against the page with the panel open. The scrollable-region-focusable
-      // rule is disabled: the clock columns use tabindex=-1 (standard combobox popup pattern —
-      // the input is the tab stop) and receive focus programmatically when the panel opens,
-      // so they are keyboard-operable via arrow keys even though not in the tab order.
-      // Making them tabindex=0 would insert them into tab order and break Tab-out behavior.
+      // Act: Run axe against the page with the panel open. The two clock columns are excluded
+      // NODE-WISE instead of disabling the whole rule, so scrollable-region-focusable keeps
+      // guarding the rest of the page. The columns cannot satisfy the rule as written: they are
+      // `overflow-y: auto` listboxes whose options are plain divs (no tabbable descendant) and
+      // whose own tabindex=-1 keeps them out of the tab order - axe would demand a tab stop that
+      // must not exist (the input is the tab stop; NavUtils and the hidePanelAnd* hand-offs skip
+      // button/element[tabindex="-1"]). They ARE keyboard-operable: they take programmatic focus
+      // on open (`focusPanelTarget` -> hour column, column switch -> minute column) and the arrow,
+      // Home/End and PageUp/PageDown keys scroll them, so WCAG 2.1.1 is met. axe's combobox-popup
+      // exemption cannot see that: it keys off aria-controls/ids on the popup itself (the panel
+      // gets it), and the nested columns carry no id. Making them tabindex=0 would insert them
+      // into the tab order and break Tab-out behavior.
       const results = await new AxeBuilder({ page })
-        .disableRules(['scrollable-region-focusable'])
+        .exclude('.clock-column')
         .analyze();
 
       // Assert: No accessibility violations.

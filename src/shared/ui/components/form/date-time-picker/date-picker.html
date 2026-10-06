@@ -65,45 +65,56 @@
 
     (mousedown)="handlePanelMousedown($event)">
 
+    <!-- Header navigation: real <button> elements so the accessibility tree exposes them as
+         named controls (an aria-label on a role-less <div> is a prohibited name on the generic
+         role, so screen readers never saw them as operable). type="button" keeps them from ever
+         submitting a surrounding form, and tabindex="-1" keeps them OUT of the tab order:
+         `NavUtils.FocusNext`/`FocusPrev` skip `button[tabindex="-1"]`, so the designed flow
+         (input -> grid -> next control) and the hidePanelAnd* hand-offs stay intact. Keyboard
+         users still change month/year from the grid (arrows, PageUp/PageDown). -->
     <div class="calendar-header">
       <div class="header-nav">
-<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
-        <div
+        <button
+          type="button"
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_yearMinus`"
           [attr.aria-label]="yearMinusLabel()"
+          tabindex="-1"
           (click)="changeYear(-1)">
           ⏪
-        </div>
-<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
-        <div
+        </button>
+        <button
+          type="button"
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_monthMinus`"
           [attr.aria-label]="monthMinusLabel()"
+          tabindex="-1"
           (click)="changeMonth(-1)">
           ◀️
-        </div>
+        </button>
       </div>
       <div class="header-title" aria-live="polite">
         {{ headerText() }}
       </div>
       <div class="header-nav">
-<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
-        <div
+        <button
+          type="button"
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_monthPlus`"
           [attr.aria-label]="monthPlusLabel()"
+          tabindex="-1"
           (click)="changeMonth(1)">
           ▶️
-        </div>
-<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- we can navigate to next/prev month via calendar grid -->
-        <div
+        </button>
+        <button
+          type="button"
           class="header-navbtn"
           [attr.data-testid]="`${ident()}_yearPlus`"
           [attr.aria-label]="yearPlusLabel()"
+          tabindex="-1"
           (click)="changeYear(1)">
           ⏩
-        </div>
+        </button>
       </div>
     </div>
 
