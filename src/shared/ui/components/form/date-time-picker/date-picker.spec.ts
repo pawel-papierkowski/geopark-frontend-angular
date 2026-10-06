@@ -920,7 +920,7 @@ describe('DatePicker', () => {
         // Arrange: Create component and open the panel (chrome = padding/gaps around the cells).
         const fixture = await arrangeDatePicker();
         await openPanel(fixture);
-        const panel = fixture.componentInstance.calendarPanelRef().nativeElement;
+        const panel = fixture.componentInstance.panelRef().nativeElement;
 
         // Act: Dispatch a real cancelable mousedown on the panel itself.
         const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });

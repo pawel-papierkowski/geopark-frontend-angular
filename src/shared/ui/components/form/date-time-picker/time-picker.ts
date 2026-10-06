@@ -1,31 +1,11 @@
-import { Component, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, DOCUMENT } from '@angular/core';
-import { FormValueControl } from '@angular/forms/signals';
+import { Component, effect, inject, signal, computed, viewChild, ElementRef } from '@angular/core';
 
 import { TranslateService } from '@ngx-translate/core';
 
 import { TimeUtils } from '@/core/utils/TimeUtils';
-import { NavUtils } from '@/core/utils/NavUtils';
-import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
-import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { forRender } from '@/shared/utils/render/after-render';
-
-/**
- * Placement of the clock panel relative to its input - single source of truth for both the
- * baseline reset on open and the flip decision (see `WindowUtils.resolvePanelPlacement`).
- * `flipY` anchors the panel's BOTTOM to the input's TOP (`bottom: 100%`), NOT `bottom: 0`:
- * `bottom: 0` would pin the panel's bottom to the input's bottom, so the panel would sit
- * ON TOP of the input and intercept its clicks.
- * The anchor is the picker root - it is the positioned ancestor the panel's `top/bottom`
- * percentages resolve against. When the panel fits on neither side of the root, it stays
- * below (baseline) so the user can scroll down to it.
- * Note: both flips rely on `.clock-container` having zero right/bottom margins
- * (`--datetimepicker-clock-offset` in styles/var/components-custom.css).
- */
-const panelPlacement: PanelPlacement = {
-  baseline: { top: '100%', bottom: 'auto', left: '0', right: 'auto' },
-  flipX: { left: 'auto', right: '0' },
-  flipY: { top: 'auto', bottom: '100%' },
-};
+import { popupPanelPlacement } from '@/shared/ui/components/form/popup-panel/popup-panel-placement';
+import { PopupInputBase } from '@/shared/ui/components/form/popup-panel/popup-input-base';
 
 /**
  * Page size used for PageUp/PageDown when the column cannot be measured (no layout yet, so
@@ -104,33 +84,9 @@ type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
   styleUrl: './time-picker.css',
   templateUrl: './time-picker.html',
 })
-export class TimePicker implements FormValueControl<Date | null> {
-  private injector = inject(Injector);
+export class TimePicker extends PopupInputBase<Date> {
   /** For programmatic translations. */
   private readonly translateService = inject(TranslateService);
-  /** Injectable document, used for the global focus check in `handleMousedown`. */
-  private readonly document = inject(DOCUMENT);
-
-  /** Value held by component. */
-  public value = model<Date | null>(null);
-  /** Identifier for this component. */
-  public ident = input<string>('');
-  /** Label reference: id of an external element (usually `<label>`) used for `aria-labelledby`. */
-  public label = input<string>('');
-  /** If true, append a hidden "Time" qualifier to the accessible name (see `nameRefs`). */
-  public qualifyLabel = input<boolean>(false);
-  /** Root element of the host DateTimePicker wrapper - the component boundary for focus containment. */
-  public container = input<Element | null>(null);
-  /** If true, allow deselecting: re-clicking the picked option un-picks its column; the value is cleared (and the panel closes) once both columns are un-picked. */
-  public canNull = input<boolean>(false);
-  /** Is component required? */
-  public readonly required = input<boolean>(false);
-  /** Is component disabled? */
-  public readonly disabled = input<boolean>(false);
-  /** Is component invalid? */
-  public readonly invalid = input<boolean>(false);
-  /** Informs that user blurred out of component (focus left it), regardless of panel visibility. */
-  public touch = output<void>();
 
   /** List of hours. We use full 24-hour clock. */
   public hours = Array.from({ length: 24 }, (_, i) => i);
@@ -139,12 +95,6 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   // REFERENCES
 
-  /** Root focusable element. */
-  private pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
-  /** Reference to the text input. */
-  private inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
-  /** Reference to clock panel. */
-  public clockPanelRef = viewChild.required<ElementRef<HTMLDivElement>>('clockPanelRef');
   /** Reference to hour listbox. */
   public hourRef = viewChild.required<ElementRef<HTMLDivElement>>('hourRef');
   /** Reference to minute listbox. */
@@ -152,20 +102,8 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   // SIGNALS
 
-  /**
-   * Value of the input's `aria-labelledby`: the external label id, plus (when `qualifyLabel`)
-   * this sub-field's hidden qualifier id; null when no label is set (the input then falls back
-   * to `aria-label`). The qualified name reads "<label> Time" - the label text stays a prefix,
-   * so the visible label remains inside the accessible name (WCAG 2.5.3) for voice control.
-   */
-  public readonly nameRefs = computed<string | null>(() => {
-    const label = this.label();
-    if (label === '') return null;
-    return this.qualifyLabel() ? `${label} ${this.ident()}_qualifier` : label;
-  });
-
-  /** Indicates visibility of clock panel. */
-  public readonly isClockVisible = signal(false);
+  /** Indicates visibility of clock panel; domain-named alias of the shared `panelVisible`. */
+  public readonly isClockVisible = this.panelVisible;
   /** Keyboard-focus hour index. Set when panel opens, updated via arrow navigation. */
   public focusedHour = signal<number | null>(null);
   /** Keyboard-focus minute index. Set when panel opens, updated via arrow navigation. */
@@ -187,22 +125,7 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** Pick made in the minute column during the CURRENT panel session; see `hourSession`. */
   private minuteSession = signal<ColumnSession>('untouched');
 
-  /**
-   * Inline style of the clock panel (see `panelPlacement`). All four insets are managed
-   * TOGETHER: the CSS default (`top: 100%`, `left: 0`) can be overridden inline, so a stale
-   * inline `top: auto` from a previous upward flip would otherwise persist, and having both
-   * `top` and `bottom` non-auto would over-constrain the absolutely positioned panel.
-   * Reset to the baseline on every open before measuring.
-   */
-  public containerStyle = signal<PanelInsets>(panelPlacement.baseline);
-
   // COMPUTED
-
-  /** `value` when it carries a real time, otherwise null. Prevents showing NaN on invalid Date and similar bugs. */
-  private normalizedValue = computed<Date | null>(() => {
-    const value = this.value();
-    return value !== null && !Number.isNaN(value.getTime()) ? value : null;
-  });
 
   /**
    * Currently highlighted hour in the column: this session's pick when one was made, the
@@ -267,74 +190,62 @@ export class TimePicker implements FormValueControl<Date | null> {
   /** Minute column header text and the minute listbox's accessible name (same key). */
   public readonly minuteLabel = computed(() => this.translateService.instant('dateTimePicker.minute'));
 
-  constructor() {
-    // Watch `disabled` field: close clock panel when component becomes disabled.
-    effect(() => {
-      if (this.disabled() && this.isClockVisible()) this.hidePanel();
-    });
+  /** Name of this component for dev-only diagnostics (see `PopupInputBase.componentName`). */
+  protected readonly componentName = 'time-picker';
 
-    // Dev-only: catch a `label` id that matches no element. A dangling aria-labelledby leaves
-    // this input without an accessible name (its aria-label fallback is suppressed whenever
-    // label is set), which no assertion would catch. Re-runs whenever label or ident changes.
-    effect(() => {
-      warnDanglingLabel(this.document, this.label(), this.ident(), 'time-picker');
-    });
+  constructor() {
+    super(popupPanelPlacement);
 
     // Watch `isClockVisible` field: react on panel opening.
     effect(() => {
-      if ( this.isClockVisible()) void this.scrollToSelected();
+      if (this.isClockVisible()) void this.scrollToSelected();
     });
   }
 
-  // GENERAL
+  // PANEL HOOKS (PopupInputBase)
 
-  /** Toggle visibility of time picker panel (clock). */
-  private async toggleTimePickerVisibility() {
-    if (this.isClockVisible()) {
-      this.hidePanel();
-    } else {
-      // Reset placement to the baseline (below the input, left-aligned) BEFORE the panel renders.
-      // The measurement below then always runs under this known alignment - measuring the panel
-      // as left over from the previous open would judge alignment by the OLD placement.
-      this.containerStyle.set(panelPlacement.baseline);
-      this.isClockVisible.set(true);
-      this.findViewTime();
+  /**
+   * Seed the viewed local time and the keyboard cursor on every open, before the panel first
+   * renders: focus always moves into the hour listbox (see `focusPanelTarget`), so the active
+   * option must exist right away.
+   */
+  protected prepareOpen(): void {
+    this.findViewTime();
+    this.setupFocus(true);
+    this.activeColumn.set('hour');
+  }
 
-      // Seed keyboard focus state on EVERY open. Focus always moves into the hour listbox below,
-      // so the active option must exist right away.
-      this.setupFocus(true);
-      this.activeColumn.set('hour');
-
-      await forRender(this.injector);
-
-      // Adjust picker position if needed to prevent window overflow (measured under baseline).
-      this.positionPanel();
-
-      // Let the placement reach the DOM before focusing: focus() scrolls the focused
-      // element into view, so focusing while the panel still renders at its baseline
-      // (possibly below-the-fold) position makes the browser scroll the page to a spot
-      // the panel is about to leave. That scroll moves the page under the user's cursor
-      // and their next click can miss the label entirely (the click is retargeted to a
-      // common ancestor, so the toggle is silently lost).
-      await forRender(this.injector);
-
-      // Move keyboard focus into the panel (hour column) so user can navigate immediately.
-      // preventScroll: whenever the panel fits on either side, placement puts it inside the
-      // viewport, so there is nothing to reveal - and a focus-triggered page scroll would race
-      // with the user's mouse. When it fits on neither side, the panel deliberately stays below
-      // the fold (the user scrolls down to it), so we still must not yank the page around.
-      this.hourRef().nativeElement.focus({ preventScroll: true });
-    }
+  /** Keyboard focus enters the hour listbox so the user can navigate immediately. */
+  protected focusPanelTarget(): HTMLElement {
+    return this.hourRef().nativeElement;
   }
 
   /**
-   * Resolve the clock panel placement so it does not overflow the viewport.
-   * Runs once per open, right after the panel rendered under the baseline - the measurement
-   * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
+   * Reset the clock session when the panel hides: cursors drop so the closed panel does not
+   * keep aria-activedescendant pointing at hidden options, an incomplete pick is silently
+   * discarded (the session is what commits, see `tryCommit`), and the next open re-seeds from
+   * the (possibly changed) selection. The visible flag is already cleared by `hidePanel`.
    */
-  private positionPanel(): void {
-    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.pickerRef().nativeElement, this.clockPanelRef().nativeElement, panelPlacement));
+  protected resetOnClose(): void {
+    this.focusedHour.set(null);
+    this.focusedMinute.set(null);
+    this.hourSession.set('untouched');
+    this.minuteSession.set('untouched');
+    this.viewHour.set(null);
+    this.viewMinute.set(null);
   }
+
+  /**
+   * The clock panel renders its content inline immediately, but its placement must reach the
+   * DOM before focusing: focus() scrolls the focused element into view, so focusing while the
+   * panel still renders at its baseline (possibly below-the-fold) position makes the browser
+   * scroll the page to a spot the panel is about to leave. That scroll moves the page under
+   * the user's cursor and their next click can miss the label entirely (the click is
+   * retargeted to a common ancestor, so the toggle is silently lost).
+   */
+  protected override readonly secondRenderBeforeFocus = true;
+
+  // GENERAL
 
   /**
    * Find and set current time in the browser's local timezone.
@@ -525,12 +436,6 @@ export class TimePicker implements FormValueControl<Date | null> {
 
   // EVENTS: MOUSE HANDLERS
 
-  /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). Set only when a click-caused focus event is actually coming. */
-  private focusFromClick = false;
-
-  /** True while a programmatic refocus (e.g. after closing the panel) must not auto-open the panel. */
-  private suppressFocusOpen = false;
-
   /**
    * Handle mousedown on an hour/minute option: seed the keyboard cursor onto the pressed
    * option and mark its column active BEFORE the click lands. The browser's default mousedown
@@ -549,17 +454,6 @@ export class TimePicker implements FormValueControl<Date | null> {
     } else {
       this.focusedMinute.set(value);
     }
-  }
-
-  /**
-   * Handle mousedown on input: if focus is about to arrive (input not focused yet), mark it as
-   * click-caused so auto-open is skipped. An already-focused input produces no focus event,
-   * so nothing is marked - that is what keeps the flag from leaking (a stale flag would swallow
-   * the auto-open of the next Tab into the input).
-   * @param e Mouse event.
-   */
-  public handleMousedown(e: MouseEvent) {
-    this.focusFromClick = this.document.activeElement !== e.currentTarget;
   }
 
   /**
@@ -582,25 +476,8 @@ export class TimePicker implements FormValueControl<Date | null> {
     const header = target instanceof Element ? target.closest('.column-header') : null;
     // preventScroll: the default was cancelled above, so nothing native would scroll either -
     // this programmatic focus must not move the page right after the user's press (the panel
-    // can sit below the fold, see the open-path focus in `toggleTimePickerVisibility`).
+    // can sit below the fold, see the open-path focus in `togglePanel`).
     header?.closest('.clock-column-group')?.querySelector<HTMLElement>('.clock-column')?.focus({ preventScroll: true });
-  }
-
-  /** Handle focus arriving on the input (e.g. via Tab). */
-  public handleInputFocus() {
-    if (!this.focusFromClick && !this.suppressFocusOpen && !this.isClockVisible() && !this.disabled()) {
-      // Panel opening waits for renders internally; template event bindings never await the
-      // handler, so the work is deliberately fire-and-forget (`void` marks it as such).
-      void this.toggleTimePickerVisibility();
-    }
-    this.focusFromClick = false;
-  }
-
-  /** Handle click on the input. */
-  public handleClick() {
-    if (this.disabled()) return;
-    this.focusFromClick = false; // Any click-caused focus already happened (focus precedes click) - never leave a stale flag behind.
-    void this.toggleTimePickerVisibility();
   }
 
   /**
@@ -633,27 +510,6 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   // EVENTS: KEYBOARD HANDLERS
-
-  /**
-   * Handle keyboard on the input element.
-   * @param e Keyboard event.
-   */
-  public onInputKeydown(e: KeyboardEvent) {
-    if (this.disabled()) return;
-
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!this.isClockVisible()) void this.toggleTimePickerVisibility();
-    } else if (e.key === 'Escape' && this.isClockVisible()) {
-      e.preventDefault();
-      this.hidePanel();
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
-      // Default is prevented unconditionally: on a readonly input Backspace must never reach
-      // the browser's legacy history-back handling (Firefox), even when canNull forbids the clear.
-      e.preventDefault();
-      this.keyPressClear();
-    }
-  }
 
   /**
    * Handle keyboard on the hour listbox.
@@ -819,7 +675,7 @@ export class TimePicker implements FormValueControl<Date | null> {
       // Switch focus to hour column.
       this.activeColumn.set('hour');
       await forRender(this.injector);
-      // preventScroll: same reasoning as the open-path focus in `toggleTimePickerVisibility` -
+      // preventScroll: same reasoning as the open-path focus in `togglePanel` -
       // the panel may sit below the fold, and revealing it is the USER's job, not focus's.
       // Reveal inside the column is handled by `scrollHourIntoView`/`scrollMinuteIntoView`
       // (column scrollTop only), so nothing here needs a viewport scroll.
@@ -910,17 +766,6 @@ export class TimePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Clear the value via Delete/Backspace.
-   * Note: we test `value`, not `normalizedValue` so we can clear corrupted `Date`.
-   * @returns True when a value was actually cleared.
-   */
-  private keyPressClear(): boolean {
-    if (this.disabled() || !this.canNull() || this.value() === null) return false;
-    this.value.set(null);
-    return true;
-  }
-
-  /**
    * Set up focus values. Seeds from the DISPLAY selection (`selectedHour`/`selectedMinute` -
    * session pick ?? committed value), falling back to the viewed local time.
    * @param force If true, will override focused values. If false, will set focused values only if these are null.
@@ -932,126 +777,5 @@ export class TimePicker implements FormValueControl<Date | null> {
     if (force || this.focusedMinute() === null) {
       this.focusedMinute.set(this.selectedMinute() ?? this.viewMinute() ?? null);
     }
-  }
-
-  // UTILITIES
-
-  /**
-   * Show the clock panel when it is closed (no-op when already visible).
-   */
-  public async showPanel() {
-    if (this.disabled()) return;
-    if (this.isClockVisible()) return;
-    await this.toggleTimePickerVisibility();
-  }
-
-  /**
-   * Hide clock panel with hours and minutes.
-   * Also resets internals.
-   */
-  public hidePanel() {
-    if (!this.isClockVisible()) return; // already hidden
-
-    this.isClockVisible.set(false);
-    this.focusedHour.set(null);
-    this.focusedMinute.set(null);
-    this.hourSession.set('untouched');
-    this.minuteSession.set('untouched');
-    this.viewHour.set(null);
-    this.viewMinute.set(null);
-  }
-
-  /**
-   * Focusing the input auto-opens the panel (see `handleInputFocus`), so focus then continues
-   * into the hour listbox like it does on Tab.
-   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
-   * @returns The input that took focus, or null when the input is disabled.
-   */
-  public focusInput(options?: FocusOptions): HTMLElement | null {
-    const inputEl = this.inputRef().nativeElement;
-    if (inputEl.disabled) return null;
-    inputEl.focus(options);
-    return inputEl;
-  }
-
-  /**
-   * Focus the control on behalf of the signal-forms `Field` directive (the optional
-   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Delegates to
-   * `focusInput`, so the behavior mirrors Tab: the input takes focus and its focus handler
-   * auto-opens the clock panel. No-op when disabled (the input refuses focus).
-   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
-   */
-  public focus(options?: FocusOptions): void {
-    this.focusInput(options);
-  }
-
-  /**
-   * Hide panel and return focus to the input.
-   * Focus moves BEFORE the panel is hidden so the resulting focusout reports an internal move
-   * (relatedTarget is the input) instead of a leaving blur - focus must stay inside the component,
-   * so no touch is reported. The refocus is programmatic, so auto-open on focus is suppressed too.
-   */
-  public hidePanelAndRefocus() {
-    this.suppressFocusOpen = true;
-    // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
-    // preventScroll: after a close (minute pick, Escape, deselect) the page must stay where the
-    // user put it - scrolling back up to the input would yank the viewport away right after a
-    // click that landed on a below-the-fold panel. Tradeoff: when the user HAS scrolled the
-    // input out of view, focus lands off-screen; page position stays user-controlled (same
-    // contract as the open-path focus in `toggleTimePickerVisibility`), and the next Tab
-    // scrolls normally.
-    this.inputRef().nativeElement.focus({ preventScroll: true });
-    this.suppressFocusOpen = false;
-    this.hidePanel();
-  }
-
-  /**
-   * Hide panel and move focus to the next focusable element on page.
-   * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
-   * focus leaving the wrapper - nothing of the wrapper follows the input (the date sub-picker
-   * precedes it and the panel's columns carry tabindex=-1) - closes the panel and reports touch.
-   */
-  private hidePanelAndFocusNext() {
-    NavUtils.FocusNext(this.inputRef().nativeElement);
-    this.hidePanel();
-  }
-
-  /**
-   * Hide panel and move focus to the previous focusable element on page.
-   * Focus moves BEFORE the panel is hidden, so the hand-off is decided by `handleFocusOut`:
-   * landing outside the wrapper it reports touch, landing on the sibling date input of the same
-   * wrapper (datetime mode - this sub-picker is the last tab stop, so one step back is it) it
-   * stays quiet, because leaving the wrapper is what `touch` reports. The explicit hidePanel
-   * below closes the clock either way; on the sibling arrival the wrapper's focusin handler
-   * would close it too.
-   */
-  private hidePanelAndFocusPrev() {
-    NavUtils.FocusPrev(this.inputRef().nativeElement);
-    this.hidePanel();
-  }
-
-  /**
-   * Handle focus leaving the picker (e.g. Tab out of listbox). It closes clock panel and,
-   * unless focus only moved inside the component, reports the control as touched.
-   * Note the panel visibility is intentionally not checked: internal helpers hide the panel before
-   * or after focus moves, so a closed panel must still report touch when focus really left.
-   * @param e Focus event.
-   */
-  public handleFocusOut(e: FocusEvent) {
-    const next = e.relatedTarget;
-    // Own root covers the standalone case (no wrapper input configured, e.g. isolated tests).
-    if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
-    // The host DateTimePicker's root (forwarded through the `container` input) is the real
-    // component boundary the `touch` contract talks about: it contains this sub-picker, the
-    // sibling sub-picker and the wrapper's hidden label target. Focus reaching any of them
-    // (Tab between the time and date inputs, Shift+Tab back out of the clock onto the date
-    // input, label activation relaying through the hidden button) is an internal move, not a
-    // blur. Elements outside it - including other components' hidden-label buttons - still
-    // count as leaving.
-    const container = this.container();
-    if (next instanceof Node && container !== null && container.contains(next)) return;
-    this.hidePanel();
-    if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
-    this.touch.emit();
   }
 }

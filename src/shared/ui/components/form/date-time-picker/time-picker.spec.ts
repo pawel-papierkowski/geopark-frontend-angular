@@ -1178,7 +1178,7 @@ describe('TimePicker', () => {
         // Arrange: Create component and open the panel (chrome = padding/border of the panel).
         const fixture = await arrangeTimePicker();
         await openPanel(fixture);
-        const panel = fixture.componentInstance.clockPanelRef().nativeElement;
+        const panel = fixture.componentInstance.panelRef().nativeElement;
 
         // Act: Dispatch a real cancelable mousedown on the panel itself.
         const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });

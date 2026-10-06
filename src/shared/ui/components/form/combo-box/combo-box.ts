@@ -2,26 +2,11 @@ import { Component, effect, inject, model, input, output, computed, linkedSignal
 import { FormValueControl } from '@angular/forms/signals';
 import {TranslateService } from '@ngx-translate/core';
 
-import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
 import { forRender } from '@/shared/utils/render/after-render';
 import { IdService } from '@/shared/utils/id/id-service';
-
-/**
- * Placement of the options list relative to its anchor - single source of truth for both the
- * baseline reset on open and the flip decision (see `WindowUtils.resolvePanelPlacement`).
- * Baseline stretches the list to the anchor width (`left: 0; right: 0`), matching the CSS.
- * `flipY` anchors the list's BOTTOM to the anchor's TOP (`bottom: 100%`), NOT `bottom: 0`:
- * `bottom: 0` would pin it to the anchor's bottom, so the list would cover the combobox.
- * The anchor is the combobox root - it is the positioned ancestor the list's `top/bottom`
- * percentages resolve against. When the list fits on neither side of the root, it stays
- * below (baseline) so the user can scroll down to it.
- * Note: both flips rely on `.combobox-options` having zero right/bottom margins.
- */
-const panelPlacement: PanelPlacement = {
-  baseline: { top: '100%', bottom: 'auto', left: '0', right: '0' },
-  flipX: { left: 'auto', right: '0' },
-  flipY: { top: 'auto', bottom: '100%' },
-};
+import { stretchPanelPlacement } from '@/shared/ui/components/form/popup-panel/popup-panel-placement';
+import { PanelPositioning } from '@/shared/ui/components/form/popup-panel/popup-panel-positioning';
+import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-label-activation';
 
 /** Custom combobox implementation. Needed because <select> and <option> have very poor CSS support for dropdown lists
  * across all browsers.
@@ -98,24 +83,19 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
   /** Indicates visibility of combobox list. */
   public isOpen = signal(false);
-  /** Tracks if focus handler just opened the list (to suppress synthetic follow-up click).  */
-  private focusOpened = signal(false);
-  /** What this label activation's forwarded click decided. Engines disagree on label activation
-   * order: Chromium/Firefox focus the hidden button first and forward the click second, WebKit
-   * does the reverse - so the focus handler that runs AFTER the click (WebKit) must not re-run
-   * the toggle the click already made (reopening a list the click just closed). `none` until a
-   * forwarded click toggles; cleared when the pointer interaction or the focus episode ends. */
-  private labelClickDecision = signal<'none' | 'open' | 'closed'>('none');
+  /** Label-activation coordination (focus-opens marker + forwarded-click decision, `closed`
+   * for this component) plus the document guard; see `LabelActivation` for the full contract. */
+  private readonly labelActivation = new LabelActivation<'closed'>();
   /** Index of currently highlighted option. -1 means none highlighted. */
   public highlightedIndex = signal(-1);
   /**
-   * Inline style of the options list (see `panelPlacement`). All four insets are managed
-   * TOGETHER: the CSS default (`top: 100%`, `left: 0`, `right: 0`) can be overridden inline,
-   * so a stale inline `top: auto` from a previous upward flip would otherwise persist, and
-   * having both `top` and `bottom` non-auto would over-constrain the absolutely positioned list.
-   * Reset to the baseline on every open before measuring.
+   * Placement state of the options list: inline insets plus the reset-baseline-before-measure
+   * contract (see `PanelPositioning` and `stretchPanelPlacement`). Bound to the list's inline
+   * style; reset on every open before measuring.
    */
-  public containerStyle = signal<PanelInsets>(panelPlacement.baseline);
+  private readonly positioning = new PanelPositioning(stretchPanelPlacement);
+  /** Inline style of the options list; alias of `positioning.containerStyle`. */
+  public readonly containerStyle = this.positioning.containerStyle;
   /** Number of the most recent open - drops stale placement work from an earlier open. */
   private positionSession = 0;
   /** Root focusable element (role=combobox). */
@@ -129,46 +109,19 @@ export class ComboBox implements FormValueControl<number | string | null> {
       if (this.disabled() && this.isOpen()) this.hidePanel();
     });
 
-    // A <label> is not focusable, so the browser's default mousedown action moves focus from the
-    // combobox root to <body>. That transient blur closes the list, then label activation refocuses
-    // the root (reopening the list and arming focusOpened), which swallows the toggle click and
-    // leaves the list stuck open on every second label click. Canceling the default keeps focus on
-    // the root; label activation runs on the subsequent click, so opening still works.
-    // Capture phase: must run before any handler could stop propagation. mousedown (not pointerdown):
-    // canceling pointerdown would also suppress the click and break label activation entirely.
-
-    /**
-     * Handle document-level mousedown: cancel focus steal when the press lands on this
-     * component's associated label, and close the open options list when the press lands
-     * outside the component entirely.
-     *
-     * The outside-press close exists because blur alone does not cover pointer presses:
-     * WebKit does not reliably move focus on an outside press (buttons and other non-text
-     * controls are not click-focused on macOS, and pressing non-focusable content does not
-     * necessarily blur the focused element), so the blur-only close leaves the list open
-     * there. The press handler closes independently of focus - the blur path stays for Tab
-     * and other programmatic focus moves, and it (not this handler) reports `touch`.
-     * @param e Mousedown event.
-     */
-    const handleDocumentMousedown = (e: Event) => {
-      // New pointer interaction: no forwarded click of an earlier activation may judge this one.
-      this.labelClickDecision.set('none');
-      const target = e.target;
-      const ident = this.resolvedIdent();
-      const isOwnLabel = ident !== '' && target instanceof HTMLLabelElement && target.htmlFor === ident;
-
-      // Prevent reopening panel when you click outside panel, but on label.
-      if (isOwnLabel) {
-        e.preventDefault();
-        return;
-      }
-
-      if (this.isOpen() && target instanceof Node && !this.comboRef().nativeElement.contains(target)) {
-        this.hidePanel();
-      }
-    };
-    this.document.addEventListener('mousedown', handleDocumentMousedown, true);
-    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', handleDocumentMousedown, true));
+    // Document-level guard for label activation: resets the interaction markers, cancels the
+    // focus steal when the press lands on this component's own label and closes the options
+    // list when the press lands outside the component entirely (mechanics and rationale in
+    // `LabelActivation.installDocumentGuard`).
+    this.labelActivation.installDocumentGuard({
+      document: this.document,
+      destroyRef: this.destroyRef,
+      ident: () => this.resolvedIdent(),
+      boundary: () => this.comboRef().nativeElement,
+      onOutsidePress: () => {
+        if (this.isOpen()) this.hidePanel();
+      },
+    });
   }
 
   // COMPUTED
@@ -198,7 +151,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     // Reset placement to the baseline (below the anchor, stretched) BEFORE the list renders,
     // so the measurement below always runs under this known alignment - measuring the list
     // as left over from the previous open would judge alignment by the OLD placement.
-    this.containerStyle.set(panelPlacement.baseline);
+    this.positioning.resetBaseline();
     const session = ++this.positionSession;
     this.isOpen.set(true);
     void this.positionOptionsPanel(session);
@@ -227,7 +180,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     await forRender(this.injector);
 
     if (session !== this.positionSession || !this.isOpen()) return;
-    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.comboRef().nativeElement, this.optionsRef().nativeElement, panelPlacement));
+    this.positioning.resolve(this.comboRef().nativeElement, this.optionsRef().nativeElement);
   }
 
   /**
@@ -270,17 +223,16 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /** Handle focus: handles direct clicks, label clicks, and Tab. */
   public handleFocus() {
     if (this.disabled()) return;
-    const decision = this.labelClickDecision();
-    if (decision !== 'none') {
+    if (this.labelActivation.consumeDecision() !== 'none') {
       // Click-first engine (WebKit): the activation's forwarded click already toggled the list,
-      // the following focus only steered it back from the hidden button - consume the decision
-      // and leave the list exactly as the click left it (open stays open, closed stays closed).
-      this.labelClickDecision.set('none');
+      // the following focus only steered it back from the hidden button - the decision was
+      // consumed above, so the list stays exactly as the click left it (open stays open,
+      // closed stays closed).
       return;
     }
     if (!this.isOpen()) {
       this.openList();
-      this.focusOpened.set(true);
+      this.labelActivation.focusOpened.set(true);
     }
   }
 
@@ -304,7 +256,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     if (next instanceof Node && this.comboRef().nativeElement.contains(next)) return;
     // Focus really left the component: a click decision recorded by a focus-first engine's
     // (Chromium/Firefox) label activation - whose click runs last - is now obsolete.
-    this.labelClickDecision.set('none');
+    this.labelActivation.clickDecision.set('none');
     this.hidePanel();
     this.touch.emit();
   }
@@ -313,7 +265,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   public handleClick() {
     if (this.disabled()) return;
 
-    if (this.focusOpened()) {
+    if (this.labelActivation.focusOpened()) {
       // Focus already opened the list (label or Tab). Suppress any synthetic click.
       this.resetInteractionState();
       return;
@@ -325,10 +277,10 @@ export class ComboBox implements FormValueControl<number | string | null> {
     if (this.isOpen()) {
       // Record the decision so a focus-first-paired focus handler (WebKit forwards the click
       // BEFORE focusing the hidden button) does not toggle again right after this one.
-      this.labelClickDecision.set('open');
+      this.labelActivation.clickDecision.set('open');
       this.openList();
     } else {
-      this.labelClickDecision.set('closed');
+      this.labelActivation.clickDecision.set('closed');
       this.highlightedIndex.set(-1);
     }
   }
@@ -414,7 +366,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
   /** Reset interaction state (must be called when any interaction completes). */
   private resetInteractionState() {
-    this.focusOpened.set(false);
+    this.labelActivation.focusOpened.set(false);
   }
 
   /**

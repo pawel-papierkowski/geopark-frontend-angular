@@ -1,33 +1,13 @@
-import { Component, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, DOCUMENT } from '@angular/core';
-import { FormValueControl } from '@angular/forms/signals';
+import { Component, inject, input, signal, computed, viewChild, ElementRef } from '@angular/core';
 
 import { TranslateService } from '@ngx-translate/core';
 
 import { TimeUtils } from '@/core/utils/TimeUtils';
-import { NavUtils } from '@/core/utils/NavUtils';
-import { WindowUtils, type PanelPlacement, type PanelInsets } from '@/core/utils/WindowUtils';
-import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { forRender } from '@/shared/utils/render/after-render';
+import { popupPanelPlacement } from '@/shared/ui/components/form/popup-panel/popup-panel-placement';
+import { PopupInputBase } from '@/shared/ui/components/form/popup-panel/popup-input-base';
 
 import { EnCalendarCellType, CalendarCell, CalendarCellView } from '@/shared/ui/other/types';
-
-/**
- * Placement of the calendar panel relative to its input - single source of truth for both the
- * baseline reset on open and the flip decision (see `WindowUtils.resolvePanelPlacement`).
- * `flipY` anchors the panel's BOTTOM to the input's TOP (`bottom: 100%`), NOT `bottom: 0`:
- * `bottom: 0` would pin the panel's bottom to the input's bottom, so the panel would sit
- * ON TOP of the input and intercept its clicks.
- * The anchor is the picker root - it is the positioned ancestor the panel's `top/bottom`
- * percentages resolve against. When the panel fits on neither side of the root, it stays
- * below (baseline) so the user can scroll down to it.
- * Note: both flips rely on `.calendar-container` having zero right/bottom margins
- * (`--datetimepicker-calendar-offset` in styles/var/components-custom.css).
- */
-const panelPlacement: PanelPlacement = {
-  baseline: { top: '100%', bottom: 'auto', left: '0', right: 'auto' },
-  flipX: { left: 'auto', right: '0' },
-  flipY: { top: 'auto', bottom: '100%' },
-};
 
 /**
  * This is a date picker. Uses `Date` class for both input and output. Do not use it directly.
@@ -69,70 +49,29 @@ const panelPlacement: PanelPlacement = {
   styleUrl: './date-picker.css',
   templateUrl: './date-picker.html',
 })
-export class DatePicker implements FormValueControl<Date | null> {
-  private injector = inject(Injector);
+export class DatePicker extends PopupInputBase<Date> {
   /** For programmatic translations. */
   private readonly translateService = inject(TranslateService);
-  /** Injectable document, used for the global focus check in `handleMousedown`. */
-  private readonly document = inject(DOCUMENT);
 
-  /** Value held by component. */
-  public value = model<Date | null>(null);
-  /** Identifier for this component. */
-  public ident = input<string>('');
-  /** Label reference: id of an external element (usually `<label>`) used for `aria-labelledby`. */
-  public label = input<string>('');
-  /** If true, append a hidden "Date" qualifier to the accessible name (see `nameRefs`). */
-  public qualifyLabel = input<boolean>(false);
-  /** Root element of the host DateTimePicker wrapper - the component boundary for focus containment. */
-  public container = input<Element | null>(null);
-  /** If true, allow deselecting date. */
-  public canNull = input<boolean>(false);
   /** If true, show weeks. */
   public showWeeks = input<boolean>(false);
   /** If not null, defines earliest allowed date. Interpreted as the bound's LOCAL calendar day (time-of-day ignored). */
   public dateMin = input<Date | null>(null);
   /** If not null, defines latest allowed date. Interpreted as the bound's LOCAL calendar day (time-of-day ignored). */
   public dateMax = input<Date | null>(null);
-  /** Is component required? */
-  public readonly required = input<boolean>(false);
-  /** Is component disabled? */
-  public readonly disabled = input<boolean>(false);
-  /** Is component invalid? */
-  public readonly invalid = input<boolean>(false);
-  /** Informs that user blurred out of component. */
-  public touch = output<void>();
 
   /** Shortcuts for days of week used in lang keys. */
   public daysOfWeek = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
   // REFERENCES
 
-  /** Root focusable element. */
-  private pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
-  /** Reference to the text input. */
-  private inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
-  /** Reference to calendar panel. */
-  public calendarPanelRef = viewChild.required<ElementRef<HTMLDivElement>>('calendarPanelRef');
   /** Reference to calendar grid. Used for keyboard navigation. */
   public calendarGridRef = viewChild.required<ElementRef<HTMLDivElement>>('calendarGridRef');
 
   // SIGNALS
 
-  /**
-   * Value of the input's `aria-labelledby`: the external label id, plus (when `qualifyLabel`)
-   * this sub-field's hidden qualifier id; null when no label is set (the input then falls back
-   * to `aria-label`). The qualified name reads "<label> Date" - the label text stays a prefix,
-   * so the visible label remains inside the accessible name (WCAG 2.5.3) for voice control.
-   */
-  public readonly nameRefs = computed<string | null>(() => {
-    const label = this.label();
-    if (label === '') return null;
-    return this.qualifyLabel() ? `${label} ${this.ident()}_qualifier` : label;
-  });
-
-  /** Indicates visibility of calendar panel. */
-  public readonly isCalendarVisible = signal(false);
+  /** Indicates visibility of calendar panel; domain-named alias of the shared `panelVisible`. */
+  public readonly isCalendarVisible = this.panelVisible;
 
   /** Date under keyboard focus within the calendar grid. Set when panel opens, updated via arrow navigation. */
   public focusedDate = signal<Date | null>(null);
@@ -145,22 +84,7 @@ export class DatePicker implements FormValueControl<Date | null> {
   /** Currently viewed date in the grid. */
   public viewDate = signal<Date | null>(null);
 
-  /**
-   * Inline style of the clock panel (see `panelPlacement`). All four insets are managed
-   * TOGETHER: the CSS default (`top: 100%`, `left: 0`) can be overridden inline, so a stale
-   * inline `top: auto` from a previous upward flip would otherwise persist, and having both
-   * `top` and `bottom` non-auto would over-constrain the absolutely positioned panel.
-   * Reset to the baseline on every open before measuring.
-   */
-  public containerStyle = signal<PanelInsets>(panelPlacement.baseline);
-
   // COMPUTED
-
-  /** `value` when it carries a real date, otherwise null. Prevents showing NaN on invalid Date and similar bugs. */
-  private normalizedValue = computed<Date | null>(() => {
-    const value = this.value();
-    return value !== null && !Number.isNaN(value.getTime()) ? value : null;
-  });
 
   /**
    * `dateMin` reduced to UTC midnight of its LOCAL calendar day (see `canPick`). Bounds are
@@ -304,59 +228,52 @@ export class DatePicker implements FormValueControl<Date | null> {
     return index >= 0 ? `${this.ident()}_cell_${index}` : undefined;
   });
 
-  constructor() {
-    // Watch `disabled` field: close calendar panel when component becomes disabled.
-    effect(() => {
-      if (this.disabled() && this.isCalendarVisible()) this.hidePanel();
-    });
+  /** Name of this component for dev-only diagnostics (see `PopupInputBase.componentName`). */
+  protected readonly componentName = 'date-picker';
 
-    // Dev-only: catch a `label` id that matches no element. A dangling aria-labelledby leaves
-    // this input without an accessible name (its aria-label fallback is suppressed whenever
-    // label is set), which no assertion would catch. Re-runs whenever label or ident changes.
-    effect(() => {
-      warnDanglingLabel(this.document, this.label(), this.ident(), 'date-picker');
-    });
+  constructor() {
+    super(popupPanelPlacement);
   }
 
-  // GENERAL
+  // PANEL HOOKS (PopupInputBase)
 
-  /** Toggle visibility of date picker panel (calendar). */
-  private async toggleDatePickerVisibility() {
-    if (this.isCalendarVisible()) {
-      this.hidePanel();
-    } else {
-      // Reset placement to the baseline (below the input, left-aligned) BEFORE the panel renders.
-      // The measurement below then always runs under this known alignment - measuring the panel
-      // as left over from the previous open would judge alignment by the OLD placement.
-      this.containerStyle.set(panelPlacement.baseline);
-      this.isCalendarVisible.set(true);
-      this.findViewDate();
+  /**
+   * Seed the viewed month and the keyboard cursor on every open, before the panel first
+   * renders: focus always moves into the calendar grid (see `focusPanelTarget`), so the active
+   * cell must exist right away.
+   */
+  protected prepareOpen(): void {
+    this.findViewDate();
+    this.setupFocus(true);
+  }
 
-      // Seed keyboard focus state on EVERY open. Focus always moves into the calendar grid,
-      // so the active option must exist right away.
-      this.setupFocus(true);
-
-      await forRender(this.injector);
-
-      // Adjust picker position if needed to prevent window overflow (measured under baseline).
-      this.positionPanel();
-
-      // Move keyboard focus into the panel (calendar grid) so navigation keys work right away.
-      // preventScroll: the panel was just placed to fit the viewport (or deliberately left below
-      // the fold when it fits on neither side), so there is nothing to reveal - and a
-      // focus-triggered page scroll would race with the user's mouse.
-      this.calendarGridRef().nativeElement.focus({ preventScroll: true });
-    }
+  /** Keyboard focus enters the calendar grid so navigation keys work right away. */
+  protected focusPanelTarget(): HTMLElement {
+    return this.calendarGridRef().nativeElement;
   }
 
   /**
-   * Resolve the calendar panel placement so it does not overflow the viewport.
-   * Runs once per open, right after the panel rendered under the baseline - the measurement
-   * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
+   * Reset the keyboard cursor when the panel hides: the closed grid must not keep
+   * aria-activedescendant pointing at a hidden cell, and the next open re-seeds the cursor
+   * from the (possibly changed) selection (mirrors time-picker's cursor reset in its
+   * `resetOnClose`). The visible flag is already cleared by `hidePanel`.
    */
-  private positionPanel(): void {
-    this.containerStyle.set(WindowUtils.resolvePanelPlacement(this.pickerRef().nativeElement, this.calendarPanelRef().nativeElement, panelPlacement));
+  protected resetOnClose(): void {
+    this.focusedDate.set(null);
   }
+
+  /**
+   * Forward Tab while the panel is open is anchored on the GRID, not the input: while the panel
+   * is open the input is followed by the grid itself (tabindex=0), so an input-anchored step
+   * would resolve to the grid, focus would never leave this sub-picker and the hand-off would
+   * be a no-op.
+   * @returns The calendar grid, the element the next-focus step starts from.
+   */
+  protected override focusAnchorForNext(): HTMLElement {
+    return this.calendarGridRef().nativeElement;
+  }
+
+  // GENERAL
 
   /**
    * Find and set the date shown in the grid.
@@ -632,23 +549,6 @@ export class DatePicker implements FormValueControl<Date | null> {
 
   // EVENTS: MOUSE HANDLERS
 
-  /** Tracks if the next focus event is caused by a mouse click (to avoid auto-open on click). Set only when a click-caused focus event is actually coming. */
-  private focusFromClick = false;
-
-  /** True while a programmatic refocus (e.g. after closing the panel) must not auto-open the panel. */
-  private suppressFocusOpen = false;
-
-  /**
-   * Handle mousedown on input: if focus is about to arrive (input not focused yet), mark it as
-   * click-caused so auto-open is skipped. An already-focused input produces no focus event,
-   * so nothing is marked - that is what keeps the flag from leaking (a stale flag would swallow
-   * the auto-open of the next Tab into the input).
-   * @param e Mouse event.
-   */
-  public handleMousedown(e: MouseEvent) {
-    this.focusFromClick = this.document.activeElement !== e.currentTarget;
-  }
-
   /**
    * Guard mousedown on the calendar panel. Its chrome (padding, border, gaps around the cells) is
    * not focusable, so the browser's focus fixup would move focus to <body>; the panel's focusout
@@ -675,45 +575,7 @@ export class DatePicker implements FormValueControl<Date | null> {
     this.focusedDate.set(this.calendarCellToDate(calendarCell));
   }
 
-  /** Handle focus arriving on the input (e.g. via Tab). */
-  public handleInputFocus() {
-    if (!this.focusFromClick && !this.suppressFocusOpen && !this.isCalendarVisible() && !this.disabled()) {
-      // Panel opening waits for renders internally; template event bindings never await the
-      // handler, so the work is deliberately fire-and-forget (`void` marks it as such).
-      void this.toggleDatePickerVisibility();
-    }
-    this.focusFromClick = false;
-  }
-
-  /** Handle click on the input. */
-  public handleClick() {
-    if (this.disabled()) return;
-    this.focusFromClick = false; // Any click-caused focus already happened (focus precedes click) - never leave a stale flag behind.
-    void this.toggleDatePickerVisibility();
-  }
-
   // EVENTS: KEYBOARD HANDLERS
-
-  /**
-   * Handle keyboard on the input element.
-   * @param e Keyboard event.
-   */
-  public onInputKeydown(e: KeyboardEvent) {
-    if (this.disabled()) return;
-
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!this.isCalendarVisible()) void this.toggleDatePickerVisibility();
-    } else if (e.key === 'Escape' && this.isCalendarVisible()) {
-      e.preventDefault();
-      this.hidePanel();
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
-      // Default is prevented unconditionally: on a readonly input Backspace must never reach
-      // the browser's legacy history-back handling (Firefox), even when canNull forbids the clear.
-      e.preventDefault();
-      this.keyPressClear();
-    }
-  }
 
   /** Handle keyboard on the calendar grid. */
   onGridKeydown(e: KeyboardEvent) {
@@ -885,17 +747,6 @@ export class DatePicker implements FormValueControl<Date | null> {
   }
 
   /**
-   * Clear the value via Delete/Backspace.
-   * Note: we test `value`, not `normalizedValue` so we can clear corrupted `Date`.
-   * @returns True when a value was actually cleared.
-   */
-  private keyPressClear(): boolean {
-    if (this.disabled() || !this.canNull() || this.value() === null) return false;
-    this.value.set(null);
-    return true;
-  }
-
-  /**
    * Set up focus values. Seeds from the DISPLAY selection, falling back to the viewed local date.
    * @param force If true, will override focused values. If false, will set focused values only if these are null.
    */
@@ -903,124 +754,5 @@ export class DatePicker implements FormValueControl<Date | null> {
     if (force || this.focusedDate() === null) {
       this.focusedDate.set(this.selectedDate() ?? this.viewDate() ?? null);
     }
-  }
-
-  // UTILITIES
-
-  /**
-   * Show the calendar panel when it is closed (no-op when already visible).
-   */
-  public async showPanel() {
-    if (this.disabled()) return;
-    if (this.isCalendarVisible()) return;
-    await this.toggleDatePickerVisibility();
-  }
-
-  /**
-   * Hide calendar panel.
-   * Also resets the pick session: the keyboard cursor drops so the closed grid does not keep
-   * aria-activedescendant pointing at a hidden cell, and the next open re-seeds it from the
-   * (possibly changed) selection (mirrors time-picker's cursor reset in its `hidePanel`).
-   */
-  public hidePanel() {
-    if (!this.isCalendarVisible()) return; // already hidden
-
-    this.isCalendarVisible.set(false);
-    this.focusedDate.set(null);
-  }
-
-  /**
-   * Focusing the input auto-opens the panel (see `handleInputFocus`).
-   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
-   * @returns The input that took focus, or null when the input is disabled.
-   */
-  public focusInput(options?: FocusOptions): HTMLElement | null {
-    const inputEl = this.inputRef().nativeElement;
-    if (inputEl.disabled) return null;
-    inputEl.focus(options);
-    return inputEl;
-  }
-
-  /**
-   * Focus the control on behalf of the signal-forms `Field` directive (the optional
-   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Delegates to
-   * `focusInput`, so the behavior mirrors Tab: the input takes focus and its focus handler
-   * auto-opens the calendar panel. No-op when disabled (the input refuses focus).
-   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
-   */
-  public focus(options?: FocusOptions): void {
-    this.focusInput(options);
-  }
-
-  /**
-   * Hide panel and return focus to the input.
-   * Focus moves BEFORE the panel is hidden so the resulting focusout reports an internal move
-   * (relatedTarget is the input) instead of a leaving blur - focus must stay inside the component,
-   * so no touch is reported. The refocus is programmatic, so auto-open on focus is suppressed too.
-   */
-  public hidePanelAndRefocus() {
-    this.suppressFocusOpen = true;
-    // Focus dispatch is synchronous, so the focus handler skips auto-open while the flag is set.
-    // preventScroll: after a close (minute pick, Escape, deselect) the page must stay where the
-    // user put it - scrolling back up to the input would yank the viewport away right after a
-    // click that landed on a below-the-fold panel. Tradeoff: when the user HAS scrolled the
-    // input out of view, focus lands off-screen; page position stays user-controlled (same
-    // contract as the open-path focus in `toggleTimePickerVisibility`), and the next Tab
-    // scrolls normally.
-    this.inputRef().nativeElement.focus({ preventScroll: true });
-    this.suppressFocusOpen = false;
-    this.hidePanel();
-  }
-
-  /**
-   * Hide panel and move focus to the next focusable element on page.
-   * Focus moves BEFORE the panel is hidden, so the hand-off is decided by `handleFocusOut`:
-   * landing outside the wrapper it reports touch, landing on the sibling time input of the same
-   * wrapper (datetime mode) it stays quiet - leaving the wrapper is what `touch` reports. The
-   * explicit hidePanel below closes the calendar either way; on the sibling arrival the
-   * wrapper's focusin handler would close it too.
-   * Anchored on the GRID, not the input: while the panel is open the input is followed by the
-   * grid itself (tabindex=0), so an input-anchored step would resolve to the grid, focus would
-   * never leave this sub-picker and the hand-off would be a no-op.
-   */
-  private hidePanelAndFocusNext() {
-    NavUtils.FocusNext(this.calendarGridRef().nativeElement);
-    this.hidePanel();
-  }
-
-  /**
-   * Hide panel and move focus to the previous focusable element on page.
-   * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then sees
-   * focus leaving the wrapper (the hidden label target ahead of the input has tabindex=-1, so it
-   * is skipped), closes the panel and reports touch.
-   */
-  private hidePanelAndFocusPrev() {
-    NavUtils.FocusPrev(this.inputRef().nativeElement);
-    this.hidePanel();
-  }
-
-  /**
-   * Handle focus leaving the picker (e.g. Tab out of grid). It closes calendar panel and,
-   * unless focus only moved inside the component, reports the control as touched.
-   * Note the panel visibility is intentionally not checked: internal helpers hide the panel before
-   * or after focus moves, so a closed panel must still report touch when focus really left.
-   * @param e Focus event.
-   */
-  public handleFocusOut(e: FocusEvent) {
-    const next = e.relatedTarget;
-    // Own root covers the standalone case (no wrapper input configured, e.g. isolated tests).
-    if (next instanceof Node && this.pickerRef().nativeElement.contains(next)) return;
-    // The host DateTimePicker's root (forwarded through the `container` input) is the real
-    // component boundary the `touch` contract talks about: it contains this sub-picker, the
-    // sibling sub-picker and the wrapper's hidden label target. Focus reaching any of them
-    // (Tab between the date and time inputs, Shift+Tab back out of the clock onto the date
-    // input, label activation relaying through the hidden button) is an internal move, not a
-    // blur. Elements outside it - including other components' hidden-label buttons - still
-    // count as leaving.
-    const container = this.container();
-    if (next instanceof Node && container !== null && container.contains(next)) return;
-    this.hidePanel();
-    if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
-    this.touch.emit();
   }
 }

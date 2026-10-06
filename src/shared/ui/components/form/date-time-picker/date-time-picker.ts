@@ -1,8 +1,9 @@
-import { Component, model, input, output, computed, inject, linkedSignal, signal, viewChild, DestroyRef, DOCUMENT, ElementRef } from '@angular/core';
+import { Component, model, input, output, computed, inject, linkedSignal, viewChild, DestroyRef, DOCUMENT, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
 import { enDateTimePickerMode } from '@/shared/ui/other/types';
+import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-label-activation';
 
 import { DatePicker } from './date-picker';
 import { TimePicker } from './time-picker';
@@ -84,19 +85,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** Informs that user blurred out of component. */
   public touch = output<void>();
 
-  /** Whether the current label activation's focus redirect just opened the panel; the click that
-   * label activation forwards right after the focus must then be swallowed instead of toggling
-   * the panel closed again. Mirrors combo-box `focusOpened`. */
-  private focusOpened = signal(false);
-
-  /** What this label activation's forwarded click decided. Engines disagree on label activation
-   * order: Chromium/Firefox focus the hidden button first and forward the click second, WebKit
-   * does the reverse - so the focus handler that runs AFTER the click (WebKit) must only restore
-   * focus, never re-run the toggle the click already made. `closed:date`/`closed:time` also record
-   * WHICH sub-picker the click closed, because by the time the focus handler runs that panel is
-   * already shut and its visibility can no longer tell the two apart. `none` until a forwarded
-   * click runs; reset at the start of every pointer interaction, like `focusOpened`. */
-  private labelClickDecision = signal<'none' | 'open' | 'closed:date' | 'closed:time'>('none');
+  /** Label-activation coordination (focus-opens marker + forwarded-click decision) plus the
+   * document guard; see `LabelActivation` for the full contract. `closed:date`/`closed:time`
+   * record WHICH sub-picker the click closed, because by the time the focus handler runs that
+   * panel is already shut and its visibility can no longer tell the two apart. */
+  private readonly labelActivation = new LabelActivation<'closed:date' | 'closed:time'>();
 
   /** Date sub-picker component. Absent when `mode` does not render it, hence not `required`. */
   private datePicker = viewChild(DatePicker);
@@ -113,55 +106,20 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   public timeIdent = computed(() => `timeId_${this.resolvedIdent()}`);
 
   constructor() {
-    // A <label> is not focusable, so mousedown on it moves focus from the sub-picker input to
-    // <body>; that blur closes the panel and reports a spurious touch, right before label
-    // activation refocuses the input and reopens the panel. Canceling the default keeps focus in
-    // place - label activation runs on the subsequent click, so redirecting focus still works.
-    // Capture phase, so no other handler can swallow it first; mousedown (not pointerdown),
-    // because canceling pointerdown would also suppress the click and break label activation.
-
-    /**
-     * Begin a fresh pointer interaction: cancel focus steal when the press lands on this
-     * component's associated label, and close the open time panel when the press lands
-     * outside the wrapper entirely.
-     * Resetting `focusOpened` handles a focus-only activation that never received its click -
-     * without it, that stale marker would swallow the next activation's toggle. Resetting
-     * `labelClickDecision` equally clears the previous activation's click decision, so a fresh
-     * activation is never judged by its predecessor. Reset happens before label activation's
-     * focus (and its markers) of the interaction that follows.
-     *
-     * The outside-press close exists because focusout alone does not cover pointer presses:
-     * WebKit does not reliably move focus on an outside press (buttons and other non-text
-     * controls are not click-focused on macOS, and pressing non-focusable content does not
-     * necessarily blur the focused element), so the focusout-only close leaves the panel open
-     * there. The press handler closes unconditionally of focus - the focusout path stays for
-     * Tab and other programmatic focus moves, and it (not this handler) reports `touch`.
-     * @param e Mousedown event.
-     */
-    const handleDocumentMousedown = (e: Event) => {
-      this.focusOpened.set(false);
-      this.labelClickDecision.set('none');
-      const target = e.target;
-      const ident = this.resolvedIdent();
-      const isOwnLabel = ident !== '' && target instanceof HTMLLabelElement && target.htmlFor === ident;
-
-      // Prevent reopening panel when you click outside panel, but on label.
-      if (isOwnLabel) {
-        e.preventDefault();
-        return;
-      }
-
-      const datePicker = this.datePicker();
-      if (datePicker !== undefined && target instanceof Node && !this.rootRef().nativeElement.contains(target)) {
-        datePicker.hidePanel();
-      }
-      const timePicker = this.timePicker();
-      if (timePicker !== undefined && target instanceof Node && !this.rootRef().nativeElement.contains(target)) {
-        timePicker.hidePanel();
-      }
-    };
-    this.document.addEventListener('mousedown', handleDocumentMousedown, true);
-    this.destroyRef.onDestroy(() => this.document.removeEventListener('mousedown', handleDocumentMousedown, true));
+    // Document-level guard for label activation: resets the interaction markers, cancels the
+    // focus steal when the press lands on this component's own label and closes the sub-picker
+    // panels when the press lands outside the wrapper entirely (mechanics and rationale in
+    // `LabelActivation.installDocumentGuard`).
+    this.labelActivation.installDocumentGuard({
+      document: this.document,
+      destroyRef: this.destroyRef,
+      ident: () => this.resolvedIdent(),
+      boundary: () => this.rootRef().nativeElement,
+      onOutsidePress: () => {
+        this.datePicker()?.hidePanel();
+        this.timePicker()?.hidePanel();
+      },
+    });
   }
 
   /**
@@ -197,7 +155,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     const datePicker = this.datePicker();
     const timePicker = this.timePicker();
 
-    const decision = this.labelClickDecision();
+    const decision = this.labelActivation.clickDecision();
     if (decision === 'closed:date' || decision === 'closed:time') {
       // The click already closed this sub-picker's panel - restore focus on its input without
       // re-running the toggle. Deliberately NOT gated on visibility: the click closed the panel
@@ -215,7 +173,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     // We know decision is 'none'. `wasClosed` means "NEITHER panel is open".
     const wasClosed = !(datePicker?.isCalendarVisible() ?? false) && !(timePicker?.isClockVisible() ?? false);
     this.focusSubPicker();
-    if (wasClosed) this.focusOpened.set(true);
+    if (wasClosed) this.labelActivation.focusOpened.set(true);
   }
 
   /**
@@ -224,31 +182,31 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * First activation: the paired focus just opened the panel - swallow the click (no toggle).
    * Every later activation toggles: when open, close via `hidePanelAndRefocus()` so focus parks
    * on the input without re-triggering auto-open; when closed, redirect focus to reopen.
-   * Each toggle is recorded in `labelClickDecision` for engines that forward the click BEFORE
-   * focusing the hidden button (WebKit), where the focus handler runs after this one and must
-   * not undo the decision made here.
+   * Each toggle is recorded in the label activation's click decision for engines that forward
+   * the click BEFORE focusing the hidden button (WebKit), where the focus handler runs after
+   * this one and must not undo the decision made here.
    */
   public handleLabelClick() {
     if (this.disabled()) return;
-    if (this.focusOpened()) {
-      this.focusOpened.set(false);
+    if (this.labelActivation.focusOpened()) {
+      this.labelActivation.focusOpened.set(false);
       return;
     }
     const datePicker = this.datePicker();
     if (datePicker !== undefined && datePicker.isCalendarVisible()) {
-      this.labelClickDecision.set('closed:date');
+      this.labelActivation.clickDecision.set('closed:date');
       datePicker.hidePanelAndRefocus();
       return;
     }
     const timePicker = this.timePicker();
     if (timePicker !== undefined && timePicker.isClockVisible()) {
-      this.labelClickDecision.set('closed:time');
+      this.labelActivation.clickDecision.set('closed:time');
       timePicker.hidePanelAndRefocus();
       return;
     }
 
     // Both are closed already, so we open one of them. datePicker has priority.
-    this.labelClickDecision.set('open');
+    this.labelActivation.clickDecision.set('open');
     this.focusSubPicker();
 
     // The redirect above opens only through the input's focus event - when the input ALREADY
