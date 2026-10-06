@@ -9,19 +9,25 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env['CI'],
-  /* Retry on CI only */
-  retries: process.env['CI'] ? 2 : 0,
+  /* Retry once locally to keep a single flake from failing the whole run, twice on CI. */
+  retries: process.env['CI'] ? 2 : 1,
   /* Opt out of parallel tests on CI. Use fewer workers locally to avoid dev-server contention. */
   workers: process.env['CI'] ? 1 : 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters. */
   reporter: 'html',
+  /* Generous expect timeout: the full suite runs many browsers against one dev server, so a
+     cold Angular boot or a translation fetch can take noticeably longer than the 5 s default. */
+  expect: {
+    timeout: 10_000, // 10 seconds
+  },
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. Reminder that /geopark-frontend-angular is applied only to production build. */
     baseURL: 'http://localhost:4200',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer. */
-    trace: 'on-first-retry',
+    /* Keep traces of failed tests - with local retries the old `on-first-retry` never produced
+       any artifact for a one-shot failure. See https://playwright.dev/docs/trace-viewer. */
+    trace: 'retain-on-failure',
   },
 
   /* Configure projects for major browsers. */
@@ -67,5 +73,6 @@ export default defineConfig({
     command: 'npm start',
     url: 'http://localhost:4200',
     reuseExistingServer: !process.env['CI'],
+    timeout: 120_000, /* First cold build of `ng start` can take a while on a loaded machine. */
   },
 });

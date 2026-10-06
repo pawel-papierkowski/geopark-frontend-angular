@@ -687,18 +687,24 @@ test.describe('DatePicker', () => {
       // Act: Open the panel.
       await datePicker.click();
 
+      // Assert: The panel really opened. Waits until everything is ready.
+      await expect(datePicker, 'click should open the panel').toHaveAttribute('aria-expanded', 'true');
+      await expect(getPanel(page), 'panel should be visible').toBeVisible();
+
       // Assert: Dialog name comes from the dedicated key in the real translation files - it must
       // not repeat the placeholder ("YYYY-MM-DD"), which is a format hint, not a name.
       await expect(getPanel(page)).toHaveAttribute('aria-label', 'Date picker');
 
       // Assert: Header shows a year plus the translated month name (a raw translation key like
-      // "dateTimePicker.month.9" would not match any English month).
-      const header = await readHeader(page);
-      expect(header, 'header should show a year and a translated month name').toMatch(new RegExp(`^\\d{4} (${ENGLISH_MONTHS.join('|')})$`));
+      // "dateTimePicker.month.9" would not match any English month). Retries, and tolerates the
+      // whitespace the interpolation is written with in the template.
+      await expect(getHeader(page), 'header should show a year and a translated month name').toHaveText(
+        new RegExp(`^\\s*\\d{4} (${ENGLISH_MONTHS.join('|')})\\s*$`),
+      );
 
-      // Assert: Weekday headers show translated labels in order.
-      const weekdays = await getPanel(page).locator('.weekday').allTextContents();
-      expect(weekdays.map((text) => text.trim()), 'weekday headers should come from real translation files').toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+      // Assert: Weekday headers show translated labels in order. toHaveText retries and pins the
+      // count, so a grid that has not rendered yet cannot slip through either.
+      await expect(getPanel(page).locator('.weekday'), 'weekday headers should come from real translation files').toHaveText([ 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun' ]);
     });
 
     test('should render the week-number column on the showWeeks instance', async ({ page }) => {
