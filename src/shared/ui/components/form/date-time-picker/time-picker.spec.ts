@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { TranslateService, type TranslationObject } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
+import { registerSubPickerCoreTests, registerSubPickerFocusTests, type SubPickerBaseDriver, type SubPickerBaseFixture } from '@/shared/ui/components/form/popup-panel/testing/sub-picker-base-tests';
+
 import { TimePicker } from './time-picker';
 
 /**
@@ -203,6 +205,89 @@ describe('TimePicker', () => {
     Object.defineProperty(el, 'clientHeight', { value: sizes.clientHeight, configurable: true });
     Object.defineProperty(option, 'offsetHeight', { value: sizes.optionHeight, configurable: true });
   }
+
+  /**
+   * Wrap a TimePicker fixture into the facade the shared sub-picker base suites drive.
+   * @param fixture Fixture of the component.
+   * @returns Fixture facade with component-specific operations bound to this fixture.
+   */
+  function wrapSubPickerFixture(fixture: ComponentFixture<TimePicker>): SubPickerBaseFixture {
+    return {
+      detectChanges: () => fixture.detectChanges(),
+      trackTouch: () => {
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        return touchSpy;
+      },
+      open: () => openPanel(fixture),
+      isOpen: () => fixture.componentInstance.isClockVisible(),
+      input: () => getInput(fixture),
+      insideTarget: () => fixture.componentInstance.hourRef().nativeElement,
+      panel: () => fixture.componentInstance.panelRef().nativeElement,
+      chromeInnerTarget: () => fixture.componentInstance.hourRef().nativeElement,
+      dispatchFocusout: (source, relatedTarget) => {
+        source.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: relatedTarget ?? undefined }));
+      },
+      appendOutsideButton: () => {
+        const button = document.createElement('button');
+        document.body.appendChild(button);
+        return button;
+      },
+      setContainer: (container) => {
+        fixture.componentRef.setInput('container', container);
+        fixture.detectChanges();
+      },
+      setDisabled: async (disabled) => {
+        fixture.componentRef.setInput('disabled', disabled);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
+      showPanel: async () => {
+        await fixture.componentInstance.showPanel();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
+      focus: async (options) => {
+        // Two forRender rounds: measure under baseline, apply flip, then focus.
+        fixture.componentInstance.focus(options);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
+      trackInputFocus: () => vi.spyOn(getInput(fixture), 'focus'),
+      prepareDisable: () => {
+        fixture.componentInstance.focusedHour.set(14);
+      },
+      assertDisableExtras: () => {
+        expect(fixture.componentInstance.focusedHour(), 'focused hour should be reset when disabled').toBeNull();
+      },
+      assertNoFocusStolen: () => {
+        expect(document.activeElement, 'showPanel must not move focus into the panel while disabled')
+          .not.toBe(fixture.componentInstance.hourRef().nativeElement);
+      },
+      assertFocusLanded: () => {
+        expect(document.activeElement, 'focus() should end with keyboard focus in the hour listbox')
+          .toBe(fixture.componentInstance.hourRef().nativeElement);
+      },
+    };
+  }
+
+  /** Driver wiring the shared sub-picker base suites (core + focus) to TimePicker. */
+  const subPickerDriver: SubPickerBaseDriver = {
+    popup: 'clock',
+    innerWhere: 'inside a clock column',
+    focusContractTitle: 'should focus the input and open the panel with focus in the hour listbox',
+    arrange: async (options) => {
+      const fixture = await arrangeTimePicker({
+        disabled: options?.disabled ?? false,
+        value: options?.withValue === true ? utcTime(14, 30) : null,
+      });
+      return wrapSubPickerFixture(fixture);
+    },
+  };
 
   beforeAll(() => {
     // jsdom does not implement scrollIntoView; stubbed so a stray call cannot throw.
@@ -1054,155 +1139,6 @@ describe('TimePicker', () => {
         expect(fixture.componentInstance.value(), 'disabled component should not clear its value via Delete/Backspace').not.toBeNull();
       });
 
-      it('should close open panel when disabled becomes true', async () => {
-        // Arrange: Create component, open panel and spy on touch output.
-        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        fixture.componentInstance.focusedHour.set(14);
-        expect(fixture.componentInstance.isClockVisible(), 'panel should be open before disabling').toBe(true);
-
-        // Act: Disable component programmatically while panel is open.
-        fixture.componentRef.setInput('disabled', true);
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
-
-        // Assert: Effect closed the panel and reset keyboard focus without emitting touch.
-        expect(fixture.componentInstance.isClockVisible(), 'panel should close when component becomes disabled').toBe(false);
-        expect(fixture.componentInstance.focusedHour(), 'focused hour should be reset when disabled').toBeNull();
-        expect(touchSpy, 'programmatic closing should not emit touch').toHaveBeenCalledTimes(0);
-      });
-
-      it('should close panel and emit touch when focus leaves the component', async () => {
-        // Arrange: Create component, open panel, spy on touch and create element outside the component.
-        const fixture = await arrangeTimePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-
-        try {
-          // Act: Simulate focus leaving to the outside element.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
-          fixture.detectChanges();
-
-          // Assert: Panel closed and touch emitted once.
-          expect(fixture.componentInstance.isClockVisible(), 'panel should close when focus leaves component').toBe(false);
-          expect(touchSpy, 'touch should be emitted when focus leaves component').toHaveBeenCalledTimes(1);
-        } finally { // cleanup
-          outside.remove();
-        }
-      });
-
-      it('should keep panel open without touch when focus moves within component', async () => {
-        // Arrange: Create component, open panel and spy on touch output.
-        const fixture = await arrangeTimePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-
-        // Act: Simulate focus moving from input to the hour listbox inside the component.
-        getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: fixture.componentInstance.hourRef().nativeElement }));
-        fixture.detectChanges();
-
-        // Assert: Internal focus move is not a real blur.
-        expect(fixture.componentInstance.isClockVisible(), 'internal focus move should keep panel open').toBe(true);
-        expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
-      });
-
-      it('should keep panel open without touch when focus moves to an element inside the configured container', async () => {
-        // Arrange: Create component, configure the host wrapper's root as its containment
-        // boundary (its hidden label target lives inside that root, outside this sub-picker),
-        // open panel, spy on touch.
-        const fixture = await arrangeTimePicker();
-        const container = document.createElement('div');
-        const target = document.createElement('button');
-        container.appendChild(target);
-        document.body.appendChild(container);
-        fixture.componentRef.setInput('container', container);
-        fixture.detectChanges();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-
-        try {
-          // Act: Simulate label activation moving focus from inside the picker to the wrapper's
-          // hidden label target - a sibling of this sub-picker, inside the wrapper root.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: target }));
-          fixture.detectChanges();
-
-          // Assert: The wrapper root is the component boundary, so this is still "internal" -
-          // it must neither close the panel nor report the control as touched.
-          expect(fixture.componentInstance.isClockVisible(), 'panel should stay open when focus moves inside the container').toBe(true);
-          expect(touchSpy, 'touch should not be emitted when focus moves inside the container').not.toHaveBeenCalled();
-        } finally { // cleanup
-          container.remove();
-        }
-      });
-
-      it('should treat focus move to a foreign hidden-label-button as a real blur', async () => {
-        // Arrange: Create component, configure the host wrapper's root as its containment
-        // boundary, open panel, spy on touch and create a foreign element that carries the
-        // shared hidden-label-button class but sits OUTSIDE that boundary.
-        const fixture = await arrangeTimePicker();
-        const container = document.createElement('div');
-        document.body.appendChild(container);
-        fixture.componentRef.setInput('container', container);
-        fixture.detectChanges();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        const foreign = document.createElement('button');
-        foreign.classList.add('hidden-label-button');
-        document.body.appendChild(foreign);
-
-        try {
-          // Act: Simulate focus leaving to the foreign hidden button.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: foreign }));
-          fixture.detectChanges();
-
-          // Assert: The class belongs to other components' label targets too, and the button is
-          // outside this wrapper - it must count as leaving: panel closed, touch emitted once.
-          expect(fixture.componentInstance.isClockVisible(), 'panel should close when focus leaves to a foreign hidden-label-button').toBe(false);
-          expect(touchSpy, 'touch should be emitted when focus leaves to a foreign hidden-label-button').toHaveBeenCalledTimes(1);
-        } finally { // cleanup
-          foreign.remove();
-          container.remove();
-        }
-      });
-
-      it('should prevent default on mousedown on the clock panel chrome', async () => {
-        // Arrange: Create component and open the panel (chrome = padding/border of the panel).
-        const fixture = await arrangeTimePicker();
-        await openPanel(fixture);
-        const panel = fixture.componentInstance.panelRef().nativeElement;
-
-        // Act: Dispatch a real cancelable mousedown on the panel itself.
-        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-        panel.dispatchEvent(event);
-
-        // Assert: Default focus change is cancelled, so focus cannot jump to <body> (which the
-        // focusout handler would read as leaving the component - closing panel and emitting touch).
-        expect(event.defaultPrevented, 'mousedown on panel chrome should be default-prevented').toBe(true);
-      });
-
-      it('should keep default on mousedown inside a clock column', async () => {
-        // Arrange: Create component and open the panel.
-        const fixture = await arrangeTimePicker();
-        await openPanel(fixture);
-        const column = fixture.componentInstance.hourRef().nativeElement;
-
-        // Act: Dispatch a real cancelable mousedown on the hour listbox.
-        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-        column.dispatchEvent(event);
-
-        // Assert: Column presses keep native behaviour (focus lands on the column, scrollbars work).
-        expect(event.defaultPrevented, 'mousedown inside clock column should keep its default').toBe(false);
-      });
-
       it('should prevent default on mousedown on a column header and focus its column', async () => {
         // Arrange: Create component and open the panel (focus starts on the hour column, so a
         // move to the minute column proves the header handler focused it).
@@ -1235,28 +1171,6 @@ describe('TimePicker', () => {
         expect(event.defaultPrevented, 'mousedown on time item should keep its default').toBe(false);
       });
 
-      it('should emit touch when focus leaves while panel is already closed', async () => {
-        // Arrange: Create component with closed panel (state reached after Escape or keyboard
-        // commit moved focus back to the input) and spy on touch output.
-        const fixture = await arrangeTimePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-
-        try {
-          // Act: Simulate focusout while panel is closed.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
-          fixture.detectChanges();
-
-          // Assert: Blur reports touch even though the panel was already closed.
-          expect(fixture.componentInstance.isClockVisible(), 'panel should stay closed').toBe(false);
-          expect(touchSpy, 'touch should be emitted when focus leaves while panel is closed').toHaveBeenCalledTimes(1);
-        } finally { // cleanup
-          outside.remove();
-        }
-      });
-
       it('should not emit touch when focus returns to the input inside the component', async () => {
         // Arrange: Create component, open panel and spy on touch output.
         const fixture = await arrangeTimePicker();
@@ -1271,31 +1185,6 @@ describe('TimePicker', () => {
         // Assert: Focus never left the component, so no touch is reported (Escape closes the panel separately).
         expect(touchSpy, 'refocus onto the input should not emit touch').not.toHaveBeenCalled();
         expect(fixture.componentInstance.isClockVisible(), 'panel should stay open for internal focus move').toBe(true);
-      });
-
-      it('should not emit touch when component becomes disabled while focus is inside', async () => {
-        // Arrange: Create component, open panel, spy on touch and disable it (effect closes panel).
-        const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        fixture.componentRef.setInput('disabled', true);
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-
-        try {
-          // Act: Simulate the focusout browsers fire when the focused listbox is hidden by disabling.
-          fixture.componentInstance.hourRef().nativeElement.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
-          fixture.detectChanges();
-
-          // Assert: Programmatic close caused by disabling must not report touch.
-          expect(touchSpy, 'disabling should not emit touch').toHaveBeenCalledTimes(0);
-        } finally { // cleanup
-          outside.remove();
-        }
       });
 
       it('should not emit touch when Escape returns focus to the input', async () => {
@@ -1318,53 +1207,7 @@ describe('TimePicker', () => {
         expect(touchSpy, 'Escape refocus should not emit touch').not.toHaveBeenCalled();
       });
 
-      it('should close panel and emit touch on focusout without relatedTarget', async () => {
-        // Arrange: Create component, open panel and spy on touch output.
-        const fixture = await arrangeTimePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-
-        // Act: Simulate focusout without knowing the next target (e.g. window blur).
-        getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-        fixture.detectChanges();
-
-        // Assert: Panel closed and touch emitted.
-        expect(fixture.componentInstance.isClockVisible(), 'panel should close on focusout without relatedTarget').toBe(false);
-        expect(touchSpy, 'touch should be emitted on focusout without relatedTarget').toHaveBeenCalledTimes(1);
-      });
-
-      it('should open closed panel only on showPanel', async () => {
-        // Arrange: Create component with closed panel.
-        const fixture = await arrangeTimePicker();
-
-        // Act: Show panel twice.
-        await fixture.componentInstance.showPanel();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(fixture.componentInstance.isClockVisible(), 'showPanel should open closed panel').toBe(true);
-
-        // Assert: Second call keeps panel open (it only opens).
-        await fixture.componentInstance.showPanel();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(fixture.componentInstance.isClockVisible(), 'showPanel should keep open panel open').toBe(true);
-      });
-
-      it('should not open panel via showPanel when disabled', async () => {
-        // Arrange: Create disabled component with closed panel.
-        const fixture = await arrangeTimePicker({ disabled: true });
-
-        // Act: Attempt programmatic open.
-        await fixture.componentInstance.showPanel();
-        await fixture.whenStable();
-        fixture.detectChanges();
-
-        // Assert: Panel stays closed and no focus is stolen into the listbox.
-        expect(fixture.componentInstance.isClockVisible(), 'showPanel must not open the panel of a disabled picker').toBe(false);
-        expect(document.activeElement, 'showPanel must not move focus into the panel while disabled')
-          .not.toBe(fixture.componentInstance.hourRef().nativeElement);
-      });
+      registerSubPickerCoreTests(subPickerDriver);
     });
 
     describe('positioning', () => {
@@ -2951,60 +2794,7 @@ describe('TimePicker', () => {
   });
 
   describe('focus', () => {
-    it('should focus the input and open the panel with focus in the hour listbox', async () => {
-      // Arrange: Create component with closed panel; the FormUiControl.focus contract is the
-      // form-driven path (e.g. "focus first invalid field").
-      const fixture = await arrangeTimePicker();
-
-      // Act: Focus the control programmatically.
-      fixture.componentInstance.focus();
-      // The open spans two forRender rounds (measure under baseline, apply flip, then focus),
-      // so a single whenStable + detectChanges pair cannot cover it yet.
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: End state mirrors Tab exactly: the input takes focus first, then the open
-      // sequence continues keyboard focus into the hour listbox.
-      expect(fixture.componentInstance.isClockVisible(), 'focus() should auto-open the panel like Tab').toBe(true);
-      expect(document.activeElement, 'focus() should end with keyboard focus in the hour listbox')
-        .toBe(fixture.componentInstance.hourRef().nativeElement);
-    });
-
-    it('should be a no-op when disabled', async () => {
-      // Arrange: Disabled component (input carries disabled, so focusInput refuses focus).
-      const fixture = await arrangeTimePicker({ disabled: true });
-
-      // Act: Focus the disabled control.
-      fixture.componentInstance.focus();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: Neither the input nor the panel reacts.
-      expect(document.activeElement, 'focus() must not focus a disabled control').not.toBe(getInput(fixture));
-      expect(fixture.componentInstance.isClockVisible(), 'focus() must not open the panel when disabled').toBe(false);
-    });
-
-    it('should forward FocusOptions to the input', async () => {
-      // Arrange: Create component and spy on the native focus of its input.
-      const fixture = await arrangeTimePicker();
-      const focusSpy = vi.spyOn(getInput(fixture), 'focus');
-
-      // Act: Focus with explicit options.
-      fixture.componentInstance.focus({ preventScroll: true });
-      // Two flush rounds settle the focus-triggered open (same as the Tab-parity test above).
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: The contract's options reach the native call unchanged.
-      expect(focusSpy, 'focus() should pass the given options through to the input').toHaveBeenCalledWith({ preventScroll: true });
-    });
+    registerSubPickerFocusTests(subPickerDriver);
   });
 
   describe('scrolling', () => {

@@ -4,6 +4,7 @@ import { TranslateService, type TranslationObject } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { EnCalendarCellType } from '@/shared/ui/other/types';
+import { registerSubPickerCoreTests, registerSubPickerFocusTests, type SubPickerBaseDriver, type SubPickerBaseFixture } from '@/shared/ui/components/form/popup-panel/testing/sub-picker-base-tests';
 
 import { DatePicker } from './date-picker';
 
@@ -268,6 +269,79 @@ describe('DatePicker', () => {
   const VIEWPORT_WIDTH = 1024;
   /** Viewport height assumed by positioning logic (jsdom performs no layout, real value is 0). */
   const VIEWPORT_HEIGHT = 768;
+
+  /**
+   * Wrap a DatePicker fixture into the facade the shared sub-picker base suites drive.
+   * @param fixture Fixture of the component.
+   * @returns Fixture facade with component-specific operations bound to this fixture.
+   */
+  function wrapSubPickerFixture(fixture: ComponentFixture<DatePicker>): SubPickerBaseFixture {
+    return {
+      detectChanges: () => fixture.detectChanges(),
+      trackTouch: () => {
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        return touchSpy;
+      },
+      open: () => openPanel(fixture),
+      isOpen: () => fixture.componentInstance.isCalendarVisible(),
+      input: () => getInput(fixture),
+      insideTarget: () => fixture.componentInstance.calendarGridRef().nativeElement,
+      panel: () => fixture.componentInstance.panelRef().nativeElement,
+      chromeInnerTarget: () => fixture.nativeElement.querySelector('[data-testid="test-date_10"]'),
+      dispatchFocusout: (source, relatedTarget) => {
+        source.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: relatedTarget ?? undefined }));
+      },
+      appendOutsideButton: () => {
+        const button = document.createElement('button');
+        document.body.appendChild(button);
+        return button;
+      },
+      setContainer: (container) => {
+        fixture.componentRef.setInput('container', container);
+        fixture.detectChanges();
+      },
+      setDisabled: async (disabled) => {
+        fixture.componentRef.setInput('disabled', disabled);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
+      showPanel: async () => {
+        await fixture.componentInstance.showPanel();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
+      focus: async (options) => {
+        // Two forRender rounds: measure under baseline, apply flip, then focus.
+        fixture.componentInstance.focus(options);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      },
+      trackInputFocus: () => vi.spyOn(getInput(fixture), 'focus'),
+      assertFocusLanded: () => {
+        // The final handoff into the grid is asserted by the dedicated grid-focus test.
+        expect(document.activeElement, 'focus() should move focus into the component').not.toBe(document.body);
+      },
+    };
+  }
+
+  /** Driver wiring the shared sub-picker base suites (core + focus) to DatePicker. */
+  const subPickerDriver: SubPickerBaseDriver = {
+    popup: 'calendar',
+    innerWhere: 'on a day cell',
+    focusContractTitle: 'should open the panel when focus() is called programmatically',
+    arrange: async (options) => {
+      const fixture = await arrangeDatePicker({
+        disabled: options?.disabled ?? false,
+        value: options?.withValue === true ? utcDate(2026, 0, 15) : null,
+      });
+      return wrapSubPickerFixture(fixture);
+    },
+  };
 
   beforeAll(() => {
     // jsdom does not implement scrollIntoView; stubbed so a stray call cannot throw.
@@ -916,35 +990,6 @@ describe('DatePicker', () => {
         });
       });
 
-      it('should prevent default on mousedown on the calendar panel chrome', async () => {
-        // Arrange: Create component and open the panel (chrome = padding/gaps around the cells).
-        const fixture = await arrangeDatePicker();
-        await openPanel(fixture);
-        const panel = fixture.componentInstance.panelRef().nativeElement;
-
-        // Act: Dispatch a real cancelable mousedown on the panel itself.
-        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-        panel.dispatchEvent(event);
-
-        // Assert: Default focus change is cancelled, so focus cannot jump to <body> (which the
-        // focusout handler would read as leaving the component - closing panel and emitting touch).
-        expect(event.defaultPrevented, 'mousedown on panel chrome should be default-prevented').toBe(true);
-      });
-
-      it('should keep default on mousedown on a day cell', async () => {
-        // Arrange: Create component and open the panel.
-        const fixture = await arrangeDatePicker();
-        await openPanel(fixture);
-        const cell = fixture.nativeElement.querySelector('[data-testid="test-date_10"]');
-
-        // Act: Dispatch a real cancelable mousedown on a day cell.
-        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-        cell.dispatchEvent(event);
-
-        // Assert: Cell presses keep native behaviour (selection, focus), only panel chrome is guarded.
-        expect(event.defaultPrevented, 'mousedown on a day cell should keep its default').toBe(false);
-      });
-
       it('should prevent default on mousedown on a header navigation button', async () => {
         // Arrange: Create component and open the panel.
         const fixture = await arrangeDatePicker();
@@ -1040,186 +1085,6 @@ describe('DatePicker', () => {
         expect(fixture.componentInstance.isCalendarVisible(), 'disabled component should stay closed').toBe(false);
       });
 
-      it('should close open panel when disabled becomes true', async () => {
-        // Arrange: Create component, open panel and spy on touch output.
-        const fixture = await arrangeDatePicker({ value: utcDate(2026, 0, 15) });
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        expect(fixture.componentInstance.isCalendarVisible(), 'panel should be open before disabling').toBe(true);
-
-        // Act: Disable component programmatically while panel is open.
-        fixture.componentRef.setInput('disabled', true);
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
-
-        // Assert: Effect closed the panel without emitting touch.
-        expect(fixture.componentInstance.isCalendarVisible(), 'panel should close when component becomes disabled').toBe(false);
-        expect(touchSpy, 'programmatic closing should not emit touch').toHaveBeenCalledTimes(0);
-      });
-
-      it('should close panel and emit touch when focus leaves the component', async () => {
-        // Arrange: Create component, open panel, spy on touch and create element outside the component.
-        const fixture = await arrangeDatePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-
-        try {
-          // Act: Simulate focus leaving to the outside element.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
-          fixture.detectChanges();
-
-          // Assert: Panel closed and touch emitted once.
-          expect(fixture.componentInstance.isCalendarVisible(), 'panel should close when focus leaves component').toBe(false);
-          expect(touchSpy, 'touch should be emitted when focus leaves component').toHaveBeenCalledTimes(1);
-        } finally { // cleanup
-          outside.remove();
-        }
-      });
-
-      it('should keep panel open without touch when focus moves within component', async () => {
-        // Arrange: Create component, open panel and spy on touch output.
-        const fixture = await arrangeDatePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-
-        // Act: Simulate focus moving from the input to the calendar grid inside the component.
-        getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: fixture.componentInstance.calendarGridRef().nativeElement }));
-        fixture.detectChanges();
-
-        // Assert: Internal focus move is not a real blur.
-        expect(fixture.componentInstance.isCalendarVisible(), 'internal focus move should keep panel open').toBe(true);
-        expect(touchSpy, 'internal focus move should not emit touch').not.toHaveBeenCalled();
-      });
-
-      it('should keep panel open without touch when focus moves to an element inside the configured container', async () => {
-        // Arrange: Create component, configure the host wrapper's root as its containment
-        // boundary (its hidden label target lives inside that root, outside this sub-picker),
-        // open panel, spy on touch.
-        const fixture = await arrangeDatePicker();
-        const container = document.createElement('div');
-        const target = document.createElement('button');
-        container.appendChild(target);
-        document.body.appendChild(container);
-        fixture.componentRef.setInput('container', container);
-        fixture.detectChanges();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-
-        try {
-          // Act: Simulate label activation moving focus from inside the picker to the wrapper's
-          // hidden label target - a sibling of this sub-picker, inside the wrapper root.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: target }));
-          fixture.detectChanges();
-
-          // Assert: The wrapper root is the component boundary, so this is still "internal" -
-          // it must neither close the panel nor report the control as touched.
-          expect(fixture.componentInstance.isCalendarVisible(), 'panel should stay open when focus moves inside the container').toBe(true);
-          expect(touchSpy, 'touch should not be emitted when focus moves inside the container').not.toHaveBeenCalled();
-        } finally { // cleanup
-          container.remove();
-        }
-      });
-
-      it('should treat focus move to a foreign hidden-label-button as a real blur', async () => {
-        // Arrange: Create component, configure the host wrapper's root as its containment
-        // boundary, open panel, spy on touch and create a foreign element that carries the
-        // shared hidden-label-button class but sits OUTSIDE that boundary.
-        const fixture = await arrangeDatePicker();
-        const container = document.createElement('div');
-        document.body.appendChild(container);
-        fixture.componentRef.setInput('container', container);
-        fixture.detectChanges();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        const foreign = document.createElement('button');
-        foreign.classList.add('hidden-label-button');
-        document.body.appendChild(foreign);
-
-        try {
-          // Act: Simulate focus leaving to the foreign hidden button.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: foreign }));
-          fixture.detectChanges();
-
-          // Assert: The class belongs to other components' label targets too, and the button is
-          // outside this wrapper - it must count as leaving: panel closed, touch emitted once.
-          expect(fixture.componentInstance.isCalendarVisible(), 'panel should close when focus leaves to a foreign hidden-label-button').toBe(false);
-          expect(touchSpy, 'touch should be emitted when focus leaves to a foreign hidden-label-button').toHaveBeenCalledTimes(1);
-        } finally { // cleanup
-          foreign.remove();
-          container.remove();
-        }
-      });
-
-      it('should emit touch when focus leaves while panel is already closed', async () => {
-        // Arrange: Create component with closed panel and spy on touch output.
-        const fixture = await arrangeDatePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-
-        try {
-          // Act: Simulate focusout while panel is closed.
-          getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
-          fixture.detectChanges();
-
-          // Assert: Blur reports touch even though the panel was already closed.
-          expect(fixture.componentInstance.isCalendarVisible(), 'panel should stay closed').toBe(false);
-          expect(touchSpy, 'touch should be emitted when focus leaves while panel is closed').toHaveBeenCalledTimes(1);
-        } finally { // cleanup
-          outside.remove();
-        }
-      });
-
-      it('should close panel and emit touch on focusout without relatedTarget', async () => {
-        // Arrange: Create component, open panel and spy on touch output.
-        const fixture = await arrangeDatePicker();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-
-        // Act: Simulate focusout without knowing the next target (e.g. window blur).
-        getInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-        fixture.detectChanges();
-
-        // Assert: Panel closed and touch emitted.
-        expect(fixture.componentInstance.isCalendarVisible(), 'panel should close on focusout without relatedTarget').toBe(false);
-        expect(touchSpy, 'touch should be emitted on focusout without relatedTarget').toHaveBeenCalledTimes(1);
-      });
-
-      it('should not emit touch when component becomes disabled while focus is inside', async () => {
-        // Arrange: Create component, open panel, spy on touch and disable it (effect closes panel).
-        const fixture = await arrangeDatePicker({ value: utcDate(2026, 0, 15) });
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        await openPanel(fixture);
-        fixture.componentRef.setInput('disabled', true);
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-
-        try {
-          // Act: Simulate the focusout browsers fire when the focused grid is hidden by disabling.
-          fixture.componentInstance.calendarGridRef().nativeElement.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
-          fixture.detectChanges();
-
-          // Assert: Programmatic close caused by disabling must not report touch.
-          expect(touchSpy, 'disabling should not emit touch').toHaveBeenCalledTimes(0);
-        } finally { // cleanup
-          outside.remove();
-        }
-      });
-
       it('should not emit touch when hidePanelAndRefocus returns focus to the input', async () => {
         // Arrange: Create component and open panel.
         const fixture = await arrangeDatePicker();
@@ -1239,35 +1104,7 @@ describe('DatePicker', () => {
         expect(touchSpy, 'internal refocus should not emit touch').not.toHaveBeenCalled();
       });
 
-      it('should open closed panel only on showPanel', async () => {
-        // Arrange: Create component with closed panel.
-        const fixture = await arrangeDatePicker();
-
-        // Act: Show panel twice.
-        await fixture.componentInstance.showPanel();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(fixture.componentInstance.isCalendarVisible(), 'showPanel should open closed panel').toBe(true);
-
-        // Assert: Second call keeps panel open (it only opens).
-        await fixture.componentInstance.showPanel();
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(fixture.componentInstance.isCalendarVisible(), 'showPanel should keep open panel open').toBe(true);
-      });
-
-      it('should not open panel via showPanel when disabled', async () => {
-        // Arrange: Create disabled component with closed panel.
-        const fixture = await arrangeDatePicker({ disabled: true });
-
-        // Act: Attempt programmatic open.
-        await fixture.componentInstance.showPanel();
-        await fixture.whenStable();
-        fixture.detectChanges();
-
-        // Assert: Panel stays closed.
-        expect(fixture.componentInstance.isCalendarVisible(), 'showPanel must not open the panel of a disabled picker').toBe(false);
-      });
+      registerSubPickerCoreTests(subPickerDriver);
     });
 
     describe('positioning', () => {
@@ -2706,56 +2543,7 @@ describe('DatePicker', () => {
   });
 
   describe('focus', () => {
-    it('should open the panel when focus() is called programmatically', async () => {
-      // Arrange: FormUiControl.focus contract - e.g. "focus first invalid field".
-      const fixture = await arrangeDatePicker();
-
-      // Act: Focus the control programmatically. The open spans two forRender rounds (measure
-      // under baseline, apply flip, then focus), so two flush rounds are needed.
-      fixture.componentInstance.focus();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: The panel opens like Tab and focus lands inside the component. The final
-      // handoff into the grid is asserted by the dedicated grid-focus test.
-      expect(fixture.componentInstance.isCalendarVisible(), 'focus() should auto-open the panel like Tab').toBe(true);
-      expect(document.activeElement, 'focus() should move focus into the component').not.toBe(document.body);
-    });
-
-    it('should be a no-op when disabled', async () => {
-      // Arrange: Disabled component (input carries disabled, so focusInput refuses focus).
-      const fixture = await arrangeDatePicker({ disabled: true });
-
-      // Act: Focus the disabled control.
-      fixture.componentInstance.focus();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: Neither the input nor the panel reacts.
-      expect(document.activeElement, 'focus() must not focus a disabled control').not.toBe(getInput(fixture));
-      expect(fixture.componentInstance.isCalendarVisible(), 'focus() must not open the panel when disabled').toBe(false);
-    });
-
-    it('should forward FocusOptions to the input', async () => {
-      // Arrange: Create component and spy on the native focus of its input.
-      const fixture = await arrangeDatePicker();
-      const focusSpy = vi.spyOn(getInput(fixture), 'focus');
-
-      // Act: Focus with explicit options.
-      fixture.componentInstance.focus({ preventScroll: true });
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      // Assert: The contract's options reach the native call unchanged.
-      expect(focusSpy, 'focus() should pass the given options through to the input').toHaveBeenCalledWith({ preventScroll: true });
-    });
+    registerSubPickerFocusTests(subPickerDriver);
   });
 
   describe('scrolling', () => {
