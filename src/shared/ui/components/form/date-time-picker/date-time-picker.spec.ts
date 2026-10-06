@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { enDateTimePickerMode } from '@/shared/ui/other/types';
-import { registerLabelPreventionTests } from '@/shared/ui/components/form/popup-panel/testing/label-guard-tests';
+import { registerLabelPreventionTests, registerOutsidePressTests, type OutsidePressDriver } from '@/shared/ui/components/form/popup-panel/testing/label-guard-tests';
+import { dispatchMousedown } from '@/shared/ui/components/form/popup-panel/testing/mouse';
 
 import { DateTimePicker } from './date-time-picker';
 
@@ -198,17 +199,6 @@ describe('DateTimePicker', () => {
   });
 
   describe('label', () => {
-    /**
-     * Dispatch a real mousedown on given label so it bubbles to the document.
-     * @param label Label element to dispatch the event on.
-     * @returns The dispatched event, for defaultPrevented assertions.
-     */
-    function dispatchMousedown(label: HTMLElement): Event {
-      const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-      label.dispatchEvent(event);
-      return event;
-    }
-
     it('should open clock panel and move focus into hour listbox when hidden button (label target) is clicked', async () => {
       // Arrange: Render wrapper in time mode with closed panel.
       const fixture = await arrangeDateTimePicker({ mode: 'time' });
@@ -594,18 +584,6 @@ describe('DateTimePicker', () => {
 
   describe('outside press', () => {
     /**
-     * Dispatch a real bubbling mousedown on given target so it reaches the component's
-     * document-level listener, mimicking a pointer press anywhere on the page.
-     * @param target Element the press lands on.
-     * @returns The dispatched event, for defaultPrevented assertions.
-     */
-    function dispatchMousedown(target: Element): Event {
-      const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-      target.dispatchEvent(event);
-      return event;
-    }
-
-    /**
      * Open the clock panel through a direct click on the time input.
      * @param fixture Fixture of the wrapper under test.
      */
@@ -615,30 +593,29 @@ describe('DateTimePicker', () => {
       expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'panel should be open before act').toBe('true');
     }
 
-    it('should close clock panel when mousedown lands outside the wrapper', async () => {
-      // Arrange: Open the panel and create a button outside the component.
-      const fixture = await arrangeDateTimePicker({ mode: 'time' });
-      const touchSpy = vi.fn();
-      fixture.componentInstance.touch.subscribe(touchSpy);
-      await openClockPanel(fixture);
-      const outside = document.createElement('button');
-      document.body.appendChild(outside);
-
-      try {
-        // Act: Press outside the wrapper - focusout-only close misses this on WebKit,
-        // where an outside press does not necessarily move focus.
-        dispatchMousedown(outside);
-        await flush(fixture);
-
-        // Assert: Panel closed by the press itself. Touch is NOT reported here: it is
-        // emitted by the focusout that follows the panel losing focus, so emitting it
-        // in the press handler would double-report on engines that do blur.
-        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'outside mousedown should close the clock panel').toBe('false');
-        expect(touchSpy, 'outside mousedown itself should not emit touch (focusout reports it)').not.toHaveBeenCalled();
-      } finally { // cleanup
-        outside.remove();
-      }
-    });
+    const driver: OutsidePressDriver = {
+      popup: 'clock panel',
+      subject: 'wrapper',
+      touchSource: 'focusout',
+      ident: 'test-dtp',
+      arrange: async () => {
+        const fixture = await arrangeDateTimePicker({ mode: 'time' });
+        return {
+          open: async () => {
+            await openClockPanel(fixture);
+          },
+          isOpen: () => getTimeInput(fixture).getAttribute('aria-expanded') === 'true',
+          trackTouch: () => {
+            const touchSpy = vi.fn();
+            fixture.componentInstance.touch.subscribe(touchSpy);
+            return touchSpy;
+          },
+          settle: () => flush(fixture),
+          destroy: () => fixture.destroy(),
+        };
+      },
+    };
+    registerOutsidePressTests(driver);
 
     it('should keep the value when an outside press closes the clock panel with a pending pick', async () => {
       // Arrange: Wrapper carrying a value, clock panel open and hour 9 picked - the pick stays
@@ -668,26 +645,6 @@ describe('DateTimePicker', () => {
       }
     });
 
-    it('should close clock panel when mousedown lands on a foreign label', async () => {
-      // Arrange: Open the panel and create a label pointing at an unrelated control.
-      const fixture = await arrangeDateTimePicker({ mode: 'time' });
-      await openClockPanel(fixture);
-      const label = document.createElement('label');
-      label.htmlFor = 'other-control';
-      document.body.appendChild(label);
-
-      try {
-        // Act: Press the foreign label - only the OWN associated label is exempt.
-        dispatchMousedown(label);
-        await flush(fixture);
-
-        // Assert: Panel closed like any other outside target.
-        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'foreign label mousedown should close the clock panel').toBe('false');
-      } finally { // cleanup
-        label.remove();
-      }
-    });
-
     it('should keep clock panel open when mousedown lands inside the wrapper', async () => {
       // Arrange: Open the panel; both the input and the panel chrome are valid inside targets.
       const fixture = await arrangeDateTimePicker({ mode: 'time' });
@@ -706,47 +663,6 @@ describe('DateTimePicker', () => {
 
       // Assert: Panel chrome is inside the wrapper, so the press must not close either.
       expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'mousedown on the panel chrome should keep the panel open').toBe('true');
-    });
-
-    it('should keep clock panel open when mousedown lands on the associated label', async () => {
-      // Arrange: Open the panel and create the label pointing at this wrapper's hidden button.
-      const fixture = await arrangeDateTimePicker({ mode: 'time' });
-      await openClockPanel(fixture);
-      const label = document.createElement('label');
-      label.htmlFor = 'test-dtp';
-      document.body.appendChild(label);
-
-      try {
-        // Act: Press the associated label - closing here would make the following label
-        // activation see a closed panel and reopen it, breaking the toggle contract.
-        const event = dispatchMousedown(label);
-        await flush(fixture);
-
-        // Assert: Panel stays open (label click handler owns the toggle) and the default
-        // stays canceled (existing focus-steal guard).
-        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'own label mousedown should keep the panel open for the label toggle').toBe('true');
-        expect(event.defaultPrevented, 'own label mousedown should stay default-prevented').toBe(true);
-      } finally { // cleanup
-        label.remove();
-      }
-    });
-
-    it('should not close clock panel via document mousedown after component is destroyed', async () => {
-      // Arrange: Open the panel, then destroy the component (removes the document listener).
-      const fixture = await arrangeDateTimePicker({ mode: 'time' });
-      await openClockPanel(fixture);
-      const outside = document.createElement('button');
-      document.body.appendChild(outside);
-      fixture.destroy();
-
-      try {
-        // Act: Press outside after destroy - a leaked listener would reach into a destroyed
-        // component (view children already torn down).
-        // Assert: Dispatch completes without throwing, so the listener was cleaned up.
-        expect(() => dispatchMousedown(outside), 'destroyed component should have no document mousedown listener left').not.toThrow();
-      } finally { // cleanup
-        outside.remove();
-      }
     });
   });
 

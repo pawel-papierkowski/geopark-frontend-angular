@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
-import { registerLabelPreventionTests } from '@/shared/ui/components/form/popup-panel/testing/label-guard-tests';
+import { registerLabelPreventionTests, registerOutsidePressTests, type OutsidePressDriver } from '@/shared/ui/components/form/popup-panel/testing/label-guard-tests';
+import { dispatchMousedown } from '@/shared/ui/components/form/popup-panel/testing/mouse';
 
 import { ComboBox } from './combo-box';
 
@@ -653,18 +654,6 @@ describe('ComboBox', () => {
 
     describe('outside press', () => {
       /**
-       * Dispatch a real bubbling mousedown on given target so it reaches the component's
-       * document-level listener, mimicking a pointer press anywhere on the page.
-       * @param target Element the press lands on.
-       * @returns The dispatched event, for defaultPrevented assertions.
-       */
-      function dispatchMousedown(target: Element): Event {
-        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-        target.dispatchEvent(event);
-        return event;
-      }
-
-      /**
        * Open the options list with a direct click on the combobox root.
        * @param fixture Fixture of the component under test.
        * @returns The root element of the combobox.
@@ -677,51 +666,34 @@ describe('ComboBox', () => {
         return root;
       }
 
-      it('should close list when mousedown lands outside the component', async () => {
-        // Arrange: Create component with open list and a button outside it.
-        const fixture = await arrangeComboBox();
-        const touchSpy = vi.fn();
-        fixture.componentInstance.touch.subscribe(touchSpy);
-        openList(fixture);
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-
-        try {
-          // Act: Press outside the component - blur-only close misses this on WebKit,
-          // where an outside press does not necessarily move focus.
-          dispatchMousedown(outside);
-          fixture.detectChanges();
-
-          // Assert: List closed by the press itself. Touch is NOT reported here: it is
-          // emitted by the blur that follows focus really leaving, so emitting it in the
-          // press handler would double-report on engines that do blur.
-          expect(fixture.componentInstance.isOpen(), 'outside mousedown should close the list').toBe(false);
-          expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset on outside close').toBe(-1);
-          expect(touchSpy, 'outside mousedown itself should not emit touch (blur reports it)').not.toHaveBeenCalled();
-        } finally { // cleanup
-          outside.remove();
-        }
-      });
-
-      it('should close list when mousedown lands on a foreign label', async () => {
-        // Arrange: Create component with open list and a label pointing at an unrelated control.
-        const fixture = await arrangeComboBox();
-        openList(fixture);
-        const label = document.createElement('label');
-        label.htmlFor = 'other-control';
-        document.body.appendChild(label);
-
-        try {
-          // Act: Press the foreign label - only the OWN associated label is exempt.
-          dispatchMousedown(label);
-          fixture.detectChanges();
-
-          // Assert: List closed like any other outside target.
-          expect(fixture.componentInstance.isOpen(), 'foreign label mousedown should close the list').toBe(false);
-        } finally { // cleanup
-          label.remove();
-        }
-      });
+      const driver: OutsidePressDriver = {
+        popup: 'list',
+        subject: 'component',
+        touchSource: 'blur',
+        ident: 'test-combo',
+        arrange: async () => {
+          const fixture = await arrangeComboBox();
+          return {
+            open: async () => {
+              openList(fixture);
+            },
+            isOpen: () => fixture.componentInstance.isOpen(),
+            trackTouch: () => {
+              const touchSpy = vi.fn();
+              fixture.componentInstance.touch.subscribe(touchSpy);
+              return touchSpy;
+            },
+            settle: async () => {
+              fixture.detectChanges();
+            },
+            destroy: () => fixture.destroy(),
+            assertClosedExtras: () => {
+              expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset on outside close').toBe(-1);
+            },
+          };
+        },
+      };
+      registerOutsidePressTests(driver);
 
       it('should keep list open when mousedown lands inside the component', async () => {
         // Arrange: Create component with open list.
@@ -741,48 +713,6 @@ describe('ComboBox', () => {
 
         // Assert: Option press must not close either - it selects through the subsequent click.
         expect(fixture.componentInstance.isOpen(), 'mousedown on an option should keep the list open').toBe(true);
-      });
-
-      it('should keep list open when mousedown lands on the associated label', async () => {
-        // Arrange: Create component with open list and its own associated label.
-        const fixture = await arrangeComboBox();
-        openList(fixture);
-        const label = document.createElement('label');
-        label.htmlFor = 'test-combo';
-        document.body.appendChild(label);
-
-        try {
-          // Act: Press the associated label - closing here would make the forwarded label
-          // activation click refocus the root and reopen the list, breaking the toggle.
-          const event = dispatchMousedown(label);
-          fixture.detectChanges();
-
-          // Assert: List stays open (click handler owns the toggle) and the default stays
-          // canceled (existing focus-steal guard).
-          expect(fixture.componentInstance.isOpen(), 'own label mousedown should keep the list open for the toggle').toBe(true);
-          expect(event.defaultPrevented, 'own label mousedown should stay default-prevented').toBe(true);
-        } finally { // cleanup
-          label.remove();
-        }
-      });
-
-      it('should not close list via document mousedown after component is destroyed', async () => {
-        // Arrange: Create component, open the list, then destroy it (removes the listener).
-        const fixture = await arrangeComboBox();
-        openList(fixture);
-        const outside = document.createElement('button');
-        document.body.appendChild(outside);
-        fixture.destroy();
-
-        try {
-          // Act: Press outside after destroy - a leaked listener would reach into a destroyed
-          // component (view children already torn down).
-
-          // Assert: Dispatch completes without throwing, so the listener was cleaned up.
-          expect(() => dispatchMousedown(outside), 'destroyed component should have no document mousedown listener left').not.toThrow();
-        } finally { // cleanup
-          outside.remove();
-        }
       });
     });
 
