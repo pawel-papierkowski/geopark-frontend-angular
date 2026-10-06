@@ -67,16 +67,6 @@ export class CheckBox implements FormValueControl<boolean | null> {
     return this.value();
   });
 
-  /**
-   * What should be shown as checkbox value?
-   * @returns Checkbox character.
-   */
-  public showSymbol = computed(() => {
-    if (this.value() === null) return '◼';
-    if (this.value()) return '✔';
-    return '\u00A0'; // Non-breakable space used. Empty string or normal space would move checkbox visually when changing value.
-  });
-
   // FUNCTIONS
 
   /**

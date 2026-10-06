@@ -30,9 +30,7 @@
 
         (click)="selectOption(option, $index)"
         (keydown)="handleKeydown($event)">
-        <div class="radiobox-circle">
-          <div class="radiobox-inside" [class.mark]="option === value()"></div>
-        </div>
+        <div class="radiobox-circle" [class.mark]="option === value()"></div>
         <div class="radiobox-label">{{ showOption(option) }}</div>
       </div>
     }

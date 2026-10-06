@@ -95,10 +95,10 @@ describe('RadioBox', () => {
         const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
 
         // Assert: Second option has mark class, first and third do not.
-        const insides = fixture.nativeElement.querySelectorAll('.radiobox-inside');
-        expect(insides[0].classList.contains('mark'), 'first option should not have mark').toBe(false);
-        expect(insides[1].classList.contains('mark'), 'second option should have mark').toBe(true);
-        expect(insides[2].classList.contains('mark'), 'third option should not have mark').toBe(false);
+        const circles = fixture.nativeElement.querySelectorAll('.radiobox-circle');
+        expect(circles[0].classList.contains('mark'), 'first option should not have mark').toBe(false);
+        expect(circles[1].classList.contains('mark'), 'second option should have mark').toBe(true);
+        expect(circles[2].classList.contains('mark'), 'third option should not have mark').toBe(false);
       });
 
       it('should have disabled class when disabled', async () => {
@@ -129,8 +129,8 @@ describe('RadioBox', () => {
 
         // Assert: DOM reflects the new value.
         expect(fixture.componentInstance.value(), 'value should update to b').toBe('b');
-        const insides = fixture.nativeElement.querySelectorAll('.radiobox-inside');
-        expect(insides[1].classList.contains('mark'), 'second option should have mark').toBe(true);
+        const circles = fixture.nativeElement.querySelectorAll('.radiobox-circle');
+        expect(circles[1].classList.contains('mark'), 'second option should have mark').toBe(true);
       });
 
       it('should show translated option text with langPrefix', async () => {
@@ -202,8 +202,8 @@ describe('RadioBox', () => {
 
         // Assert: Value changed to 'c'.
         expect(fixture.componentInstance.value(), 'value should change to c').toBe('c');
-        const insides = fixture.nativeElement.querySelectorAll('.radiobox-inside');
-        expect(insides[2].classList.contains('mark'), 'third option should now have mark').toBe(true);
+        const circles = fixture.nativeElement.querySelectorAll('.radiobox-circle');
+        expect(circles[2].classList.contains('mark'), 'third option should now have mark').toBe(true);
       });
 
       it('should prevent selection when disabled', async () => {

@@ -6,6 +6,8 @@
     class="checkbox"
     [class.disabled]="disabled()"
     [class.invalid]="invalid()"
+    [class.checked]="value() === true"
+    [class.mixed]="value() === null"
     role="checkbox"
     [tabindex]="disabled() ? -1 : 0"
 
@@ -19,8 +21,5 @@
     (keydown.enter)="toggle()"
     (keydown.space)="toggle(); $event.preventDefault()"
     (blur)="touch.emit()">
-    <div class="checkbox-inside">
-      {{ showSymbol() }}
-    </div>
   </div>
 </div>

@@ -6,12 +6,13 @@
 }
 
 .checkbox {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  /* Anchors the drawn checkmark pseudo-element. */
+  position: relative;
 
   color: var(--checkbox-color);
-  background: var(--checkbox-background);
+  /* Longhand (not the `background` shorthand): the mixed mark below only sets
+     background-image and must never be reset by state rules. */
+  background-color: var(--checkbox-background);
   border: var(--checkbox-border);
   border-radius: var(--checkbox-border-radius);
 
@@ -24,7 +25,7 @@
 
 .checkbox.invalid {
   color: var(--checkbox-err-color);
-  background: var(--checkbox-err-background);
+  background-color: var(--checkbox-err-background);
   border: var(--checkbox-err-border);
 }
 
@@ -35,7 +36,7 @@
 
 .checkbox.disabled {
   color: var(--checkbox-disabled-color);
-  background: var(--checkbox-disabled-background);
+  background-color: var(--checkbox-disabled-background);
   border: var(--checkbox-border); /* Override in case both err and disabled are present. */
 
   cursor: default;
@@ -43,7 +44,27 @@
 
 /**/
 
-.checkbox-inside {
-  line-height: 1;
-  transform: translateY(-0.075em);
+/* Marks are drawn by the control itself (no text glyphs), so their position
+   never depends on font metrics or glyph rasterization. All sizes are integer
+   pixels at the 16px base font. currentColor keeps hover/invalid/disabled in sync. */
+
+/* Mixed (null): 8px square painted by the box itself. */
+.checkbox.mixed {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0.5em 0.5em;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Checked: L-shape rotated 45 degrees. */
+.checkbox.checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 0.375em; /* 6px */
+  height: 0.625em; /* 10px */
+  margin: auto;
+  border: solid currentColor;
+  border-width: 0 0.125em 0.125em 0; /* 0 2px 2px 0 */
+  transform: translateY(-0.0884em) rotate(45deg);
 }

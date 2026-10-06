@@ -33,8 +33,8 @@
   --radiobox-hover-color: var(--input-hover-color);
   --radiobox-hover-background: #f6f6f6;
 
+  /* Selected-mark colors, painted as a gradient on the circle itself. */
   --radiobox-inside-background: var(--radiobox-color);
-  --radiobox-inside-border-radius: 50%;
   --radiobox-inside-err-background: var(--radiobox-err-color);
 
   /* ComboBox specific vars. */

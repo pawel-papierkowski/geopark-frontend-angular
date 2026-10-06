@@ -11,19 +11,18 @@
 /**/
 
 .radiobox-circle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
   color: var(--radiobox-color);
-  background: var(--radiobox-background);
+  /* Longhand (not the `background` shorthand): state rules and the mark gradient
+     below only touch background-color/background-image and must never reset each other. */
+  background-color: var(--radiobox-background);
   border: var(--radiobox-border);
   border-radius: var(--radiobox-border-radius);
 
   align-self: center;
 
-  width: 0.9em;
-  height: 0.9em;
+  /* Keep this value a whole-pixel multiple of em. */
+  width: 1em;
+  height: 1em;
 
   cursor: pointer;
 }
@@ -35,35 +34,34 @@
 
 .radiobox.invalid .radiobox-circle {
   color: var(--radiobox-err-color);
-  background: var(--radiobox-err-background);
+  background-color: var(--radiobox-err-background);
   border: var(--radiobox-err-border);
 }
 
 .radiobox.disabled .radiobox-circle {
   color: var(--radiobox-disabled-color);
-  background: var(--radiobox-disabled-background);
+  background-color: var(--radiobox-disabled-background);
 
   cursor: default;
 }
 
-.radiobox-inside {
-  align-self: center;
+/**/
 
-  width: 0.5em;
-  height: 0.5em;
+/* Selected mark, painted by the circle itself so the ring and the dot share one
+   paint box and stay concentric at any zoom/DPR. */
+.radiobox-circle.mark {
+  --radiobox-mark-color: var(--radiobox-inside-background);
+
+  background-image: radial-gradient(circle closest-side,
+      var(--radiobox-mark-color) 0 57%, transparent 57%);
 }
 
-.radiobox-inside.mark {
-  background: var(--radiobox-inside-background);
-  border-radius: var(--radiobox-inside-border-radius);
+.radiobox.invalid .radiobox-circle.mark {
+  --radiobox-mark-color: var(--radiobox-inside-err-background);
 }
 
-.radiobox.invalid .radiobox-inside.mark {
-  background: var(--radiobox-inside-err-background);
-}
-
-.radiobox.disabled .radiobox-inside.mark {
-  background: var(--radiobox-disabled-color);
+.radiobox.disabled .radiobox-circle.mark {
+  --radiobox-mark-color: var(--radiobox-disabled-color);
 }
 
 /**/

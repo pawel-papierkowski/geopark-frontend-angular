@@ -60,38 +60,42 @@ describe('CheckBox', () => {
         // Arrange: Create component with defaults, including null value and canNull = false.
         const fixture = await arrangeCheckBox();
 
-        // Assert: Default state is null with mixed symbol.
+        // Assert: Default state is null with mixed mark.
         const checkbox = fixture.nativeElement.querySelector('.checkbox');
         expect(checkbox, 'should render checkbox element').not.toBeNull();
         expect(fixture.componentInstance.value(), 'default value should be null').toBeNull();
-        expect(fixture.nativeElement.textContent, 'should display mixed symbol for null').toContain('◼');
+        expect(checkbox.classList.contains('mixed'), 'mixed mark should show for null').toBe(true);
       });
 
-      it('should render checked symbol when value is true', async () => {
+      it('should show checked mark when value is true', async () => {
         // Arrange: Create component with true value.
         const fixture = await arrangeCheckBox({ value: true });
 
-        // Assert: Shows checkmark symbol for true.
+        // Assert: Checked mark present for true.
         expect(fixture.componentInstance.value(), 'value should be true').toBe(true);
-        expect(fixture.nativeElement.textContent, 'should display checkmark for true').toContain('✔');
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.classList.contains('checked'), 'checked mark should show for true').toBe(true);
       });
 
-      it('should render unchecked symbol when value is false', async () => {
+      it('should show no mark when value is false', async () => {
         // Arrange: Create component with false value.
         const fixture = await arrangeCheckBox({ value: false });
 
-        // Assert: Shows non-breaking space for false.
+        // Assert: Neither mark is present for false.
         expect(fixture.componentInstance.value(), 'value should be false').toBe(false);
-        expect(fixture.nativeElement.textContent, 'should display non-breaking space for false').toContain('\u00A0');
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.classList.contains('checked'), 'no checked mark should show for false').toBe(false);
+        expect(checkbox.classList.contains('mixed'), 'no mixed mark should show for false').toBe(false);
       });
 
-      it('should render mixed symbol when value is null with canNull', async () => {
+      it('should show mixed mark when value is null with canNull', async () => {
         // Arrange: Create component with null value and canNull enabled.
         const fixture = await arrangeCheckBox({ canNull: true });
 
-        // Assert: Shows indeterminate symbol.
+        // Assert: Mixed mark present.
         expect(fixture.componentInstance.value(), 'value should be null').toBeNull();
-        expect(fixture.nativeElement.textContent, 'should display mixed symbol for null').toContain('◼');
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.classList.contains('mixed'), 'mixed mark should show for null').toBe(true);
       });
 
       it('should update display when value changes programmatically', async () => {
@@ -104,7 +108,8 @@ describe('CheckBox', () => {
 
         // Assert: DOM reflects the new value.
         expect(fixture.componentInstance.value(), 'value should update to true').toBe(true);
-        expect(fixture.nativeElement.textContent, 'should display checkmark after update').toContain('✔');
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.classList.contains('checked'), 'checked mark should show after update').toBe(true);
       });
 
       it('should have disabled class when disabled', async () => {
@@ -144,25 +149,26 @@ describe('CheckBox', () => {
 
         // Assert: Starting value should be null.
         expect(fixture.componentInstance.value(), 'value should be null').toBeNull();
-        expect(fixture.nativeElement.textContent, 'should display mixed symbol for null').toContain('◼');
+        expect(checkbox.classList.contains('mixed'), 'mixed mark should show for null').toBe(true);
 
         // Act & Assert: null → true.
         checkbox.click();
         fixture.detectChanges();
         expect(fixture.componentInstance.value(), 'null should toggle to true').toBe(true);
-        expect(fixture.nativeElement.textContent, 'should display checkmark').toContain('✔');
+        expect(checkbox.classList.contains('checked'), 'checked mark should show for true').toBe(true);
 
         // Act & Assert: true → false.
         checkbox.click();
         fixture.detectChanges();
         expect(fixture.componentInstance.value(), 'true should toggle to false').toBe(false);
-        expect(fixture.nativeElement.textContent, 'should display non-breaking space').toContain('\u00A0');
+        expect(checkbox.classList.contains('checked'), 'no checked mark should show for false').toBe(false);
+        expect(checkbox.classList.contains('mixed'), 'no mixed mark should show for false').toBe(false);
 
         // Act & Assert: false → null.
         checkbox.click();
         fixture.detectChanges();
         expect(fixture.componentInstance.value(), 'false should toggle to null').toBeNull();
-        expect(fixture.nativeElement.textContent, 'should display mixed symbol').toContain('◼');
+        expect(checkbox.classList.contains('mixed'), 'mixed mark should show for null').toBe(true);
       });
 
       it('should cycle null → true → false → true when canNull is false', async () => {
@@ -172,7 +178,7 @@ describe('CheckBox', () => {
 
         // Assert: Starting value should be null.
         expect(fixture.componentInstance.value(), 'value should be null').toBeNull();
-        expect(fixture.nativeElement.textContent, 'should display mixed symbol for null').toContain('◼');
+        expect(checkbox.classList.contains('mixed'), 'mixed mark should show for null').toBe(true);
 
         // Act & Assert: null → true.
         checkbox.click();
