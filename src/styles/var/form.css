@@ -8,8 +8,10 @@
   --form-border: 1px solid #ccc;
   --form-border-radius: 8px;
 
-  /* Standalone form. */
-  --form-alone-min-width: 400px;
+  /* Standalone form. Capped at 100% so the form never forces horizontal scrolling on
+     viewports narrower than the preferred minimum; the grid tracks keep their content
+     floor instead of overlapping. */
+  --form-alone-min-width: min(400px, 100%);
   --form-alone-max-width: 95%;
   --form-alone-margin: 5px auto;
   --form-alone-padding: 10px;

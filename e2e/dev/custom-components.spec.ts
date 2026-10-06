@@ -42,4 +42,36 @@ test.describe('Custom components page', () => {
     await expect(page.locator('#dateId_cc-dateTimePicker_qualifier'), 'date qualifier should carry the translated name').toHaveText('Date');
     await expect(page.locator('#timeId_cc-dateTimePicker_qualifier'), 'time qualifier should carry the translated name').toHaveText('Time');
   });
+
+  test('keeps the form columns aligned across all rows on a narrow screen', async ({ page }) => {
+    // Arrange: Narrow viewport, the width at which per-row grids used to resolve different
+    // track sizes per row because each row only saw its own label/control/value content.
+    await page.goto('/dev/components');
+    await page.setViewportSize({ width: 480, height: 900 });
+    await expect(page.locator('main')).toBeVisible();
+
+    // Act: Read the horizontal edges of every label (column 1) and value cell (column 3).
+    const labelEdges = await page.locator('#cc-mode-label, [data-testid$="-label"]').evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const box = node.getBoundingClientRect();
+        return { left: box.left, right: box.right };
+      }),
+    );
+    const valueLefts = await page.locator('[data-testid$="-value"]').evaluateAll((nodes) =>
+      nodes.map((node) => node.getBoundingClientRect().left),
+    );
+
+    // Assert: All rows share the exact same column boundaries.
+    expect(labelEdges.length, 'several labelled rows must be compared').toBeGreaterThan(1);
+    expect(valueLefts.length, 'several value cells must be compared').toBeGreaterThan(1);
+    const [firstLabel] = labelEdges;
+    const [firstValueLeft] = valueLefts;
+    for (const [index, edge] of labelEdges.entries()) {
+      expect(edge.left, `label #${index} starts at the shared column 1 start`).toBe(firstLabel.left);
+      expect(edge.right, `label #${index} ends at the shared column 1 end`).toBe(firstLabel.right);
+    }
+    for (const [index, left] of valueLefts.entries()) {
+      expect(left, `value cell #${index} starts at the shared column 3 start`).toBe(firstValueLeft);
+    }
+  });
 });
