@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 /**
  * Locate the comboBox element on the custom components page.
@@ -370,6 +371,23 @@ test.describe('ComboBox', () => {
       // Angular Signal Forms skips validation on disabled fields.
       await expect(getComboBox(page)).toHaveClass(/disabled/);
       await expect(getComboBox(page)).toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+
+  test.describe('accessibility', () => {
+    test('is correct axe-wise with list open', async ({ page }) => {
+      // Arrange: Navigate and open the list so its listbox/option markup is analyzed too.
+      await goToComponentsPage(page);
+      await getComboBox(page).click();
+      await expect(getComboBox(page)).toHaveAttribute('aria-expanded', 'true');
+
+      // Act: Run axe with EVERY rule enabled - notably aria-required-children and
+      // aria-required-parent, which the listbox satisfies through its direct role="option"
+      // children (the aria-activedescendant owner stays focused while the list is open).
+      const results = await new AxeBuilder({ page }).analyze();
+
+      // Assert: No accessibility violations.
+      expect(results.violations).toEqual([]);
     });
   });
 });

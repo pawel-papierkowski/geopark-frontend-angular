@@ -933,6 +933,53 @@ describe('ComboBox', () => {
     });
   });
 
+  describe('focus', () => {
+    it('should focus the root and open the list (FormUiControl.focus contract)', async () => {
+      // Arrange: Enabled component with a closed list; focus() is the optional
+      // FormUiControl.focus contract used by the signal-forms Field directive.
+      const fixture = await arrangeComboBox();
+      const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+
+      // Act: Focus the control programmatically.
+      fixture.componentInstance.focus();
+      fixture.detectChanges();
+
+      // Assert: Focus landed on the root (the aria-activedescendant owner) and its focus
+      // handler opened the list, exactly like Tab does.
+      expect(document.activeElement, 'focus() should move DOM focus to the combobox root').toBe(root);
+      expect(root.getAttribute('aria-expanded'), 'focus() should open the list via the focus handler').toBe('true');
+    });
+
+    it('should be a no-op when disabled', async () => {
+      // Arrange: Disabled component.
+      const fixture = await arrangeComboBox({ disabled: true });
+      const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+
+      // Act: Focus the disabled control.
+      fixture.componentInstance.focus();
+      fixture.detectChanges();
+
+      // Assert: Neither focus nor the list reacts.
+      expect(document.activeElement, 'focus() must not focus a disabled control').not.toBe(root);
+      expect(root.getAttribute('aria-expanded'), 'focus() must not open the list when disabled').toBe('false');
+    });
+
+    it('should forward the given focus options in a single focus call', async () => {
+      // Arrange: Enabled component; the spy replaces the real focus, so this test asserts
+      // option forwarding only (the open-on-focus path is covered by the first test).
+      const fixture = await arrangeComboBox();
+      const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+      const focusSpy = vi.spyOn(root, 'focus');
+
+      // Act: Invoke the FormUiControl.focus contract with preventScroll.
+      fixture.componentInstance.focus({ preventScroll: true });
+
+      // Assert: Exactly one focus call, and it carries the caller's options.
+      expect(focusSpy, 'focus() must focus the root in a single call').toHaveBeenCalledTimes(1);
+      expect(focusSpy, 'focus() should pass the given options through to the root').toHaveBeenCalledWith({ preventScroll: true });
+    });
+  });
+
   describe('i18n', () => {
     it('should update placeholder and option labels on language switch', async () => {
       // Arrange: Create component with langPrefix and register English translations.
@@ -1227,6 +1274,43 @@ describe('ComboBox', () => {
           const fixture = await arrangeComboBox(ident === undefined ? {} : { ident });
           return { destroy: () => fixture.destroy() };
         },
+      });
+
+      it('should warn in dev mode when the label id matches no element', async () => {
+        // Arrange: Spy on console.warn; label reference deliberately left dangling.
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+          // Act: Create the component - its dev-only effect checks the reference on first CD.
+          await arrangeComboBox({ label: 'ghost-label' });
+
+          // Assert: The dangling id is reported, naming this component.
+          const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+          expect(messages, 'dangling label id should be reported in dev mode').toContain('ghost-label');
+          expect(messages, 'warning should name the emitting component').toContain('[combo-box]');
+        } finally { // cleanup
+          warnSpy.mockRestore();
+        }
+      });
+
+      it('should not warn when the label id resolves to an element', async () => {
+        // Arrange: Spy on console.warn; a real element carries the referenced id.
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const labelElement = document.createElement('label');
+        labelElement.id = 'real-label';
+        document.body.appendChild(labelElement);
+
+        try {
+          // Act: Create the component - its dev-only effect checks the reference on first CD.
+          await arrangeComboBox({ label: 'real-label' });
+
+          // Assert: Resolvable reference is not a defect.
+          const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+          expect(messages, 'resolvable label id must not warn').not.toContain('[combo-box]');
+        } finally { // cleanup
+          labelElement.remove();
+          warnSpy.mockRestore();
+        }
       });
     });
 
@@ -1703,6 +1787,128 @@ describe('ComboBox', () => {
         } finally { // cleanup
           prevControl.remove();
         }
+      });
+
+      describe('typeahead', () => {
+        /** Focus the combobox root so the list opens (no value selected -> nothing highlighted). */
+        async function openList(fixture: ComponentFixture<ComboBox>): Promise<Element> {
+          const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+          root.focus();
+          await fixture.whenStable();
+          fixture.detectChanges();
+          expect(fixture.componentInstance.isOpen(), 'list should be open before typing').toBe(true);
+          return root;
+        }
+
+        it('should highlight the first option matching the typed character', async () => {
+          // Arrange: Open list, nothing highlighted (no value selected).
+          const user = userEvent.setup();
+          const fixture = await arrangeComboBox({ options: ['apple', 'pear', 'banana'] });
+          await openList(fixture);
+
+          // Act: Type a character.
+          await user.keyboard('p');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: Highlight jumped to the matching option; the list stays open.
+          expect(fixture.componentInstance.highlightedIndex(), 'typing should highlight the matching option').toBe(1);
+          expect(fixture.componentInstance.isOpen(), 'typeahead must keep the list open').toBe(true);
+        });
+
+        it('should merge quick keystrokes into one prefix search', async () => {
+          // Arrange: Open list; 'a' followed by 'p' within the buffer window must search 'ap'.
+          const user = userEvent.setup();
+          const fixture = await arrangeComboBox({ options: ['apple', 'apricot', 'pear'] });
+          await openList(fixture);
+
+          // Act: Type both characters quickly (well inside the 500 ms buffer window).
+          await user.keyboard('a');
+          await user.keyboard('p');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: 'a' highlighted 'apple' (index 0); the refined 'ap' then matched 'apricot'
+          // (index 1) - without merging, a lone 'p' would match nothing and stay on index 0.
+          expect(fixture.componentInstance.highlightedIndex(), 'quick keystrokes should merge into one search').toBe(1);
+        });
+
+        it('should restart the search buffer after 500 ms of inactivity', async () => {
+          // Arrange: Open list; Date.now is controlled so the buffer window can pass instantly.
+          const user = userEvent.setup();
+          const fixture = await arrangeComboBox({ options: ['apple', 'apricot', 'pear'] });
+          await openList(fixture);
+          let now = 1_000_000;
+          const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+
+          try {
+            // Act: Type 'a', jump past the 500 ms window, then type 'p'.
+            await user.keyboard('a');
+            now += 600;
+            await user.keyboard('p');
+            await fixture.whenStable();
+            fixture.detectChanges();
+
+            // Assert: The stale buffer was discarded - a fresh 'p' searched from after
+            // 'apple' and hit 'pear' (index 2); a merged 'ap' would have hit 'apricot' (1).
+            expect(fixture.componentInstance.highlightedIndex(), 'buffer should reset after the window').toBe(2);
+          } finally { // cleanup
+            nowSpy.mockRestore();
+          }
+        });
+
+        it('should match the typed character case-insensitively', async () => {
+          // Arrange: Open list with an option starting with an uppercase letter.
+          const user = userEvent.setup();
+          const fixture = await arrangeComboBox({ options: ['apple', 'Banana'] });
+          await openList(fixture);
+
+          // Act: Type the lowercase version.
+          await user.keyboard('b');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: The uppercase option is still a match.
+          expect(fixture.componentInstance.highlightedIndex(), 'typeahead should ignore case').toBe(1);
+        });
+
+        it('should drop the last buffered character on Backspace and re-search', async () => {
+          // Arrange: Open list; build a two-character buffer ('p' then 'l' -> 'pl' -> 'plum').
+          const user = userEvent.setup();
+          const fixture = await arrangeComboBox({ options: ['apple', 'pear', 'plum'] });
+          await openList(fixture);
+
+          // Act: Type 'p', then 'l', then delete the 'l' again.
+          await user.keyboard('p');
+          await user.keyboard('l');
+          await user.keyboard('{Backspace}');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: The buffer shrank to 'p', which now searches from after 'plum' and wraps
+          // to 'pear' (index 1); keeping 'pl' would leave the highlight on 'plum' (index 2).
+          expect(fixture.componentInstance.highlightedIndex(), 'Backspace should re-search with the shortened buffer').toBe(1);
+        });
+
+        it('should open the list and jump to a match when typing while closed', async () => {
+          // Arrange: Focused combobox whose list was closed again with Escape.
+          const user = userEvent.setup();
+          const fixture = await arrangeComboBox({ options: ['apple', 'pear'] });
+          await openList(fixture);
+          await user.keyboard('{Escape}');
+          await fixture.whenStable();
+          fixture.detectChanges();
+          expect(fixture.componentInstance.isOpen(), 'list should be closed before typing').toBe(false);
+
+          // Act: Type a character while the list is closed.
+          await user.keyboard('p');
+          await fixture.whenStable();
+          fixture.detectChanges();
+
+          // Assert: Typing opened the list and highlighted the match, like ArrowDown does.
+          expect(fixture.componentInstance.isOpen(), 'typing should open the closed list').toBe(true);
+          expect(fixture.componentInstance.highlightedIndex(), 'typing should highlight the matching option').toBe(1);
+        });
       });
     });
   });

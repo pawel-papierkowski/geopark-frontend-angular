@@ -1,9 +1,10 @@
 import { Component, effect, inject, model, input, output, computed, linkedSignal, signal, viewChild, ElementRef, DestroyRef, DOCUMENT, Injector } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
-import {TranslateService } from '@ngx-translate/core';
+import { TranslateService } from '@ngx-translate/core';
 
 import { forRender } from '@/shared/utils/render/after-render';
 import { IdService } from '@/shared/utils/id/id-service';
+import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { stretchPanelPlacement } from '@/shared/ui/components/form/popup-panel/popup-panel-placement';
 import { PanelPositioning } from '@/shared/ui/components/form/popup-panel/popup-panel-positioning';
 import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-label-activation';
@@ -19,6 +20,8 @@ import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-l
  * - Component is integrated with i18n.
  * - Keyboard navigation supported via arrows. Enter/space selects option and closes list.
  *   Tab closes open list and moves focus to next component (options are not tab stops).
+ *   Typing a printable character jumps to the first matching option (typeahead: characters
+ *   typed within 500 ms merge into one prefix search, Backspace deletes the last one).
  * - Supports <label>.
  * - Supports WAI-ARIA.
  *
@@ -27,7 +30,7 @@ import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-l
  *
  * Inputs:
  * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `combo-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
- * - label - For `aria-labelledby`. Optional.
+ * - label - For `aria-labelledby`. Optional; dev mode warns when the id matches no element.
  * - options - Array of options, will be shown after user clicks on component. Can contain null value for 'unselected'.
  * - langPrefix - Prefix, used for auto-translating entries in dropdown list. If empty, options and placeholder will be shown as is without translation.
  * - placeholder - Translation key to use if nothing is selected. Treated as raw text if langPrefix is empty. Optional, not used if options have null entry.
@@ -64,7 +67,10 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /** Resolved identifier: `ident` when provided, otherwise a generated `combo-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
   public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'combo-box'));
-  /** Label reference. */
+  /** Label reference: id of an external element (usually `<label>`) used for `aria-labelledby`.
+   * The id must match an element in the document - a dangling reference silently empties this
+   * combobox's accessible name (there is no `aria-label` fallback), so dev mode warns on the
+   * console (see `warnDanglingLabel`). */
   public label = input<string>('');
   /** Array of options. String, number (so also enum) and null allowed. */
   public options = input<(number | string | null)[]>([]);
@@ -98,6 +104,12 @@ export class ComboBox implements FormValueControl<number | string | null> {
   public readonly containerStyle = this.positioning.containerStyle;
   /** Number of the most recent open - drops stale placement work from an earlier open. */
   private positionSession = 0;
+  /** Typeahead search buffer: consecutive printable keystrokes merged into one prefix search. */
+  private typeaheadBuffer = '';
+  /** Timestamp (ms) of the last typeahead keystroke; decides when the buffer restarts. */
+  private typeaheadLastKeyAt = 0;
+  /** How long (ms) consecutive typeahead keystrokes keep merging into one search string. */
+  private static readonly typeaheadBufferMs = 500;
   /** Root focusable element (role=combobox). */
   private comboRef = viewChild.required<ElementRef<HTMLDivElement>>('comboRef');
   /** Reference to the options list popup. */
@@ -116,6 +128,13 @@ export class ComboBox implements FormValueControl<number | string | null> {
       const optionCount = this.options().length;
       const highlighted = this.highlightedIndex();
       if (highlighted >= optionCount) this.highlightedIndex.set(optionCount > 0 ? optionCount - 1 : -1);
+    });
+
+    // Dev-only: catch a `label` id that matches no element. A dangling aria-labelledby would
+    // leave this combobox with no accessible name (no aria-label fallback), which no app test
+    // catches; re-runs whenever label or ident changes (see `warnDanglingLabel`).
+    effect(() => {
+      warnDanglingLabel(this.document, this.label(), this.resolvedIdent(), 'combo-box');
     });
 
     // Document-level guard for label activation: resets the interaction markers, cancels the
@@ -141,6 +160,17 @@ export class ComboBox implements FormValueControl<number | string | null> {
   public listboxId = computed(() => {
     return `${this.resolvedIdent()}_listbox`;
   });
+  /** Display text of the current selection (translated option value or placeholder).
+   * Computed so the template renders it without re-running `showOption` on every change
+   * detection; translation lookups inside `instant` are reactive, so a language change
+   * recomputes it. */
+  public readonly selectedText = computed(() => this.showOption(this.value()));
+  /** Display views (raw option value + precomputed display text) for the list. Keeps the raw
+   * value available for selection while the text is computed once per change instead of once
+   * per option per change detection. */
+  public readonly optionViews = computed(() =>
+    this.options().map((option) => ({ option, text: this.showOption(option) })),
+  );
 
   // GENERAL FUNCTIONS
 
@@ -229,6 +259,62 @@ export class ComboBox implements FormValueControl<number | string | null> {
   }
 
   /**
+   * Handle typeahead: printable characters search the option display texts (case-insensitive
+   * prefix match, forward from the current highlight with wraparound) and Backspace deletes the
+   * last buffered character. Consecutive keystrokes merge into one search string for
+   * `typeaheadBufferMs`, then the buffer restarts. Space stays reserved for selection (handled
+   * by the switch in `handleKeydown`) and modifier combinations pass through to the browser.
+   * @param e Keyboard event.
+   * @returns True when the event was consumed as typeahead.
+   */
+  private handleTypeahead(e: KeyboardEvent): boolean {
+    if (e.ctrlKey || e.altKey || e.metaKey) return false;
+
+    if (e.key === 'Backspace') {
+      if (this.typeaheadBuffer === '') return false;
+      e.preventDefault();
+      this.typeaheadBuffer = this.typeaheadBuffer.slice(0, -1);
+      this.typeaheadLastKeyAt = Date.now();
+      this.searchTypeahead();
+      return true;
+    }
+
+    // Space (also length 1) is reserved for the select-and-close case in handleKeydown.
+    if (e.key.length !== 1 || e.key === ' ') return false;
+
+    e.preventDefault();
+    const now = Date.now();
+    if (now - this.typeaheadLastKeyAt > ComboBox.typeaheadBufferMs) this.typeaheadBuffer = '';
+    this.typeaheadLastKeyAt = now;
+    this.typeaheadBuffer += e.key;
+    this.searchTypeahead();
+    return true;
+  }
+
+  /**
+   * Move the highlight to the first option whose display text starts with the typeahead buffer,
+   * searching forward from the current highlight and wrapping; opens the closed list first so
+   * the match is visible (like ArrowDown does). No match keeps the current highlight - the
+   * buffer may still complete a match on the next keystroke.
+   */
+  private searchTypeahead() {
+    if (!this.isOpen()) this.openList(null);
+    if (this.typeaheadBuffer === '') return;
+    const buffer = this.typeaheadBuffer.toLowerCase();
+    const views = this.optionViews();
+    const start = this.highlightedIndex() + 1;
+    for (let offset = 0; offset < views.length; offset++) {
+      const index = (start + offset) % views.length;
+      const text = String(views[index].text ?? '').toLowerCase();
+      if (text.startsWith(buffer)) {
+        this.highlightedIndex.set(index);
+        this.scrollHighlightedIntoView();
+        return;
+      }
+    }
+  }
+
+  /**
    * User clicked on combobox option.
    * @param option Clicked option.
    */
@@ -237,6 +323,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
     this.value.set(option);
     this.isOpen.set(false);
+    this.typeaheadBuffer = '';
     this.resetInteractionState();
   }
 
@@ -287,8 +374,18 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * the root's (blur) fire when the user later leaves the component.
    */
   public focusRoot() {
+    this.focus();
+  }
+
+  /**
+   * Focus the combobox root on behalf of the signal-forms `Field` directive (the optional
+   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Delegates to the root,
+   * whose focus handler auto-opens the list, exactly like Tab does. No-op when disabled.
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the root.
+   */
+  public focus(options?: FocusOptions): void {
     if (this.disabled()) return;
-    this.comboRef().nativeElement.focus();
+    this.comboRef().nativeElement.focus(options);
   }
 
   /**
@@ -338,6 +435,12 @@ export class ComboBox implements FormValueControl<number | string | null> {
    */
   public handleKeydown(e: KeyboardEvent) {
     if (this.disabled()) return;
+
+    // Printable characters and Backspace run through typeahead; any other key (Space, arrows,
+    // Tab, Escape, ...) ends the current typing session, so a later typing burst starts a
+    // fresh search instead of merging with characters typed before the interruption.
+    if (this.handleTypeahead(e)) return;
+    this.typeaheadBuffer = '';
 
     switch (e.key) {
       case 'ArrowDown': {
@@ -427,6 +530,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
     this.isOpen.set(false);
     this.highlightedIndex.set(-1);
+    this.typeaheadBuffer = '';
     this.resetInteractionState();
   }
 }
