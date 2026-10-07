@@ -15,7 +15,7 @@
   --checkbox-disabled-background: var(--input-disabled-background);
 
   --checkbox-hover-color: var(--input-hover-color);
-  --checkbox-hover-background: #f6f6f6;
+  --checkbox-hover-background: var(--input-hover-background);
 
   /* RadioBox specific vars. */
   --radiobox-color: var(--input-color);
@@ -31,7 +31,7 @@
   --radiobox-disabled-background: var(--input-disabled-background);
 
   --radiobox-hover-color: var(--input-hover-color);
-  --radiobox-hover-background: #f6f6f6;
+  --radiobox-hover-background: var(--input-hover-background);
 
   /* Selected-mark colors, painted as a gradient on the circle itself. */
   --radiobox-inside-background: var(--radiobox-color);

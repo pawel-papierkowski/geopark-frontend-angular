@@ -66,7 +66,7 @@ test.describe('CheckBox', () => {
       await expect(checkBox).toHaveAttribute('aria-checked', 'false');
       await expect(display).toContainText('❌');
 
-      // Act & Assert: false → null.
+      // Act & Assert: false → true (no null when canNull is false).
       await checkBox.click();
       await expect(checkBox).toHaveAttribute('aria-checked', 'true');
       await expect(display).toContainText('✅');
@@ -231,6 +231,34 @@ test.describe('CheckBox', () => {
       await expect(getCheckBox(page)).toHaveClass(/invalid/);
     });
 
+    test('should keep invalid colors while hovered when mode is set to Error', async ({ page }) => {
+      // Arrange: Navigate and put the checkBox into the Error mode.
+      await goToComponentsPage(page);
+      await getModeOption(page, 2).click();
+      const checkBox = getCheckBox(page);
+      await expect(checkBox).toHaveClass(/invalid/);
+
+      // Act: Hover the invalid checkBox.
+      await checkBox.hover();
+
+      // Assert: The generic hover rule must not swap the error color/background for hover ones
+      // (--input-err-background #ffe8e8, --input-err-color #660000; hover would be #f8f8f8/#111827).
+      await expect(checkBox, 'invalid background must survive hover').toHaveCSS('background-color', 'rgb(255, 232, 232)');
+      await expect(checkBox, 'invalid color must survive hover').toHaveCSS('color', 'rgb(102, 0, 0)');
+    });
+
+    test('should hover with the shared input hover background token', async ({ page }) => {
+      // Arrange: Navigate to the custom components page (Standard mode, no invalid state).
+      await goToComponentsPage(page);
+      const checkBox = getCheckBox(page);
+
+      // Act: Hover the enabled checkBox.
+      await checkBox.hover();
+
+      // Assert: Hover background comes from --input-hover-background (#f8f8f8), not a hardcoded hex.
+      await expect(checkBox, 'hover background should use the shared input token').toHaveCSS('background-color', 'rgb(248, 248, 248)');
+    });
+
     test('should render disabled state when mode is Disabled & Error', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
@@ -242,6 +270,25 @@ test.describe('CheckBox', () => {
       // Angular Signal Forms skips validation on disabled fields.
       await expect(getCheckBox(page)).toHaveClass(/disabled/);
       await expect(getCheckBox(page)).toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+
+  test.describe('target size', () => {
+    test('should toggle from 3px outside the drawn box (WCAG 2.2 SC 2.5.8 hit area)', async ({ page }) => {
+      // Arrange: Navigate; the drawn box is 16x16, but the pointer hit area must reach 24x24.
+      await goToComponentsPage(page);
+      const checkBox = getCheckBox(page);
+      await expect(checkBox).toHaveAttribute('aria-checked', 'mixed');
+      const box = await checkBox.boundingBox();
+      if (!box) throw new Error('checkBox should have a bounding box');
+
+      // Act: Click 3px left of the drawn box - inside the invisible 4px hit ring, in the 4.8px
+      // grid gap between the label column and the control column (so the click cannot land on
+      // the label, which would toggle the checkBox through label activation even without the ring).
+      await page.mouse.click(box.x - 3, box.y + box.height / 2);
+
+      // Assert: The ring belongs to the checkBox, so the outside click toggled it.
+      await expect(checkBox, 'click inside the expanded hit ring should toggle the checkBox').toHaveAttribute('aria-checked', 'true');
     });
   });
 });

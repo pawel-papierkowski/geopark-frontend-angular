@@ -23,6 +23,26 @@
   user-select: none;
 }
 
+/* WCAG 2.2 SC 2.5.8 (Target Size, Minimum, AA): the drawn box is only 16x16 at the 16px base
+   font, so a transparent overlay extends the pointer hit area to 24x24 without changing the
+   visual size. Sizing/centering the pseudo explicitly instead of using `inset` offsets: absolute
+   positioning resolves insets against the PADDING box, and with the global border-box sizing plus
+   the 1px border that box is only 14px, so inset-based math would come up 2px short. A fixed
+   24x24 pseudo centered on the padding box reaches 4px beyond the 16x16 border box on every side
+   regardless of border width, and on larger boxes the box itself already meets the minimum. The
+   pseudo belongs to .checkbox, so hits on it target the checkbox - clicks and hovers behave
+   exactly as on the box itself, and disabled keeps its guard in toggle(). It paints under the
+   checked ::after mark. */
+.checkbox::before {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .checkbox.invalid {
   color: var(--checkbox-err-color);
   background-color: var(--checkbox-err-background);
@@ -32,6 +52,13 @@
 .checkbox:not(.disabled):hover {
   color: var(--checkbox-hover-color);
   background-color: var(--checkbox-hover-background);
+}
+
+/* Invalid dominates hover: without this rule the higher-specificity hover rule above would swap
+   the error color/background for hover ones while keeping the error border (mixed signals). */
+.checkbox.invalid:not(.disabled):hover {
+  color: var(--checkbox-err-color);
+  background-color: var(--checkbox-err-background);
 }
 
 .checkbox.disabled {

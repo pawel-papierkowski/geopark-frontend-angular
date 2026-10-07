@@ -16,6 +16,8 @@ describe('CheckBox', () => {
     disabled?: boolean;
     /** Whether the checkbox is in invalid state. */
     invalid?: boolean;
+    /** Whether the checkbox is required. */
+    required?: boolean;
     /** Identifier for the checkbox. */
     ident?: string;
     /** Label reference for aria-labelledby. */
@@ -33,6 +35,7 @@ describe('CheckBox', () => {
       canNull = false,
       disabled = false,
       invalid = false,
+      required = false,
       ident = 'test-checkbox',
       label = '',
     } = opts;
@@ -47,6 +50,7 @@ describe('CheckBox', () => {
     fixture.componentRef.setInput('canNull', canNull);
     fixture.componentRef.setInput('disabled', disabled);
     fixture.componentRef.setInput('invalid', invalid);
+    fixture.componentRef.setInput('required', required);
     fixture.componentRef.setInput('value', value);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -362,6 +366,42 @@ describe('CheckBox', () => {
         // Assert: aria-disabled is true.
         const checkbox = fixture.nativeElement.querySelector('.checkbox');
         expect(checkbox.getAttribute('aria-disabled'), 'aria-disabled should be true when disabled').toBe('true');
+      });
+
+      it('should set aria-required when required', async () => {
+        // Arrange: Create required component.
+        const fixture = await arrangeCheckBox({ required: true });
+
+        // Assert: aria-required is true.
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.getAttribute('aria-required'), 'aria-required should be true when required').toBe('true');
+      });
+
+      it('should not set aria-required when not required', async () => {
+        // Arrange: Create component without required.
+        const fixture = await arrangeCheckBox();
+
+        // Assert: aria-required is not present.
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.hasAttribute('aria-required'), 'aria-required should not be set when not required').toBe(false);
+      });
+
+      it('should set aria-invalid when invalid', async () => {
+        // Arrange: Create invalid component.
+        const fixture = await arrangeCheckBox({ invalid: true });
+
+        // Assert: aria-invalid is true.
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.getAttribute('aria-invalid'), 'aria-invalid should be true when invalid').toBe('true');
+      });
+
+      it('should not set aria-invalid when not invalid', async () => {
+        // Arrange: Create component without invalid.
+        const fixture = await arrangeCheckBox();
+
+        // Assert: aria-invalid is not present.
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        expect(checkbox.hasAttribute('aria-invalid'), 'aria-invalid should not be set when not invalid').toBe(false);
       });
 
       it('should have tabindex 0 when enabled', async () => {
