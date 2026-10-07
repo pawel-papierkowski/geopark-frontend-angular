@@ -24,6 +24,12 @@ import { enTextBoxType } from '@/shared/ui/other/types';
  * - allowPaste - If false, this input does not allow text insertion from outside (blocks paste and drag-drop insertion; cut stays possible). Optional, default is true.
  * - autocomplete - For autocomplete attribute of <input>. Optional.
  * - placeholder - Shows grayed out text in the background of input if null/empty. Optional.
+ * - inputmode - For inputmode attribute of <input> (virtual keyboard hint, e.g. 'numeric'). Optional.
+ * - name - For name attribute of <input>. Optional.
+ * - readonly - For readonly attribute of <input>; unlike disabled, the input stays focusable and its value is still submitted. Optional, default false.
+ * - minLength - For minlength attribute of <input>. Optional; drives the native browser constraint only - the `invalid` state still comes from signal-forms validators.
+ * - maxLength - For maxlength attribute of <input>. Optional; additionally blocks typing past the limit.
+ * - patternAttr - For pattern attribute of <input>. Optional; drives the native browser constraint only. Component-specific on purpose: the signal-forms `pattern` field state is `RegExp[]` (validators own the `invalid` state there, and the framework does not reflect it onto native inputs either), so it cannot back a native-attribute-shaped string input.
  *
  * Outputs:
  * - touch - Informs that user blurred out of component.
@@ -32,11 +38,11 @@ import { enTextBoxType } from '@/shared/ui/other/types';
  * - required - If true, component is required. Default is false.
  * - disabled - If true, acts as disabled component. Default is false.
  * - invalid - If true, shows component as having invalid state. Visual only. Default is false.
+ * - readonly, name, minLength, maxLength - When used with `formField`, the directive also sets these from the bound field's state.
  */
 @Component({
   selector: 'text-box',
   imports: [ ],
-  styleUrl: './text-box.css',
   templateUrl: './text-box.html',
 })
 export class TextBox implements FormValueControl<string | null> {
@@ -61,12 +67,26 @@ export class TextBox implements FormValueControl<string | null> {
   public autocomplete = input<string>('off');
   /** Shows grayed out text in background of input if value is null/empty. */
   public placeholder = input<string>('');
+  /** For inputmode attribute of <input> (virtual keyboard hint). Empty means attribute not set. */
+  public inputmode = input<string>('');
+  /** For name attribute of <input>. Empty means attribute not set. */
+  public name = input<string>('');
+  /** For minlength attribute of <input>; native browser constraint only. Undefined means attribute not set. */
+  public minLength = input<number>();
+  /** For maxlength attribute of <input>; also blocks typing past the limit. Undefined means attribute not set. */
+  public maxLength = input<number>();
+  /** For pattern attribute of <input>; native browser constraint only. Empty means attribute not set.
+   * Component-specific (like `inputmode`) - deliberately NOT the signal-forms `pattern` field
+   * state, whose type is `RegExp[]` and which validators turn into the `invalid` state. */
+  public patternAttr = input<string>('');
   /** Is component required? */
   public readonly required = input<boolean>(false);
   /** Is component disabled? */
   public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
   public readonly invalid = input<boolean>(false);
+  /** Is component read-only? Unlike disabled, input stays focusable and its value is still submitted. */
+  public readonly readonly = input<boolean>(false);
   /** Informs that user blurred out of component. */
   public touch = output<void>();
 

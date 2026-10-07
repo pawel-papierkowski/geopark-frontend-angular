@@ -29,6 +29,18 @@ describe('TextBox', () => {
     ident?: string;
     /** Label reference for aria-labelledby. */
     label?: string;
+    /** Whether the input is read-only. */
+    readonly?: boolean;
+    /** For name attribute. */
+    name?: string;
+    /** For inputmode attribute. */
+    inputmode?: string;
+    /** For minlength attribute. */
+    minLength?: number;
+    /** For maxlength attribute. */
+    maxLength?: number;
+    /** For pattern attribute. */
+    patternAttr?: string;
   }
 
   /**
@@ -48,6 +60,12 @@ describe('TextBox', () => {
       invalid = false,
       ident = 'test-textbox',
       label = '',
+      readonly = false,
+      name = '',
+      inputmode = '',
+      minLength = undefined,
+      maxLength = undefined,
+      patternAttr = '',
     } = opts;
 
     await TestBed.configureTestingModule({
@@ -64,6 +82,12 @@ describe('TextBox', () => {
     fixture.componentRef.setInput('required', required);
     fixture.componentRef.setInput('disabled', disabled);
     fixture.componentRef.setInput('invalid', invalid);
+    fixture.componentRef.setInput('readonly', readonly);
+    fixture.componentRef.setInput('name', name);
+    fixture.componentRef.setInput('inputmode', inputmode);
+    fixture.componentRef.setInput('minLength', minLength);
+    fixture.componentRef.setInput('maxLength', maxLength);
+    fixture.componentRef.setInput('patternAttr', patternAttr);
     fixture.componentRef.setInput('value', value);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -175,6 +199,57 @@ describe('TextBox', () => {
         // Assert: Autocomplete attribute is set.
         const input = fixture.nativeElement.querySelector('input');
         expect(input.getAttribute('autocomplete'), 'should have autocomplete attribute').toBe('email');
+      });
+
+      it('should set name, inputmode, minlength, maxlength and pattern attributes when provided', async () => {
+        // Arrange: Create component with all optional native attributes set.
+        const fixture = await arrangeTextBox({
+          name: 'street',
+          inputmode: 'numeric',
+          minLength: 2,
+          maxLength: 10,
+          patternAttr: '[a-z]+',
+        });
+
+        // Assert: Every attribute reaches the inner input.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.getAttribute('name'), 'should have name attribute').toBe('street');
+        expect(input.getAttribute('inputmode'), 'should have inputmode attribute').toBe('numeric');
+        expect(input.getAttribute('minlength'), 'should have minlength attribute').toBe('2');
+        expect(input.getAttribute('maxlength'), 'should have maxlength attribute').toBe('10');
+        expect(input.getAttribute('pattern'), 'should have pattern attribute').toBe('[a-z]+');
+      });
+
+      it('should not set name, inputmode, minlength, maxlength or pattern attributes by default', async () => {
+        // Arrange: Create component with defaults.
+        const fixture = await arrangeTextBox();
+
+        // Assert: No optional native attribute is present.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.hasAttribute('name'), 'name should not be set by default').toBe(false);
+        expect(input.hasAttribute('inputmode'), 'inputmode should not be set by default').toBe(false);
+        expect(input.hasAttribute('minlength'), 'minlength should not be set by default').toBe(false);
+        expect(input.hasAttribute('maxlength'), 'maxlength should not be set by default').toBe(false);
+        expect(input.hasAttribute('pattern'), 'pattern should not be set by default').toBe(false);
+      });
+
+      it('should have readonly attribute when readonly is true', async () => {
+        // Arrange: Create read-only component.
+        const fixture = await arrangeTextBox({ readonly: true });
+
+        // Assert: Input is read-only but still enabled.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.readOnly, 'input should be read-only').toBe(true);
+        expect(input.disabled, 'read-only input must not be disabled').toBe(false);
+      });
+
+      it('should not have readonly attribute when readonly is false', async () => {
+        // Arrange: Create component with defaults.
+        const fixture = await arrangeTextBox();
+
+        // Assert: Input is editable.
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.readOnly, 'input should not be read-only by default').toBe(false);
       });
 
       it('should have both disabled and invalid attributes when both inputs are true', async () => {
@@ -439,7 +514,7 @@ describe('TextBox', () => {
           // Act: Press Shift+Tab to move focus backwards.
           await user.keyboard('{Shift>}{Tab}{/Shift}');
 
-          // Assert: Disabled input (tabindex -1) must be skipped.
+          // Assert: Disabled input must be skipped (native disabled already leaves the tab order).
           expect(document.activeElement, 'disabled input should be skipped on Shift+Tab').not.toBe(input);
         } finally { // cleanup
           nextControl.remove();
@@ -623,22 +698,20 @@ describe('TextBox', () => {
       expect(input.hasAttribute('aria-disabled'), 'aria-disabled should not be set when not disabled').toBe(false);
     });
 
-    it('should have tabindex 0 when enabled', async () => {
+    it('should not declare tabindex - native disabled state already handles tab order', async () => {
       // Arrange: Create enabled component.
       const fixture = await arrangeTextBox();
-
-      // Assert: Tabindex is 0.
       const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('tabindex'), 'enabled input should have tabindex 0').toBe('0');
-    });
 
-    it('should have tabindex -1 when disabled', async () => {
-      // Arrange: Create disabled component.
-      const fixture = await arrangeTextBox({ disabled: true });
+      // Assert: Enabled input relies on the default tab order.
+      expect(input.hasAttribute('tabindex'), 'enabled input should not declare tabindex').toBe(false);
 
-      // Assert: Tabindex is -1.
-      const input = fixture.nativeElement.querySelector('input');
-      expect(input.getAttribute('tabindex'), 'disabled input should have tabindex -1').toBe('-1');
+      // Act: Disable the component.
+      fixture.componentRef.setInput('disabled', true);
+      fixture.detectChanges();
+
+      // Assert: Disabled input is removed from tab order natively, no tabindex needed.
+      expect(input.hasAttribute('tabindex'), 'disabled input should not declare tabindex').toBe(false);
     });
 
     it('should set data-testid from ident', async () => {

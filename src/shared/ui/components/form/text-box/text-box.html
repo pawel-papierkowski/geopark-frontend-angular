@@ -1,28 +1,31 @@
-<div class="textbox-wrapper">
-  <input
-    #inputRef
-    [id]="resolvedIdent()"
-    [attr.data-testid]="resolvedIdent()"
-    [class.invalid]="invalid()"
+<input
+  #inputRef
+  [id]="resolvedIdent()"
+  [attr.data-testid]="resolvedIdent()"
+  [class.invalid]="invalid()"
 
-    [value]="value()"
-    (input)="onInput($event)"
-    (compositionstart)="onCompositionStart()"
-    (compositionend)="onCompositionEnd($event)"
+  [value]="value()"
+  (input)="onInput($event)"
+  (compositionstart)="onCompositionStart()"
+  (compositionend)="onCompositionEnd($event)"
 
-    [type]="type()"
-    [autocomplete]="autocomplete()"
-    [placeholder]="placeholder()"
-    [required]="required()"
-    [disabled]="disabled()"
-    [tabindex]="disabled() ? -1 : 0"
+  [type]="type()"
+  [autocomplete]="autocomplete()"
+  [placeholder]="placeholder()"
+  [attr.inputmode]="inputmode() || null"
+  [attr.name]="name() || null"
+  [readonly]="readonly()"
+  [attr.minlength]="minLength() ?? null"
+  [attr.maxlength]="maxLength() ?? null"
+  [attr.pattern]="patternAttr() || null"
+  [required]="required()"
+  [disabled]="disabled()"
 
-    [attr.aria-labelledby]="label() || null"
-    [attr.aria-required]="required() || null"
-    [attr.aria-invalid]="invalid() || null"
-    [attr.aria-disabled]="disabled() || null"
+  [attr.aria-labelledby]="label() || null"
+  [attr.aria-required]="required() || null"
+  [attr.aria-invalid]="invalid() || null"
+  [attr.aria-disabled]="disabled() || null"
 
-    (blur)="handleBlur()"
-    (paste)="onPaste($event)"
-    (drop)="onDrop($event)" />
-</div>
+  (blur)="handleBlur()"
+  (paste)="onPaste($event)"
+  (drop)="onDrop($event)" />
