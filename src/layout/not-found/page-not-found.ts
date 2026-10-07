@@ -9,7 +9,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'page-not-found',
   imports: [ TranslatePipe ],
-  styleUrl: './page-not-found.css',
   templateUrl: './page-not-found.html',
 })
 export class PageNotFound implements OnInit, OnDestroy {

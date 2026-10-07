@@ -9,7 +9,6 @@ import { NavLink } from '@/shared/ui/layout/nav-link/nav-link';
 @Component({
   selector: 'nav-admin',
   imports: [ TranslatePipe, NavLink ],
-  styleUrl: './nav-admin.css',
   templateUrl: './nav-admin.html',
 })
 export class NavAdmin {

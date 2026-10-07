@@ -31,7 +31,6 @@ import { Section } from '@/shared/config/types';
 @Component({
   selector: 'nav-link',
   imports: [ TranslatePipe, RouterLink ],
-  styleUrl: './nav-link.css',
   templateUrl: './nav-link.html',
 })
 export class NavLink {

@@ -52,7 +52,6 @@ export type CustomComponentsForm = {
 @Component({
   selector: 'page-custom-components',
   imports: [ TranslatePipe, FormField, TextBox, CheckBox, RadioBox, ComboBox, DateTimePicker ],
-  styleUrl: './page-custom-components.css',
   templateUrl: './page-custom-components.html',
 })
 export class PageCustomComponents {
