@@ -17,9 +17,9 @@
     "e2e:ui": "npx playwright test --ui",
     "e2e:report": "npx playwright show-report",
     "pretypecheck": "npm run i18n:generate",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit && tsc -p tsconfig.playwright.json --noEmit",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit && tsc -p tsconfig.playwright.json --noEmit",
     "pretypecheck:app": "npm run i18n:generate",
-    "typecheck:app": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck:app": "ngc -p tsconfig.app.json --noEmit",
     "pretypecheck:spec": "npm run i18n:generate",
     "typecheck:spec": "tsc -p tsconfig.spec.json --noEmit",
     "typecheck:e2e": "tsc -p tsconfig.playwright.json --noEmit"
