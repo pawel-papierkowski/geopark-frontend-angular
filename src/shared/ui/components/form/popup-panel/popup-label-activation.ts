@@ -45,8 +45,9 @@ export class LabelActivation<TExtra extends string = never> {
   public readonly focusOpened = signal(false);
 
   /** What this label activation's forwarded click decided; `none` until a forwarded click runs
-   * and reset at the start of every pointer interaction, like `focusOpened`. */
-  public readonly clickDecision = signal<LabelClickDecision<TExtra>>('none');
+   * and reset at the start of every pointer interaction, like `focusOpened`. Set it via `setDecision()`.
+   * Read it via `consumeDecision()`. */
+  private readonly clickDecision = signal<LabelClickDecision<TExtra>>('none');
 
   /** Clear both markers: the state of a brand-new pointer interaction, never judged by the
    * previous activation's markers (a focus-only activation that never received its click
@@ -54,6 +55,14 @@ export class LabelActivation<TExtra extends string = never> {
   public reset(): void {
     this.focusOpened.set(false);
     this.clickDecision.set('none');
+  }
+
+  /**
+   * Set new value of click decision.
+   * @param decision Decision to set.
+   */
+  public setDecision(decision: LabelClickDecision<TExtra>) {
+    this.clickDecision.set(decision);
   }
 
   /** Read the forwarded-click decision and clear it, so the decision is consumed exactly once

@@ -69,7 +69,7 @@ type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
  * - label - Id of an external element (usually `<label>`) used for `aria-labelledby`; when set, it names the input instead of the `aria-label` fallback. The id must match an element in the document - a dangling reference silently empties the input's name, so dev mode warns on the console (see `warnDanglingLabel`). Optional.
  * - qualifyLabel - If true and `label` is set, appends a hidden "Time" qualifier id to `aria-labelledby`, so both sub-fields stay distinguishable when DateTimePicker runs in `datetime` mode. Always provided by parent DateTimePicker. Optional, default false.
  * - container - Root element of the host DateTimePicker wrapper. It holds this sub-picker, the sibling sub-picker and the wrapper's hidden label-activation target, so it is the real component boundary: focus moving to anything inside it reads as an internal move instead of a blur. Always provided by parent DateTimePicker. Optional, default null.
- * - canNull - If true, allow deselecting date. Optional, default is false.
+ * - canNull - If true, allow deselecting time. Optional, default is false.
  *
  * Outputs:
  * - touch - Informs that user blurred out of component (focus left it), regardless of panel visibility.

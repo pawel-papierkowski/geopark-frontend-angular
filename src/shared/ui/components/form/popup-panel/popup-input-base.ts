@@ -76,9 +76,9 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
   /** Root focusable element. Template ref name `pickerRef` is fixed by this class. */
   protected readonly pickerRef = viewChild.required<ElementRef<HTMLDivElement>>('pickerRef');
   /** Reference to the text input. Template ref name `inputRef` is fixed by this class. */
-  protected readonly inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
+  public readonly inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
   /** Reference to the popup panel. Template ref name `panelRef` is fixed by this class. */
-  public readonly panelRef = viewChild.required<ElementRef<HTMLDivElement>>('panelRef');
+  protected readonly panelRef = viewChild.required<ElementRef<HTMLDivElement>>('panelRef');
 
   // SIGNALS
 

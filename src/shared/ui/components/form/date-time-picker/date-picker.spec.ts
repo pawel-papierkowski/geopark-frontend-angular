@@ -283,7 +283,7 @@ describe('DatePicker', () => {
       isOpen: () => fixture.componentInstance.isCalendarVisible(),
       input: () => getInput(fixture),
       insideTarget: () => fixture.componentInstance.calendarGridRef().nativeElement,
-      panel: () => fixture.componentInstance.panelRef().nativeElement,
+      panel: () => fixture.nativeElement.querySelector('.calendar-container'),
       chromeInnerTarget: () => fixture.nativeElement.querySelector('[data-testid="test-date_10"]'),
       dispatchFocusout: (source, relatedTarget) => {
         source.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: relatedTarget ?? undefined }));

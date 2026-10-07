@@ -155,7 +155,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     const datePicker = this.datePicker();
     const timePicker = this.timePicker();
 
-    const decision = this.labelActivation.clickDecision();
+    const decision = this.labelActivation.consumeDecision();
     if (decision === 'closed:date' || decision === 'closed:time') {
       // The click already closed this sub-picker's panel - restore focus on its input without
       // re-running the toggle. Deliberately NOT gated on visibility: the click closed the panel
@@ -194,19 +194,19 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     }
     const datePicker = this.datePicker();
     if (datePicker !== undefined && datePicker.isCalendarVisible()) {
-      this.labelActivation.clickDecision.set('closed:date');
+      this.labelActivation.setDecision('closed:date');
       datePicker.hidePanelAndRefocus();
       return;
     }
     const timePicker = this.timePicker();
     if (timePicker !== undefined && timePicker.isClockVisible()) {
-      this.labelActivation.clickDecision.set('closed:time');
+      this.labelActivation.setDecision('closed:time');
       timePicker.hidePanelAndRefocus();
       return;
     }
 
     // Both are closed already, so we open one of them. datePicker has priority.
-    this.labelActivation.clickDecision.set('open');
+    this.labelActivation.setDecision('open');
     this.focusSubPicker();
 
     // The redirect above opens only through the input's focus event - when the input ALREADY
@@ -239,11 +239,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
     const target = e.target as HTMLElement;
 
     // If date input received focus, close time panel.
-    if (target.id === `${this.dateIdent()}_input`) {
+    if (target === this.datePicker()?.inputRef().nativeElement) {
       this.timePicker()?.hidePanel();
     }
     // If time input received focus, close date panel.
-    if (target.id === `${this.timeIdent()}_input`) {
+    if (target === this.timePicker()?.inputRef().nativeElement) {
       this.datePicker()?.hidePanel();
     }
   }

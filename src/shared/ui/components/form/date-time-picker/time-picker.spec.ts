@@ -219,7 +219,7 @@ describe('TimePicker', () => {
       isOpen: () => fixture.componentInstance.isClockVisible(),
       input: () => getInput(fixture),
       insideTarget: () => fixture.componentInstance.hourRef().nativeElement,
-      panel: () => fixture.componentInstance.panelRef().nativeElement,
+      panel: () => fixture.nativeElement.querySelector('.clock-container'),
       chromeInnerTarget: () => fixture.componentInstance.hourRef().nativeElement,
       dispatchFocusout: (source, relatedTarget) => {
         source.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: relatedTarget ?? undefined }));

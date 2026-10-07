@@ -61,7 +61,7 @@ export class DatePicker extends PopupInputBase<Date> {
   public dateMax = input<Date | null>(null);
 
   /** Shortcuts for days of week used in lang keys. */
-  public daysOfWeek = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  public readonly daysOfWeek = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
   // REFERENCES
 
@@ -154,7 +154,7 @@ export class DatePicker extends PopupInputBase<Date> {
   public gridColumns = computed(() => (this.showWeeks() ? 8 : 7));
   /** Find out grid style. */
   public gridStyle = computed(() => ({
-    gridTemplateColumns: `repeat(${this.gridColumns() || 7}, 1fr)`,
+    gridTemplateColumns: `repeat(${this.gridColumns()}, 1fr)`,
   }));
 
   /**

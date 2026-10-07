@@ -256,7 +256,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     if (next instanceof Node && this.comboRef().nativeElement.contains(next)) return;
     // Focus really left the component: a click decision recorded by a focus-first engine's
     // (Chromium/Firefox) label activation - whose click runs last - is now obsolete.
-    this.labelActivation.clickDecision.set('none');
+    this.labelActivation.setDecision('none');
     this.hidePanel();
     this.touch.emit();
   }
@@ -277,10 +277,10 @@ export class ComboBox implements FormValueControl<number | string | null> {
     if (this.isOpen()) {
       // Record the decision so a focus-first-paired focus handler (WebKit forwards the click
       // BEFORE focusing the hidden button) does not toggle again right after this one.
-      this.labelActivation.clickDecision.set('open');
+      this.labelActivation.setDecision('open');
       this.openList();
     } else {
-      this.labelActivation.clickDecision.set('closed');
+      this.labelActivation.setDecision('closed');
       this.highlightedIndex.set(-1);
     }
   }

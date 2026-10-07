@@ -12,7 +12,7 @@
         them as the `container` input) instead of their own subtree - that also covers focus
         moving between the two sub-pickers, which is an internal move, not a blur. -->
   <button #labelBtnRef type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
-    (focus)="handleLabelFocus()" (click)="handleLabelClick()"></button>
+    (focus)="handleLabelFocus()" (click)="handleLabelClick()" [disabled]="disabled()"></button>
 
   <!-- Qualifier is needed ONLY in datetime mode: there the same visible <label> names BOTH
        sub-inputs, so each one appends its own hidden "Date"/"Time" suffix to stay
