@@ -1,4 +1,4 @@
-import { Component, model, input, output, computed, inject, linkedSignal } from '@angular/core';
+import { Component, model, input, output, computed, inject, linkedSignal, viewChild, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
@@ -38,6 +38,8 @@ import { IdService } from '@/shared/utils/id/id-service';
 })
 export class CheckBox implements FormValueControl<boolean | null> {
   private readonly idService = inject(IdService);
+  /** Reference to the focusable checkbox box (the `role="checkbox"` div). */
+  private readonly checkboxRef = viewChild.required<ElementRef<HTMLDivElement>>('checkboxRef');
 
   /** Value held by component. */
   public value = model<boolean | null>(null);
@@ -68,6 +70,18 @@ export class CheckBox implements FormValueControl<boolean | null> {
   });
 
   // FUNCTIONS
+
+  /**
+   * Move focus from the hidden label target to the checkbox box itself. Label activation puts DOM
+   * focus on the hidden button; leaving it there would strand focus on an `aria-hidden`, visually
+   * clipped element (no visible focus) and would keep the checkbox's (blur) - so `touch` - from
+   * ever firing when the user later leaves the component. No-op when disabled (a disabled hidden
+   * button never receives activation in the first place; this guard is defense in depth).
+   */
+  public focusBox() {
+    if (this.disabled()) return;
+    this.checkboxRef().nativeElement.focus();
+  }
 
   /**
    * Toggle value of checkbox.

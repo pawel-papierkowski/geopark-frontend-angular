@@ -1,7 +1,16 @@
 <div class="checkbox-wrapper">
   <!-- Hidden button: labelable target for <label for="...">. -->
-  <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true" (click)="toggle()"></button>
+  <button
+    type="button"
+    [id]="resolvedIdent()"
+    class="hidden-label-button"
+    tabindex="-1"
+    aria-hidden="true"
+    [disabled]="disabled()"
+    (focus)="focusBox()"
+    (click)="toggle(); focusBox()"></button>
   <div
+    #checkboxRef
     [attr.data-testid]="resolvedIdent()"
     class="checkbox"
     [class.disabled]="disabled()"

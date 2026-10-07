@@ -414,6 +414,67 @@ describe('CheckBox', () => {
       });
     });
 
+    describe('label activation', () => {
+      it('should redirect focus from hidden label target to the checkbox', async () => {
+        // Arrange: Create component with its hidden label button and checkbox box.
+        const fixture = await arrangeCheckBox();
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+
+        // Act: Simulate the focus that label activation puts on the hidden target.
+        hiddenButton.dispatchEvent(new Event('focus'));
+        fixture.detectChanges();
+
+        // Assert: Focus must not stay on the aria-hidden button, it lands on the checkbox.
+        expect(document.activeElement, 'focus should be redirected to the checkbox').toBe(checkbox);
+      });
+
+      it('should toggle value and focus checkbox when hidden label target is clicked', async () => {
+        // Arrange: Create component with known value and its hidden label button.
+        const fixture = await arrangeCheckBox({ value: false });
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+
+        // Act: Label activation forwards its click to the hidden target.
+        hiddenButton.click();
+        fixture.detectChanges();
+
+        // Assert: Value toggled once and focus landed on the checkbox.
+        expect(fixture.componentInstance.value(), 'label-target click should toggle value').toBe(true);
+        expect(document.activeElement, 'click should focus the checkbox').toBe(checkbox);
+      });
+
+      it('should not redirect focus to the checkbox when disabled', async () => {
+        // Arrange: Create disabled component.
+        const fixture = await arrangeCheckBox({ disabled: true });
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+
+        // Act: Simulate the focus that label activation would put on the hidden target.
+        hiddenButton.dispatchEvent(new Event('focus'));
+        fixture.detectChanges();
+
+        // Assert: Disabled checkbox must not steal focus.
+        expect(document.activeElement, 'disabled checkbox should not receive redirected focus').not.toBe(checkbox);
+      });
+
+      it('should disable hidden label target when component is disabled', async () => {
+        // Arrange: Create enabled component.
+        const fixture = await arrangeCheckBox();
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+
+        // Assert: Enabled component keeps label activation working at the source.
+        expect(hiddenButton.disabled, 'enabled component should keep label activation working').toBe(false);
+
+        // Act: Disable the component.
+        fixture.componentRef.setInput('disabled', true);
+        fixture.detectChanges();
+
+        // Assert: Engine skips label activation entirely for a disabled control.
+        expect(hiddenButton.disabled, 'disabled component should block label activation at the source').toBe(true);
+      });
+    });
+
     describe('keyboard', () => {
       it('should toggle value on Enter key press', async () => {
         // Arrange: Create component and user event setup.
