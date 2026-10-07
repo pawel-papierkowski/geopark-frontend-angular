@@ -144,8 +144,8 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
 
   /**
    * Toggle the panel: close it when open, otherwise run the full open path - baseline reset,
-   * visible flag, subclass seeding (`prepareOpen`), first render, placement measurement,
-   * optional second render (`secondRenderBeforeFocus`) and keyboard focus into the panel.
+   * visible flag, subclass seeding (`prepareOpen`), first render, placement measurement and
+   * keyboard focus into the panel.
    * Never awaited by its callers: template event bindings do not await handlers, so the async
    * work is deliberately fire-and-forget (callers mark it with `void`).
    * The open can be cancelled while it awaits a render (Escape, a second click toggling it
@@ -178,22 +178,14 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
     // Adjust picker position if needed to prevent window overflow (measured under baseline).
     this.positionPanel();
 
-    // Opt-in second render: lets the measured placement reach the DOM before focus() runs
-    // (see `secondRenderBeforeFocus`). Awaited directly - not through a nested async hook -
-    // so the focus call stays in the same microtask position the open path always had;
-    // one extra promise hop would delay focus past synchronous test/user follow-ups.
-    if (this.secondRenderBeforeFocus) {
-      await forRender(this.injector);
-      // Same cancellation guard as after the first render: the panel can be closed during
-      // this extra round too (double-click/Escape/outside press landing in between).
-      if (!this.panelVisible()) return;
-    }
-
     // Move keyboard focus into the panel so the user can navigate immediately.
-    // preventScroll: whenever the panel fits on either side, placement puts it inside the
-    // viewport, so there is nothing to reveal - and a focus-triggered page scroll would race
-    // with the user's mouse. When it fits on neither side, the panel deliberately stays below
-    // the fold (the user scrolls down to it), so we still must not yank the page around.
+    // preventScroll: the placement resolved above only reaches the DOM on the next render, so
+    // focus() runs while the panel still sits at its baseline position - without preventScroll
+    // it would scroll that pre-placement (possibly below-the-fold) position into view and move
+    // the page under the user's mouse (their next click can then miss the target). Focus must
+    // never move the page at all: whatever the placement resolves to, the panel either ends up
+    // inside the viewport (nothing to reveal) or deliberately stays below the fold (the user
+    // scrolls down to it).
     this.focusPanelTarget().focus({ preventScroll: true });
   }
 
@@ -429,16 +421,4 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
   protected focusAnchorForNext(): HTMLElement {
     return this.inputRef().nativeElement;
   }
-
-  /**
-   * Opt-in to one more render between the placement measurement and the focus move
-   * (see `togglePanel`). Needed when `focus()` would otherwise scroll the page to the panel's
-   * pre-measurement (possibly below-the-fold) position: focus() scrolls the focused element
-   * into view, so focusing before the placement reaches the DOM moves the page under the
-   * user's cursor and their next click can miss the target (the click is retargeted to a
-   * common ancestor, so the toggle is silently lost). Defaults to false (focus right after
-   * measurement), which is correct when the panel content renders inline and is already
-   * inside the viewport under either placement.
-   */
-  protected readonly secondRenderBeforeFocus: boolean = false;
 }

@@ -10,9 +10,9 @@ import { TimePicker } from './time-picker';
 
 /**
  * Unit tests of time-picker component.
- * Note: the component moves keyboard focus into the clock panel after opening and uses
- * `forRender` twice (baseline measure, then flip applied before focus), so interaction
- * tests always flush with `whenStable` + `detectChanges` - twice for focus-open flows.
+ * Note: the component moves keyboard focus into the clock panel after opening and awaits
+ * `forRender` (measure placement under the baseline), so interaction tests flush with
+ * `whenStable` + `detectChanges` before asserting.
  */
 describe('TimePicker', () => {
   /** Options used to arrange a TimePicker instance under test. */
@@ -240,10 +240,8 @@ describe('TimePicker', () => {
         fixture.detectChanges();
       },
       flush: async () => {
-        // Two stability rounds settle the clock's two-round open (measure, then focus after
-        // the flip render) before the caller asserts.
-        fixture.detectChanges();
-        await fixture.whenStable();
+        // One stability round settles the open (measure under baseline, then focus) before
+        // the caller asserts.
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();
@@ -254,10 +252,9 @@ describe('TimePicker', () => {
         fixture.detectChanges();
       },
       focus: async (options) => {
-        // Two forRender rounds: measure under baseline, apply flip, then focus.
+        // The open awaits `forRender` once (measure under baseline, then focus), so one
+        // stability round settles it.
         fixture.componentInstance.focus(options);
-        fixture.detectChanges();
-        await fixture.whenStable();
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();
@@ -522,10 +519,8 @@ describe('TimePicker', () => {
 
         // Act: Focus the input (e.g. via Tab).
         getInput(fixture).focus();
-        // The open spans two forRender rounds (measure under baseline, apply flip, then
-        // focus), so a single whenStable + detectChanges pair cannot cover it yet.
-        fixture.detectChanges();
-        await fixture.whenStable();
+        // The open awaits `forRender` once (measure under baseline, then focus), so a single
+        // whenStable + detectChanges pair settles it.
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();

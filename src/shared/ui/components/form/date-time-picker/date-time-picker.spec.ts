@@ -1268,10 +1268,9 @@ describe('DateTimePicker', () => {
       // FormUiControl.focus contract used by the signal-forms Field directive.
       const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
 
-      // Act: Focus the control programmatically. The calendar open awaits `forRender` once;
-      // the second flush is a harmless extra round kept to mirror the clock's two-round open.
+      // Act: Focus the control programmatically. The calendar open awaits `forRender` once
+      // (measure under baseline, then focus), so a single flush settles it.
       fixture.componentInstance.focus();
-      await flush(fixture);
       await flush(fixture);
 
       // Assert: The date input took focus, its focus handler opened the calendar panel, and
@@ -1286,10 +1285,10 @@ describe('DateTimePicker', () => {
       // FormUiControl.focus contract used by the signal-forms Field directive.
       const fixture = await arrangeDateTimePicker({ mode: 'time' });
 
-      // Act: Focus the control programmatically. The open spans two forRender rounds, so
-      // a single flush cannot cover it yet (mirrors the sub-picker's focus-open tests).
+      // Act: Focus the control programmatically. The clock open awaits `forRender` once
+      // (measure under baseline, then focus), so a single flush settles it - the same
+      // contract the sub-picker's focus-open tests assert.
       fixture.componentInstance.focus();
-      await flush(fixture);
       await flush(fixture);
 
       // Assert: Delegation mirrors label activation - focus lands in the time sub-picker,

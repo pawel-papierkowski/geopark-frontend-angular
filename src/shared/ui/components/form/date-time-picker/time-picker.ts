@@ -235,16 +235,6 @@ export class TimePicker extends PopupInputBase<Date> {
     this.viewMinute.set(null);
   }
 
-  /**
-   * The clock panel renders its content inline immediately, but its placement must reach the
-   * DOM before focusing: focus() scrolls the focused element into view, so focusing while the
-   * panel still renders at its baseline (possibly below-the-fold) position makes the browser
-   * scroll the page to a spot the panel is about to leave. That scroll moves the page under
-   * the user's cursor and their next click can miss the label entirely (the click is
-   * retargeted to a common ancestor, so the toggle is silently lost).
-   */
-  protected override readonly secondRenderBeforeFocus = true;
-
   // GENERAL
 
   /**

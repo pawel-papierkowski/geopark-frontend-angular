@@ -34,11 +34,11 @@ export interface SubPickerBaseFixture {
   setContainer(container: HTMLElement): void;
   /** Set the `disabled` input and settle (detectChanges -> whenStable -> detectChanges). */
   setDisabled(disabled: boolean): Promise<void>;
-  /** Settle pending async component work (two stability rounds, covering a two-round open). */
+  /** Settle pending async component work (one stability round: the open awaits a single `forRender` before focus). */
   flush(): Promise<void>;
   /** Call showPanel() and settle (whenStable -> detectChanges). */
   showPanel(): Promise<void>;
-  /** Call focus(options) and settle the open (two stability rounds: the clock renders twice before focus, the calendar's extra round is a harmless no-op). */
+  /** Call focus(options) and settle the open (one stability round: measure under baseline, then focus). */
   focus(options?: FocusOptions): Promise<void>;
   /** Spy on the input's native focus() to observe forwarded options. */
   trackInputFocus(): Mock;
@@ -344,9 +344,8 @@ export function registerSubPickerFocusTests(driver: SubPickerBaseDriver): void {
     // Arrange: FormUiControl.focus contract - the form-driven path (e.g. "focus first invalid field").
     const fixture = await driver.arrange();
 
-    // Act: Focus the control programmatically. The open awaits `forRender` before focus - the
-    // clock does that twice (measure under baseline, apply flip, then focus), the calendar
-    // once - so the driver's two flush rounds cover the slowest open.
+    // Act: Focus the control programmatically. The open awaits one `forRender` (measure under
+    // baseline, then focus), so the driver's single flush round settles it.
     await fixture.focus();
 
     // Assert: The panel opens like Tab and focus lands where the component specifies.
