@@ -530,6 +530,45 @@ describe('TextBox', () => {
       expect(input.hasAttribute('aria-labelledby'), 'aria-labelledby should not be set when label is empty').toBe(false);
     });
 
+    describe('label', () => {
+      it('should warn in dev mode when the label id matches no element', async () => {
+        // Arrange: Spy on console.warn; label reference deliberately left dangling.
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+          // Act: Create the component - its dev-only effect checks the reference on first CD.
+          await arrangeTextBox({ label: 'ghost-label' });
+
+          // Assert: The dangling id is reported, naming this component.
+          const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+          expect(messages, 'dangling label id should be reported in dev mode').toContain('ghost-label');
+          expect(messages, 'warning should name the emitting component').toContain('[text-box]');
+        } finally { // cleanup
+          warnSpy.mockRestore();
+        }
+      });
+
+      it('should not warn when the label id resolves to an element', async () => {
+        // Arrange: Spy on console.warn; a real element carries the referenced id.
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const labelElement = document.createElement('label');
+        labelElement.id = 'real-label';
+        document.body.appendChild(labelElement);
+
+        try {
+          // Act: Create the component - its dev-only effect checks the reference on first CD.
+          await arrangeTextBox({ label: 'real-label' });
+
+          // Assert: Resolvable reference is not a defect.
+          const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+          expect(messages, 'resolvable label id must not warn').not.toContain('[text-box]');
+        } finally { // cleanup
+          labelElement.remove();
+          warnSpy.mockRestore();
+        }
+      });
+    });
+
     it('should set aria-required when required is true', async () => {
       // Arrange: Create required component.
       const fixture = await arrangeTextBox({ required: true });

@@ -1,7 +1,8 @@
-import { Component, inject, model, input, output, linkedSignal, viewChild, ElementRef } from '@angular/core';
+import { Component, effect, inject, model, input, output, linkedSignal, viewChild, ElementRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
+import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { enTextBoxType } from '@/shared/ui/other/types';
 
 /** Custom input type="text" implementation. It is just a wrapper for the actual <input>.
@@ -11,13 +12,14 @@ import { enTextBoxType } from '@/shared/ui/other/types';
  * - Accept string or null (not set) value.
  * - Can disable or mark as invalid.
  * - Supports <label>.
+ * - Supports WAI-ARIA.
  *
  * Template binding:
  * - formField - use field from form data, in same way as standard input: `<input [formField]="someForm.someField" />`.
  *
  * Inputs:
  * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `text-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
- * - label - For `aria-labelledby`. Optional.
+ * - label - For `aria-labelledby`. Optional; dev mode warns when the id matches no element.
  * - type - Type of input. Optional, default is 'text'.
  * - allowPaste - If false, this input does not allow text insertion from outside (blocks paste and drag-drop insertion; cut stays possible). Optional, default is true.
  * - autocomplete - For autocomplete attribute of <input>. Optional.
@@ -39,6 +41,8 @@ import { enTextBoxType } from '@/shared/ui/other/types';
 })
 export class TextBox implements FormValueControl<string | null> {
   private readonly idService = inject(IdService);
+  /** Document the `label` id is resolved against (not the global, see `warnDanglingLabel`). */
+  private readonly document = inject(DOCUMENT);
 
   /** Value held by component. */
   public value = model<string | null>(null);
@@ -72,7 +76,16 @@ export class TextBox implements FormValueControl<string | null> {
   /** True while an IME composition (e.g. Japanese kana input) is in progress - model updates are buffered until it ends. */
   private composing = false;
 
-  //
+  constructor() {
+    // Dev-only: catch a `label` id that matches no element. A dangling aria-labelledby would
+    // leave this input with no accessible name (no aria-label fallback), which no app test
+    // catches; re-runs whenever label or ident changes (see `warnDanglingLabel`).
+    effect(() => {
+      warnDanglingLabel(this.document, this.label(), this.resolvedIdent(), 'text-box');
+    });
+  }
+
+  // FUNCTIONS
 
   /**
    * Focus the inner <input> on behalf of the signal-forms `Field` directive (optional
