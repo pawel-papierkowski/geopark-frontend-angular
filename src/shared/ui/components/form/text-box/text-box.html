@@ -1,11 +1,14 @@
 <div class="textbox-wrapper">
   <input
+    #inputRef
     [id]="resolvedIdent()"
     [attr.data-testid]="resolvedIdent()"
     [class.invalid]="invalid()"
 
     [value]="value()"
-    (input)="value.set($any($event.target).value)"
+    (input)="onInput($event)"
+    (compositionstart)="onCompositionStart()"
+    (compositionend)="onCompositionEnd($event)"
 
     [type]="type()"
     [autocomplete]="autocomplete()"
@@ -19,6 +22,7 @@
     [attr.aria-invalid]="invalid() || null"
     [attr.aria-disabled]="disabled() || null"
 
-    (blur)="touch.emit()"
-    (paste)="onPaste($event)" />
+    (blur)="handleBlur()"
+    (paste)="onPaste($event)"
+    (drop)="onDrop($event)" />
 </div>

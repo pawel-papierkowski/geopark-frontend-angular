@@ -1,4 +1,4 @@
-import { Component, inject, model, input, output, linkedSignal } from '@angular/core';
+import { Component, inject, model, input, output, linkedSignal, viewChild, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
@@ -19,7 +19,7 @@ import { enTextBoxType } from '@/shared/ui/other/types';
  * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `text-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
  * - label - For `aria-labelledby`. Optional.
  * - type - Type of input. Optional, default is 'text'.
- * - allowPaste - If false, this input does not allow pasting text into the field. Optional, default is true.
+ * - allowPaste - If false, this input does not allow text insertion from outside (blocks paste and drag-drop insertion; cut stays possible). Optional, default is true.
  * - autocomplete - For autocomplete attribute of <input>. Optional.
  * - placeholder - Shows grayed out text in the background of input if null/empty. Optional.
  *
@@ -51,7 +51,7 @@ export class TextBox implements FormValueControl<string | null> {
   public label = input<string>('');
   /** Type of input. */
   public type = input<enTextBoxType>('text');
-  /** If false, this input does not allow pasting text into the field. */
+  /** If false, this input does not allow text insertion from outside (paste and drag-drop). */
   public allowPaste = input<boolean>(true);
   /** For autocomplete attribute of <input>. */
   public autocomplete = input<string>('off');
@@ -66,7 +66,61 @@ export class TextBox implements FormValueControl<string | null> {
   /** Informs that user blurred out of component. */
   public touch = output<void>();
 
+  /** Reference to the inner <input>; target of the `focus()` contract. */
+  private readonly inputRef = viewChild.required<ElementRef<HTMLInputElement>>('inputRef');
+
+  /** True while an IME composition (e.g. Japanese kana input) is in progress - model updates are buffered until it ends. */
+  private composing = false;
+
   //
+
+  /**
+   * Focus the inner <input> on behalf of the signal-forms `Field` directive (optional
+   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Without this method the
+   * directive would fall back to focusing the non-focusable `<text-box>` host and silently do
+   * nothing. No-op when disabled.
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the input.
+   */
+  public focus(options?: FocusOptions): void {
+    if (this.disabled()) return;
+    this.inputRef().nativeElement.focus(options);
+  }
+
+  /**
+   * Handle input event of the inner <input>. Ignored while an IME composition is in progress, so
+   * intermediate composition strings never reach the model (same behavior as Angular's own
+   * `DefaultValueAccessor`).
+   * @param event Event data.
+   */
+  public onInput(event: Event) {
+    if (this.composing) return;
+    this.value.set(this.readInputValue(event));
+  }
+
+  /**
+   * Handle composition start: begin buffering model updates until the composition ends.
+   */
+  public onCompositionStart() {
+    this.composing = true;
+  }
+
+  /**
+   * Handle composition end: stop buffering and commit the final composed text.
+   * @param event Event data.
+   */
+  public onCompositionEnd(event: Event) {
+    this.composing = false;
+    this.value.set(this.readInputValue(event));
+  }
+
+  /**
+   * Handle blur of the inner <input>. Blur caused by the input becoming disabled while focused
+   * is programmatic, not a user leaving the control, so it must not mark the field as touched.
+   */
+  public handleBlur() {
+    if (this.disabled()) return;
+    this.touch.emit();
+  }
 
   /**
    * Handle paste event.
@@ -74,5 +128,23 @@ export class TextBox implements FormValueControl<string | null> {
    */
   public onPaste(event: ClipboardEvent) {
     if (!this.allowPaste()) event.preventDefault();
+  }
+
+  /**
+   * Handle drop event: blocks drag-and-drop insertion of text when pasting is not allowed.
+   * A drop does not fire a paste event, so `onPaste` alone would not catch it.
+   * @param event Event data.
+   */
+  public onDrop(event: DragEvent) {
+    if (!this.allowPaste()) event.preventDefault();
+  }
+
+  /**
+   * Read current text of the inner <input>.
+   * @param event Event carrying the input element as its target.
+   * @returns Current value of the input.
+   */
+  private readInputValue(event: Event): string {
+    return (event.target as HTMLInputElement).value;
   }
 }

@@ -301,6 +301,88 @@ describe('TextBox', () => {
         expect(preventDefaultSpy, 'paste event should not call preventDefault').not.toHaveBeenCalled();
       });
 
+      it('should prevent drop when allowPaste is false', async () => {
+        // Arrange: Create component with paste disabled (drop must be blocked as well - a drop
+        // never fires a paste event, so the paste handler alone would not catch it).
+        const fixture = await arrangeTextBox({ allowPaste: false });
+        const input = fixture.nativeElement.querySelector('input');
+        const preventDefaultSpy = vi.fn();
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true });
+        dropEvent.preventDefault = preventDefaultSpy;
+
+        // Act: Dispatch drop event on the input.
+        input.dispatchEvent(dropEvent);
+
+        // Assert: Drop event was prevented.
+        expect(preventDefaultSpy, 'drop event should call preventDefault').toHaveBeenCalledTimes(1);
+      });
+
+      it('should allow drop when allowPaste is true', async () => {
+        // Arrange: Create component with paste enabled (default).
+        const fixture = await arrangeTextBox({ allowPaste: true });
+        const input = fixture.nativeElement.querySelector('input');
+        const preventDefaultSpy = vi.fn();
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true });
+        dropEvent.preventDefault = preventDefaultSpy;
+
+        // Act: Dispatch drop event on the input.
+        input.dispatchEvent(dropEvent);
+
+        // Assert: Drop event was not prevented.
+        expect(preventDefaultSpy, 'drop event should not call preventDefault').not.toHaveBeenCalled();
+      });
+
+      it('should buffer model updates while IME composition is in progress', async () => {
+        // Arrange: Create component and input; model starts null.
+        const fixture = await arrangeTextBox();
+        const input = fixture.nativeElement.querySelector('input');
+
+        // Act: Start composition and type intermediate text.
+        input.dispatchEvent(new Event('compositionstart', { bubbles: true }));
+        input.value = 'ky';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        fixture.detectChanges();
+
+        // Assert: Intermediate composition text must not reach the model.
+        expect(fixture.componentInstance.value(), 'model should stay unchanged during composition').toBeNull();
+      });
+
+      it('should commit final text when IME composition ends', async () => {
+        // Arrange: Create component and input.
+        const fixture = await arrangeTextBox();
+        const input = fixture.nativeElement.querySelector('input');
+
+        // Act: Run a full composition cycle with intermediate and final text.
+        input.dispatchEvent(new Event('compositionstart', { bubbles: true }));
+        input.value = 'ky';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.value = 'kyou';
+        input.dispatchEvent(new Event('compositionend', { bubbles: true }));
+        input.value = 'kyou!';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        fixture.detectChanges();
+
+        // Assert: Final composed text committed, and normal typing works again afterwards.
+        expect(fixture.componentInstance.value(), 'model should hold the final composed text').toBe('kyou!');
+      });
+
+      it('should not emit touch when blur is caused by disabling the input while focused', async () => {
+        // Arrange: Create enabled component with a touch spy (browser fires blur when a focused
+        // input becomes disabled - that is programmatic, not a user leaving the control).
+        const fixture = await arrangeTextBox();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+
+        // Act: Disable the component, then dispatch the blur the browser produces.
+        fixture.componentRef.setInput('disabled', true);
+        fixture.detectChanges();
+        const input = fixture.nativeElement.querySelector('input');
+        input.dispatchEvent(new Event('blur'));
+
+        // Assert: Field must not be marked as touched.
+        expect(touchSpy, 'programmatic blur should not emit touch').not.toHaveBeenCalled();
+      });
+
       it('should not receive focus or accept typing when disabled', async () => {
         // Arrange: Create disabled component and user event setup.
         const user = userEvent.setup();
@@ -386,6 +468,46 @@ describe('TextBox', () => {
           nextControl.remove();
         }
       });
+    });
+  });
+
+  describe('focus contract', () => {
+    it('should move focus to the input when focus() is called', async () => {
+      // Arrange: Create enabled component.
+      const fixture = await arrangeTextBox();
+      const input = fixture.nativeElement.querySelector('input');
+
+      // Act: Focus programmatically on behalf of the signal-forms Field directive.
+      fixture.componentInstance.focus();
+
+      // Assert: DOM focus sits on the input.
+      expect(document.activeElement, 'focus() should move DOM focus to the input').toBe(input);
+    });
+
+    it('should not focus the input when component is disabled', async () => {
+      // Arrange: Create disabled component.
+      const fixture = await arrangeTextBox({ disabled: true });
+      const input = fixture.nativeElement.querySelector('input');
+
+      // Act: Focus programmatically.
+      fixture.componentInstance.focus();
+
+      // Assert: Focus stays off the disabled input.
+      expect(document.activeElement, 'focus() must not focus a disabled control').not.toBe(input);
+    });
+
+    it('should forward focus options to the input', async () => {
+      // Arrange: Create component and spy on the native focus method.
+      const fixture = await arrangeTextBox();
+      const input = fixture.nativeElement.querySelector('input');
+      const focusSpy = vi.spyOn(input, 'focus');
+
+      // Act: Focus with options.
+      fixture.componentInstance.focus({ preventScroll: true });
+
+      // Assert: Input focused exactly once, with the given options passed through.
+      expect(focusSpy, 'focus() should focus the input in a single call').toHaveBeenCalledTimes(1);
+      expect(focusSpy, 'focus() should pass the given options through to the input').toHaveBeenCalledWith({ preventScroll: true });
     });
   });
 
