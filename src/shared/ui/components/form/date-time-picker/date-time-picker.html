@@ -11,7 +11,7 @@
         a sibling of the sub-pickers, so their focusout containment uses this root (forwarded to
         them as the `container` input) instead of their own subtree - that also covers focus
         moving between the two sub-pickers, which is an internal move, not a blur. -->
-  <button #labelBtnRef type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
+  <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
     (focus)="handleLabelFocus()" (click)="handleLabelClick()" [disabled]="disabled()"></button>
 
   <!-- Sub-picker value wiring: in datetime mode each sub-picker reads/writes ITS OWN half

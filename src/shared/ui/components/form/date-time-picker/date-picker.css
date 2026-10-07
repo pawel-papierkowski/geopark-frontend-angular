@@ -190,11 +190,6 @@
   background: var(--datetimepicker-day-hover-background);
 }
 
-.day.today:not(.disabled):hover {
-  color: var(--datetimepicker-day-hover-color);
-  background: var(--datetimepicker-day-hover-background);
-}
-
 .day.disabled {
   border-radius: 0px;
 

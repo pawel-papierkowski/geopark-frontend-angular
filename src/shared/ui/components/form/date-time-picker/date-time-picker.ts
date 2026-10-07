@@ -48,7 +48,7 @@ function sameInstant(a: Date | null, b: Date | null): boolean {
  * - ident - Used for identification and id attribute in focusable element (so <label> etc. work properly). Optional. If omitted, unique `date-time-picker-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
  * - label - Id of an external `<label>` element, forwarded to the sub-pickers for `aria-labelledby` (the visible `<label for>` targets this component's hidden button, not the inputs). In `datetime` mode each sub-input additionally appends a hidden "Date"/"Time" qualifier, so both inputs named by the same label stay distinguishable. The id must match an element in the document - a dangling reference silently empties the inputs' names, so dev mode warns on the console (see `warnDanglingLabel`). Optional.
  * - mode - Mode of operation (both date and time, only date, only time). Optional, default is 'datetime'.
- * - canNull - If true, allow deselecting date. Optional, default is false.
+ * - canNull - If true, allow deselecting date and/or time. Optional, default is false.
  * - showWeeks - If true, show weeks. Optional, default is false.
  * - dateMin - If not null, defines earliest allowed date. Interpreted as a calendar day: the bound's LOCAL date part (time-of-day ignored), so `new Date()` means "from today". Optional, default is null.
  * - dateMax - If not null, defines latest allowed date. Same calendar-day rule as `dateMin`. Optional, default is null.
@@ -89,7 +89,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   public label = input<string>('');
   /** Mode of operation (both date and time, only date, only time). */
   public mode = input<enDateTimePickerMode>('datetime');
-  /** If true, allow deselecting date. */
+  /** If true, allow deselecting date and/or time. */
   public canNull = input<boolean>(false);
   /** If true, show weeks. */
   public showWeeks = input<boolean>(false);
@@ -346,7 +346,8 @@ export class DateTimePicker implements FormValueControl<Date | null> {
    * When one input receives focus, the other picker's panel is closed.
    */
   public handleFocusIn(e: FocusEvent) {
-    const target = e.target as HTMLElement;
+    const target = e.target;
+    if (!(target instanceof Element)) return;
 
     // If date input received focus, close time panel.
     if (target === this.datePicker()?.inputRef().nativeElement) {
