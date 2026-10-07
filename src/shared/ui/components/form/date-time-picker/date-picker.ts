@@ -445,7 +445,7 @@ export class DatePicker extends PopupInputBase<Date> {
   }
 
   /**
-   * Change current month.
+   * Change current month and re-seat the keyboard cursor into that month.
    * @param delta How to change month.
    */
   public changeMonth(delta: number) {
@@ -453,10 +453,11 @@ export class DatePicker extends PopupInputBase<Date> {
     if (viewDate === null) return;
     const newDateTime = new Date(Date.UTC(viewDate.getUTCFullYear(), viewDate.getUTCMonth() + delta, 1));
     this.viewDate.set(newDateTime);
+    this.shiftFocusedMonth(delta);
   }
 
   /**
-   * Change current year.
+   * Change current year and re-seat the keyboard cursor into that year.
    * @param delta How to change year.
    */
   public changeYear(delta: number) {
@@ -464,6 +465,7 @@ export class DatePicker extends PopupInputBase<Date> {
     if (viewDate === null) return;
     const newDateTime = new Date(Date.UTC(viewDate.getUTCFullYear() + delta, viewDate.getUTCMonth(), 1));
     this.viewDate.set(newDateTime);
+    this.shiftFocusedMonth(delta * 12);
   }
 
   //
@@ -634,23 +636,13 @@ export class DatePicker extends PopupInputBase<Date> {
         break;
       case 'PageUp': // Move to previous month, or previous year when Shift is held.
         e.preventDefault();
-        if (e.shiftKey) {
-          this.changeYear(-1);
-          this.shiftFocusedMonth(-12);
-        } else {
-          this.changeMonth(-1);
-          this.shiftFocusedMonth(-1);
-        }
+        if (e.shiftKey) this.changeYear(-1);
+        else this.changeMonth(-1);
         break;
       case 'PageDown': // Move to next month, or next year when Shift is held.
         e.preventDefault();
-        if (e.shiftKey) {
-          this.changeYear(1);
-          this.shiftFocusedMonth(12);
-        } else {
-          this.changeMonth(1);
-          this.shiftFocusedMonth(1);
-        }
+        if (e.shiftKey) this.changeYear(1);
+        else this.changeMonth(1);
         break;
       case 'Tab':
         // Only Shift+Tab needs handling: native backward traversal would land on the input

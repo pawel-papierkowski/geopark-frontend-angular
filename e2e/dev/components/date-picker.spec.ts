@@ -398,6 +398,26 @@ test.describe('DatePicker', () => {
       await expect(getHeader(page)).toHaveText(`${nextYear} ${nextMonthName}`);
       await expect(datePicker, 'header navigation must keep the panel open').toHaveAttribute('aria-expanded', 'true');
 
+      // Assert: The keyboard cursor travelled WITH the view - the grid still announces an active
+      // cell (a cursor left behind in the previous month drops aria-activedescendant entirely)
+      // and that cell is a day of the shown month (a stale day can only survive as a padding cell
+      // of the month the user just left, which carries the `not-current` class).
+      const activeId = await getGrid(page).getAttribute('aria-activedescendant');
+      expect(activeId, 'header navigation must keep a keyboard cursor on the grid').not.toBeNull();
+      const activeCell = panel.locator(`#${activeId}`);
+      await expect(activeCell, 'the cursor cell should be rendered on the shown grid').toHaveCount(1);
+      await expect(activeCell, 'the cursor cell should carry the focus ring').toHaveClass(/focused/);
+      await expect(activeCell, 'the cursor cell must belong to the shown month').not.toHaveClass(/not-current/);
+
+      // Act: Continue with the keyboard, which is the flow the stale cursor used to break.
+      await page.keyboard.press('ArrowRight');
+
+      // Assert: The arrow step continues from the shown month instead of dragging the view back
+      // to the month the header button just left (the cursor day may step over a month end here,
+      // so the check is "not the original month" rather than an exact header match).
+      await expect(readHeader(page), 'an arrow key after header navigation must not snap the view back').not.toBe(`${year} ${ENGLISH_MONTHS[monthIndex]}`);
+      await expect(getGrid(page), 'the cursor must survive the arrow step too').toHaveAttribute('aria-activedescendant', /dateId_datePicker_cell_\d+/);
+
       // Act: Step the year back from the now-viewed month.
       await panel.getByTestId('dateId_datePicker_yearMinus').click();
 

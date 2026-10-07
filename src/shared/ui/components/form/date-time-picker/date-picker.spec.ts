@@ -2445,6 +2445,105 @@ describe('DatePicker', () => {
     });
   });
 
+  describe('header navigation', () => {
+    /**
+     * Press a calendar header navigation button the way a mouse press does: a cancelable
+     * mousedown first (so the component's panel-chrome guard runs and, as in a browser,
+     * cancelled default keeps DOM focus on the grid), then the click that navigates.
+     * Dispatched manually instead of through user-event so the follow-up key presses in these
+     * tests are guaranteed to reach the grid's own keydown handler.
+     * @param fixture Fixture of the component.
+     * @param name Button suffix: `yearMinus` | `monthMinus` | `monthPlus` | `yearPlus`.
+     */
+    async function pressNavButton(fixture: ComponentFixture<DatePicker>, name: 'yearMinus' | 'monthMinus' | 'monthPlus' | 'yearPlus'): Promise<void> {
+      const button = getNavButton(fixture, name);
+      button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      button.click();
+      await flush(fixture);
+    }
+
+    it('should keep the keyboard cursor on the grid when a header button changes the viewed month', async () => {
+      // Arrange: Open grid at 15 January 2026 with DOM focus on the grid and the cursor seeded
+      // there - the state a user reaches by Tab-ing in and then reaching for the header buttons.
+      const fixture = await arrangeFocusedGrid({}, utcDate(2026, 0, 15, 11));
+      const grid = fixture.componentInstance.calendarGridRef().nativeElement;
+
+      // Act: Advance one month through the real header button.
+      await pressNavButton(fixture, 'monthPlus');
+
+      // Assert: The view AND the cursor moved together, so the cursor cell is rendered on the
+      // shown grid - the focus ring and aria-activedescendant must survive the header click.
+      expect(fixture.componentInstance.viewDate()?.toISOString(), 'monthPlus should show February').toBe('2026-02-01T00:00:00.000Z');
+      expect(fixture.componentInstance.focusedDate()?.toISOString(), 'monthPlus should re-seat the cursor into February').toBe('2026-02-15T00:00:00.000Z');
+      const cell = findCell(fixture, 2026, 1, 15);
+      expect(cell, 'the re-seated cursor day should be rendered on the new grid').not.toBeNull();
+      expect(grid.getAttribute('aria-activedescendant'), 'grid should reference the re-seated cursor cell').toBe(cell?.id);
+    });
+
+    it('should keep the view on the new month when an arrow key follows header navigation', async () => {
+      // Arrange: Open grid at 15 January 2026 with the cursor seeded there.
+      const user = userEvent.setup();
+      const fixture = await arrangeFocusedGrid({}, utcDate(2026, 0, 15, 11));
+
+      // Act: Move to February with the header button, then continue with the keyboard.
+      await pressNavButton(fixture, 'monthPlus');
+      await user.keyboard('{ArrowRight}');
+      await flush(fixture);
+
+      // Assert: The arrow step continues from the cursor inside February - it must not drag the
+      // view back to January, the month the cursor used to sit in before the header click.
+      expect(fixture.componentInstance.focusedDate()?.toISOString(), 'ArrowRight should advance the February cursor').toBe('2026-02-16T00:00:00.000Z');
+      expect(fixture.componentInstance.viewDate()?.toISOString(), 'the view must stay on the month the header showed').toBe('2026-02-01T00:00:00.000Z');
+    });
+
+    it('should clamp the cursor to the last day of the target month on header month navigation', async () => {
+      // Arrange: Cursor parked on 31 January - the day a plain month step would overflow
+      // (the same clamp the PageDown test above covers for the keyboard path).
+      const fixture = await arrangeFocusedGrid({}, utcDate(2026, 0, 15, 11));
+      fixture.componentInstance.focusedDate.set(utcDate(2026, 0, 31));
+      fixture.detectChanges();
+
+      // Act: Advance one month through the header button.
+      await pressNavButton(fixture, 'monthPlus');
+
+      // Assert: The cursor clamps onto 28 February (2026 is not a leap year) and stays on the
+      // shown grid, so aria-activedescendant never dangles on a missing cell.
+      expect(fixture.componentInstance.focusedDate()?.toISOString(), 'header month step should clamp 31 January to 28 February').toBe('2026-02-28T00:00:00.000Z');
+      expect(fixture.componentInstance.activeDescendantId(), 'the clamped cursor must stay on the shown grid').not.toBeUndefined();
+    });
+
+    it('should keep the cursor in the shown month on header year navigation across a leap day', async () => {
+      // Arrange: Cursor on 29 February 2024 - a year step must clamp instead of rolling over
+      // into March, where the cursor cell would fall outside the shown grid.
+      const fixture = await arrangeFocusedGrid({}, utcDate(2024, 1, 15, 11));
+      fixture.componentInstance.focusedDate.set(utcDate(2024, 1, 29));
+      fixture.detectChanges();
+
+      // Act: Advance one year through the header button.
+      await pressNavButton(fixture, 'yearPlus');
+
+      // Assert: View and cursor both land in February 2025, cursor clamped to the 28th.
+      expect(fixture.componentInstance.viewDate()?.toISOString(), 'yearPlus should show February 2025').toBe('2025-02-01T00:00:00.000Z');
+      expect(fixture.componentInstance.focusedDate()?.toISOString(), 'header year step should clamp 29 February to 28 February').toBe('2025-02-28T00:00:00.000Z');
+      expect(fixture.componentInstance.activeDescendantId(), 'the clamped cursor must stay on the shown grid').not.toBeUndefined();
+    });
+
+    it('should pick a day of the shown month when Enter follows header navigation', async () => {
+      // Arrange: Open grid at 15 January 2026 with the cursor seeded there.
+      const user = userEvent.setup();
+      const fixture = await arrangeFocusedGrid({}, utcDate(2026, 0, 15, 11));
+
+      // Act: Move to February via the header, then commit with Enter.
+      await pressNavButton(fixture, 'monthPlus');
+      await user.keyboard('{Enter}');
+      await flush(fixture);
+
+      // Assert: The commit uses the cursor the user sees - a day of February, not the stale
+      // January day the cursor sat on before the header click.
+      expect(fixture.componentInstance.value()?.toISOString(), 'Enter should pick 15 February, the day shown under the cursor').toBe('2026-02-15T00:00:00.000Z');
+    });
+  });
+
   describe('focus', () => {
     registerSubPickerFocusTests(subPickerDriver);
   });
