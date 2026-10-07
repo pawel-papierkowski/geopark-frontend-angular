@@ -44,7 +44,10 @@
 
       @for (option of options(); track $index) {
         <!-- Options are not tab stops: highlight moves via aria-activedescendant on root,
-             so one Tab from root closes the list and exits straight to the next component. -->
+             so one Tab from root closes the list and exits straight to the next component.
+             Key events are bound on the root only - a keydown on an option bubbles there and
+             is handled exactly once (binding it here as well would run the handler twice). -->
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -- options are focus-managed by the root via aria-activedescendant, not individually focusable; keys are handled on the root -->
         <div
           [attr.data-testid]="resolvedIdent()+'_'+$index"
           [id]="optionId($index)"
@@ -58,7 +61,6 @@
 
           (click)="$event.stopImmediatePropagation(); selectOption(option)"
           (mousedown)="$event.preventDefault()"
-          (keydown)="handleKeydown($event)"
           (mouseenter)="highlightedIndex.set($index)">
           {{ showOption(option) }}
         </div>

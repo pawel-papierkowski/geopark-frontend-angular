@@ -641,6 +641,71 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset when disabled').toBe(-1);
         expect(touchSpy, 'closing programmatically should not emit touch').toHaveBeenCalledTimes(0);
       });
+
+      it('should not emit touch on blur after the component became disabled', async () => {
+        // Arrange: Enabled component with open list and touch spy.
+        const fixture = await arrangeComboBox();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'list should be open before disabling').toBe(true);
+
+        // Act: Disable while focused (the effect closes the list), then focus leaves the root.
+        fixture.componentRef.setInput('disabled', true);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        root.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+
+        // Assert: Losing focus after a programmatic close is not a user blur - no touch.
+        expect(touchSpy, 'blur after disabling must not report touch').not.toHaveBeenCalled();
+      });
+
+      it('should clamp a stale highlight when options shrink while the list is open', async () => {
+        // Arrange: Open list with the last option selected (highlight on the last index).
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'], value: 'c' });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.highlightedIndex(), 'highlight should start on the last option').toBe(2);
+
+        // Act: Options shrink to a single entry while the list stays open.
+        fixture.componentRef.setInput('options', ['a']);
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        // Assert: Highlight clamped to the new last index and aria-activedescendant stays valid.
+        expect(fixture.componentInstance.highlightedIndex(), 'stale highlight should clamp to the new last option').toBe(0);
+        expect(root.getAttribute('aria-activedescendant'), 'aria-activedescendant must reference an existing option').toBe('test-combo_option_0');
+
+        // Act: Enter selects through the clamped index.
+        root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        fixture.detectChanges();
+
+        // Assert: The remaining option is selected - without clamping the stale index would
+        // resolve to undefined and select null.
+        expect(fixture.componentInstance.value(), 'Enter after shrinking should select the remaining option').toBe('a');
+      });
+
+      it('should clear the highlight when options become empty while the list is open', async () => {
+        // Arrange: Open list with the last option selected.
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'], value: 'c' });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.highlightedIndex(), 'highlight should start on the last option').toBe(2);
+
+        // Act: All options are removed while the list stays open.
+        fixture.componentRef.setInput('options', []);
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        // Assert: No dangling highlight or aria reference remains.
+        expect(fixture.componentInstance.highlightedIndex(), 'highlight should clear without options').toBe(-1);
+        expect(root.hasAttribute('aria-activedescendant'), 'aria-activedescendant must not dangle').toBe(false);
+      });
     });
 
     describe('outside press', () => {
@@ -766,6 +831,105 @@ describe('ComboBox', () => {
       });
 
       registerPositioningTests(positioningDriver);
+    });
+
+    describe('scrolling', () => {
+      /** Eight options - enough to overflow any viewport used by these tests. */
+      const eightOptions = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+      /**
+       * Get the options list popup of given fixture.
+       * @param fixture Fixture of the component.
+       * @returns Options list element.
+       */
+      function getList(fixture: ComponentFixture<ComboBox>): HTMLElement {
+        return fixture.nativeElement.querySelector('.combobox-options');
+      }
+
+      /**
+       * Get the combobox root of given fixture.
+       * @param fixture Fixture of the component.
+       * @returns Root element of the combobox.
+       */
+      function getRoot(fixture: ComponentFixture<ComboBox>): HTMLElement {
+        return fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+      }
+
+      /**
+       * Open the list with a click and flush the async work (placement resolve and the
+       * highlight reveal both settle after the next render).
+       * @param fixture Fixture of the component.
+       */
+      async function openList(fixture: ComponentFixture<ComboBox>): Promise<void> {
+        getRoot(fixture).click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      }
+
+      /**
+       * Stub the geometry jsdom cannot produce (no layout): the list viewport (its rect plus
+       * the visible height) and every option's rect as if the content were laid out from the
+       * top of an unscrolled list. The list rect doubles as the panel rect the placement
+       * resolve measures, so it is a fitting `panelRect()` with an overridden top.
+       * @param fixture Fixture of the component.
+       * @param viewportHeight Visible height of the list viewport in px.
+       * @param optionHeight Rendered height of a single option in px.
+       */
+      function stubListGeometry(fixture: ComponentFixture<ComboBox>, viewportHeight: number, optionHeight: number): void {
+        const list = getList(fixture);
+        vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(panelRect({ top: 100 }));
+        Object.defineProperty(list, 'clientHeight', { value: viewportHeight, configurable: true });
+        const options = fixture.nativeElement.querySelectorAll('.combobox-option');
+        options.forEach((option: Element, index: number) => {
+          vi.spyOn(option, 'getBoundingClientRect').mockReturnValue({ top: 100 + index * optionHeight, height: optionHeight } as DOMRect);
+        });
+      }
+
+      it('should scroll the list to reveal the selected option on open', async () => {
+        // Arrange: Eight 20px options in a 60px viewport; the last option (top 140, bottom 160)
+        // lies below the fold of an unscrolled list.
+        const fixture = await arrangeComboBox({ options: eightOptions, value: 'h' });
+        stubListGeometry(fixture, 60, 20);
+
+        // Act: Open the list (click seeds the highlight with the current value).
+        await openList(fixture);
+
+        // Assert: The list scrolled so the option's bottom (160) sits on the viewport bottom: 160 - 60 = 100.
+        expect(getList(fixture).scrollTop, 'list should scroll to reveal the selected option').toBe(100);
+      });
+
+      it('should scroll to the highlighted option when navigating with End', async () => {
+        // Arrange: Open list without a selection (nothing highlighted, starts unscrolled).
+        const fixture = await arrangeComboBox({ options: eightOptions });
+        stubListGeometry(fixture, 60, 20);
+        await openList(fixture);
+        expect(getList(fixture).scrollTop, 'list without a highlight should start unscrolled').toBe(0);
+
+        // Act: End highlights the last option.
+        getRoot(fixture).focus();
+        await userEvent.setup().keyboard('{End}');
+        fixture.detectChanges();
+
+        // Assert: Option 7 (bottom 160) is scrolled into the 60px viewport: 160 - 60 = 100.
+        expect(getList(fixture).scrollTop, 'list should scroll to the option highlighted by End').toBe(100);
+      });
+
+      it('should discard a stale scroll position when the list reopens', async () => {
+        // Arrange: Open once and leave the list scrolled somewhere.
+        const fixture = await arrangeComboBox({ options: eightOptions });
+        stubListGeometry(fixture, 60, 20);
+        await openList(fixture);
+        getList(fixture).scrollTop = 123;
+
+        // Act: Close and reopen (no selection, so nothing is revealed).
+        getRoot(fixture).click();
+        fixture.detectChanges();
+        await openList(fixture);
+
+        // Assert: The stale offset is gone - the reopened list starts at the top.
+        expect(getList(fixture).scrollTop, 'reopen should reset a stale scroll position').toBe(0);
+      });
     });
   });
 
@@ -1140,6 +1304,27 @@ describe('ComboBox', () => {
 
         // Assert: Highlight points to first option.
         expect(fixture.componentInstance.highlightedIndex(), 'ArrowDown from no highlight should point to first option').toBe(0);
+      });
+
+      it('should advance highlight exactly once when a keydown is dispatched on an option', async () => {
+        // Arrange: Component with open list and nothing highlighted (value null not among options).
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
+        root.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isOpen(), 'list should be open before act').toBe(true);
+        expect(fixture.componentInstance.highlightedIndex(), 'nothing should be highlighted before act').toBe(-1);
+
+        // Act: ArrowDown dispatched on an option element - it bubbles to the root, so the
+        // root's keydown handler must be the only one handling it.
+        const option = fixture.nativeElement.querySelector('[data-testid="test-combo_1"]');
+        option.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        fixture.detectChanges();
+
+        // Assert: Highlight advanced from -1 exactly one step (to 0), not two (to 1) - double
+        // handling would run once on the option and once again on the root after bubbling.
+        expect(fixture.componentInstance.highlightedIndex(), 'bubbled ArrowDown must be handled exactly once').toBe(0);
+        expect(root.getAttribute('aria-activedescendant'), 'aria-activedescendant should reference the single-step result').toBe('test-combo_option_0');
       });
 
       it('should open list highlighting last option on ArrowUp when closed', async () => {

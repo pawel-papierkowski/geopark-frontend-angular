@@ -109,6 +109,15 @@ export class ComboBox implements FormValueControl<number | string | null> {
       if (this.disabled() && this.isOpen()) this.hidePanel();
     });
 
+    // Clamp a highlight left dangling by options shrinking while the list is open (async or
+    // replaced options): a stale index would point aria-activedescendant at a removed option
+    // and make Enter resolve `options()[stale]` to undefined, selecting null instead.
+    effect(() => {
+      const optionCount = this.options().length;
+      const highlighted = this.highlightedIndex();
+      if (highlighted >= optionCount) this.highlightedIndex.set(optionCount > 0 ? optionCount - 1 : -1);
+    });
+
     // Document-level guard for label activation: resets the interaction markers, cancels the
     // focus steal when the press lands on this component's own label and closes the options
     // list when the press lands outside the component entirely (mechanics and rationale in
@@ -174,6 +183,8 @@ export class ComboBox implements FormValueControl<number | string | null> {
    * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
    * Work from a superseded open (list closed or reopened before the render settled) is dropped,
    * so the measurement can never run under a placement other than the baseline.
+   * The same pass resets the list's own scroll to the top and reveals the highlighted option,
+   * so a stale offset from a previous open never hides the freshly seeded highlight.
    * @param session Placement session captured when the list was opened.
    */
   private async positionOptionsPanel(session: number): Promise<void> {
@@ -181,6 +192,40 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
     if (session !== this.positionSession || !this.isOpen()) return;
     this.positioning.resolve(this.comboRef().nativeElement, this.optionsRef().nativeElement);
+    this.optionsRef().nativeElement.scrollTop = 0;
+    this.scrollHighlightedIntoView();
+  }
+
+  /**
+   * Scroll the options list so the highlighted option is fully visible inside the list's own
+   * viewport (the list is `max-height` capped with `overflow-y: auto`, so the highlight can sit
+   * below its fold). Only the list's `scrollTop` is written - deliberately never
+   * `scrollIntoView()`, which aligns against the window and would scroll every scrollable
+   * ancestor, including the page (same contract as the time-picker's column scrolling).
+   * No-op when the list is closed, nothing is highlighted or the option is already visible.
+   */
+  private scrollHighlightedIntoView(): void {
+    if (!this.isOpen()) return;
+    const index = this.highlightedIndex();
+    if (index < 0) return;
+    const list = this.optionsRef().nativeElement;
+    const option = list.querySelector<HTMLElement>(`[id="${this.optionId(index)}"]`);
+    if (option === null) return;
+
+    const listRect = list.getBoundingClientRect();
+    const optionRect = option.getBoundingClientRect();
+    // Option offsets relative to the unscrolled list content: adding the current scroll keeps
+    // them valid wherever the list currently sits.
+    const optionTop = list.scrollTop + (optionRect.top - listRect.top);
+    const optionBottom = optionTop + optionRect.height;
+    if (optionTop < list.scrollTop) {
+      // Option sits above the viewport: align it with the top edge. Lower bound is clamped
+      // here (browsers clamp it natively, upper bound is clamped natively as well).
+      list.scrollTop = Math.max(0, optionTop);
+    } else if (optionBottom > list.scrollTop + list.clientHeight) {
+      // Option sits below the viewport: align its bottom with the viewport bottom.
+      list.scrollTop = Math.max(0, optionBottom - list.clientHeight);
+    }
   }
 
   /**
@@ -258,6 +303,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     // (Chromium/Firefox) label activation - whose click runs last - is now obsolete.
     this.labelActivation.setDecision('none');
     this.hidePanel();
+    if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
     this.touch.emit();
   }
 
@@ -305,6 +351,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
             if (currVal === -1) return 0;
             return (currVal + 1) % this.options().length;
           });
+          this.scrollHighlightedIntoView();
         }
         break;
       }
@@ -319,6 +366,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
             if (currVal === -1) return this.options().length - 1;
             return (currVal - 1 + this.options().length) % this.options().length;
           });
+          this.scrollHighlightedIntoView();
         }
         break;
       }
@@ -330,6 +378,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
           if (this.options().length === 0) break;
           // Select first option.
           this.highlightedIndex.set(0);
+          this.scrollHighlightedIntoView();
         }
         break;
       }
@@ -341,6 +390,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
           if (this.options().length === 0) break;
           // Select last option.
           this.highlightedIndex.set(this.options().length - 1);
+          this.scrollHighlightedIntoView();
         }
         break;
       }
