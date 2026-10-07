@@ -45,6 +45,10 @@ import { TimePicker } from './time-picker';
  * - required - If true, component is required. Default is false.
  * - disabled - If true, acts as disabled component. Default is false.
  * - invalid - If true, shows component as having invalid state. Visual only. Default is false.
+ *
+ * Notes:
+ * - For `mode=datetime`, when deciding between subpickers, date picker is prioritized.
+ * - Date and time picker cannot both have their panels opened at once.
  */
 @Component({
   selector: 'date-time-picker',

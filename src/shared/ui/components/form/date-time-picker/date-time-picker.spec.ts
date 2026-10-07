@@ -119,6 +119,43 @@ describe('DateTimePicker', () => {
   }
 
   /**
+   * Open the calendar panel with a mouse click on the date input and flush pending component work.
+   * Asserts the open inside the helper, so a failing setup reads as a broken precondition.
+   * @param fixture Fixture of the component.
+   */
+  async function openCalendarPanel(fixture: ComponentFixture<DateTimePicker>): Promise<void> {
+    getDateInput(fixture).click();
+    await flush(fixture);
+    await flush(fixture);
+    expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should be open before act').toBe('true');
+  }
+
+  /**
+   * Open the clock panel with a mouse click on the time input and flush pending component work.
+   * Asserts the open inside the helper, so a failing setup reads as a broken precondition.
+   * @param fixture Fixture of the component.
+   */
+  async function openClockPanel(fixture: ComponentFixture<DateTimePicker>): Promise<void> {
+    getTimeInput(fixture).click();
+    await flush(fixture);
+    await flush(fixture);
+    expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock should be open before act').toBe('true');
+  }
+
+  /**
+   * Find the rendered calendar day cell of the given day-of-month in the currently viewed month.
+   * Adjacent-month padding cells share day numbers, so they are excluded via their `not-current`
+   * class; the lookup stays independent of the index-based cell testids.
+   * @param fixture Fixture of the component.
+   * @param day Day of month to find.
+   * @returns The cell element, or null when that day is not on the displayed grid.
+   */
+  function findDayCell(fixture: ComponentFixture<DateTimePicker>, day: number): HTMLElement | null {
+    const cells = [...fixture.nativeElement.querySelectorAll('.day:not(.not-current)')] as HTMLElement[];
+    return cells.find((cell) => cell.textContent?.trim() === String(day)) ?? null;
+  }
+
+  /**
    * Run the given body with the system clock pinned to a fixed instant (Date only - timers stay
    * real, so Angular's stability flushes are unaffected). Needed wherever the date seeded into a
    * committed value must not depend on when the suite runs.
@@ -163,6 +200,26 @@ describe('DateTimePicker', () => {
           outside.remove();
         }
       });
+
+      it('should forward touch output from date-picker', async () => {
+        // Arrange: Render wrapper in date mode and spy on its touch output.
+        const fixture = await arrangeDateTimePicker({ mode: 'date' });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+
+        try {
+          // Act: Simulate focus leaving the inner date-picker (bubbles to its focusout handler).
+          getDateInput(fixture).dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }));
+          fixture.detectChanges();
+
+          // Assert: Wrapper reports touch so Signal Forms receive the blur.
+          expect(touchSpy, 'touch should be forwarded from date-picker to wrapper').toHaveBeenCalledTimes(1);
+        } finally { // cleanup
+          outside.remove();
+        }
+      });
     });
 
     describe('ident', () => {
@@ -195,6 +252,237 @@ describe('DateTimePicker', () => {
         expect(fixture.componentInstance.timeIdent(), 'timeIdent should be timeId_test-dtp').toBe('timeId_test-dtp');
         expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should mirror ident').toBe('test-dtp');
       });
+
+      it('should re-resolve ident and sub-picker idents when ident changes after creation', async () => {
+        // Arrange: Render wrapper in datetime mode with the initial ident.
+        const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+        expect(fixture.componentInstance.resolvedIdent(), 'precondition: resolvedIdent should be the provided ident').toBe('test-dtp');
+
+        // Act: Consumer renames the control after creation.
+        fixture.componentRef.setInput('ident', 'renamed');
+        await flush(fixture);
+
+        // Assert: The linked signal re-resolves and both sub-pickers re-render under the new
+        // idents (stale testids would break label pairing and any consumer test hooks).
+        expect(fixture.componentInstance.resolvedIdent(), 'resolvedIdent should follow the new ident').toBe('renamed');
+        expect(fixture.componentInstance.dateIdent(), 'dateIdent should derive from the new ident').toBe('dateId_renamed');
+        expect(fixture.componentInstance.timeIdent(), 'timeIdent should derive from the new ident').toBe('timeId_renamed');
+        expect(getHiddenButton(fixture).id, 'hidden label target should carry the new id').toBe('renamed');
+        expect(fixture.nativeElement.querySelector('[data-testid="dateId_renamed_input"]'), 'date input should re-render under the new ident').not.toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="timeId_renamed_input"]'), 'time input should re-render under the new ident').not.toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="dateId_test-dtp_input"]'), 'stale date input must not survive the rename').toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_input"]'), 'stale time input must not survive the rename').toBeNull();
+      });
+    });
+
+    // Switching `mode` re-renders the `@if` blocks around the sub-pickers: the losing sub-picker
+    // is destroyed WITH its open panel, the gaining one mounts fresh (closed - only focus or a
+    // click may open it), and a sub-picker rendered by both modes must keep its state untouched.
+    describe('mode', () => {
+      it('should render the newly required sub-picker when mode changes after creation', async () => {
+        // Arrange: Render wrapper in date-only mode (time sub-picker absent).
+        const fixture = await arrangeDateTimePicker({ mode: 'date' });
+        expect(fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_input"]'), 'precondition: time sub-picker must not render in date mode').toBeNull();
+
+        // Act: Consumer switches to datetime after creation.
+        fixture.componentRef.setInput('mode', 'datetime');
+        await flush(fixture);
+
+        // Assert: The time sub-picker joins without disturbing the date one.
+        expect(getDateInput(fixture), 'date sub-picker should survive the mode change').not.toBeNull();
+        expect(getTimeInput(fixture), 'time sub-picker should appear after switching to datetime').not.toBeNull();
+      });
+
+      it('should close the clock and mount a closed calendar when mode switches from time to date with the clock panel open', async () => {
+        // Arrange: time mode with the clock panel open (keyboard focus sits in its hour listbox).
+        const fixture = await arrangeDateTimePicker({ mode: 'time' });
+        await openClockPanel(fixture);
+
+        // Act: Consumer switches to date-only mode while the clock is open.
+        fixture.componentRef.setInput('mode', 'date');
+        await flush(fixture);
+
+        // Assert: The whole time sub-picker vanishes together with its open panel, the date
+        // sub-picker takes its place, and merely appearing must NOT open the calendar - only
+        // focus or a click may do that, and the mode change must not produce either.
+        expect(getTimeInput(fixture), 'time sub-picker should vanish when mode leaves time').toBeNull();
+        expect(fixture.nativeElement.querySelector('.clock-container'), 'the open clock panel should vanish with its sub-picker').toBeNull();
+        expect(getDateInput(fixture), 'date sub-picker should appear after switching to date').not.toBeNull();
+        expect(getDateInput(fixture).getAttribute('aria-expanded'), 'appearing date sub-picker must not auto-open the calendar').toBe('false');
+      });
+
+      it('should mount a closed date sub-picker and keep the clock untouched when mode switches from time to datetime with the clock panel open', async () => {
+        // Arrange: time mode with the clock panel open.
+        const fixture = await arrangeDateTimePicker({ mode: 'time' });
+        await openClockPanel(fixture);
+
+        // Act: Consumer switches to datetime while the clock is open.
+        fixture.componentRef.setInput('mode', 'datetime');
+        await flush(fixture);
+
+        // Assert: The date sub-picker joins CLOSED, while the untouched time sub-picker keeps
+        // its open panel and the keyboard focus that was inside it.
+        expect(getDateInput(fixture), 'date sub-picker should appear after switching to datetime').not.toBeNull();
+        expect(getDateInput(fixture).getAttribute('aria-expanded'), 'appearing date sub-picker must not auto-open the calendar').toBe('false');
+        expect(getTimeInput(fixture), 'time sub-picker should stay rendered').not.toBeNull();
+        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock panel should stay open through the mode change').toBe('true');
+        expect(document.activeElement, 'keyboard focus should stay in the hour listbox').toBe(getHourColumn(fixture));
+      });
+
+      it('should drop the date sub-picker and keep the clock untouched when mode switches from datetime to time with the clock panel open', async () => {
+        // Arrange: datetime mode with the clock panel open (opened through its input).
+        const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+        await openClockPanel(fixture);
+
+        // Act: Consumer switches to time-only mode while the clock is open.
+        fixture.componentRef.setInput('mode', 'time');
+        await flush(fixture);
+
+        // Assert: The date sub-picker vanishes; the untouched time sub-picker keeps its open
+        // panel and the keyboard focus that was inside it.
+        expect(getDateInput(fixture), 'date sub-picker should vanish when mode leaves date').toBeNull();
+        expect(getTimeInput(fixture), 'time sub-picker should stay rendered').not.toBeNull();
+        expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock panel should stay open through the mode change').toBe('true');
+        expect(document.activeElement, 'keyboard focus should stay in the hour listbox').toBe(getHourColumn(fixture));
+      });
+    });
+  });
+
+  // The sub-pickers own their own state rendering (their specs cover what `disabled`/`invalid`/
+  // `required`/`showWeeks`/`dateMin`/`dateMax`/`canNull` do to a standalone picker). These tests
+  // cover the WRAPPER's side of the contract: every input must actually reach the rendered
+  // sub-pickers, since a dropped binding in date-time-picker.html would otherwise go unnoticed.
+  describe('inputs forwarding', () => {
+    it('should forward disabled to both sub-inputs and the hidden label target', async () => {
+      // Arrange: Render wrapper in datetime mode and disabled.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime', disabled: true });
+
+      // Assert: Both sub-inputs and the label target carry the disabled state (a wrapper that
+      // forgot the [disabled] bindings would leave them focusable and openable).
+      expect(getDateInput(fixture).disabled, 'date input should be disabled').toBe(true);
+      expect(getTimeInput(fixture).disabled, 'time input should be disabled').toBe(true);
+      expect(getDateInput(fixture).getAttribute('aria-disabled'), 'date input should be aria-disabled').toBe('true');
+      expect(getTimeInput(fixture).getAttribute('aria-disabled'), 'time input should be aria-disabled').toBe('true');
+      expect(getHiddenButton(fixture).disabled, 'hidden label target should be disabled').toBe(true);
+
+      // Act: Try to open both panels by clicking the disabled inputs.
+      getDateInput(fixture).click();
+      getTimeInput(fixture).click();
+      await flush(fixture);
+
+      // Assert: Neither sub-picker reacts to the clicks.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'disabled date input must not open the calendar').toBe('false');
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'disabled time input must not open the clock').toBe('false');
+    });
+
+    it('should forward invalid to both sub-inputs', async () => {
+      // Arrange: Render wrapper in datetime mode, then mark it invalid.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      fixture.componentRef.setInput('invalid', true);
+      await flush(fixture);
+
+      // Assert: Both sub-inputs expose the invalid state for styling and assistive technology.
+      expect(getDateInput(fixture).getAttribute('aria-invalid'), 'date input should be aria-invalid').toBe('true');
+      expect(getTimeInput(fixture).getAttribute('aria-invalid'), 'time input should be aria-invalid').toBe('true');
+      expect(getDateInput(fixture).classList.contains('invalid'), 'date input should carry the invalid class').toBe(true);
+      expect(getTimeInput(fixture).classList.contains('invalid'), 'time input should carry the invalid class').toBe(true);
+    });
+
+    it('should forward required to both sub-inputs', async () => {
+      // Arrange: Render wrapper in datetime mode, then mark it required.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      fixture.componentRef.setInput('required', true);
+      await flush(fixture);
+
+      // Assert: aria-required reaches both sub-inputs.
+      expect(getDateInput(fixture).getAttribute('aria-required'), 'date input should be aria-required').toBe('true');
+      expect(getTimeInput(fixture).getAttribute('aria-required'), 'time input should be aria-required').toBe('true');
+    });
+
+    it('should forward showWeeks to the date sub-picker', async () => {
+      // Arrange: Render wrapper in date mode with the calendar open - grid content only exists
+      // while the panel is shown, so the layout assertion needs a real viewed month.
+      const fixture = await arrangeDateTimePicker({ mode: 'date' });
+      await openCalendarPanel(fixture);
+      const grid = fixture.nativeElement.querySelector('.calendar-grid');
+      expect(grid.style.gridTemplateColumns, 'plain grid should use 7 columns').toBe('repeat(7, 1fr)');
+      expect(fixture.nativeElement.querySelectorAll('.week-num').length, 'no week cells without showWeeks').toBe(0);
+
+      // Act: Consumer enables week numbers after creation.
+      fixture.componentRef.setInput('showWeeks', true);
+      fixture.detectChanges();
+
+      // Assert: The date sub-picker switches to the 8-column layout with week-number cells.
+      expect(grid.style.gridTemplateColumns, 'week grid should use 8 columns').toBe('repeat(8, 1fr)');
+      expect(fixture.nativeElement.querySelectorAll('.week-num').length, 'six week-number cells should appear').toBe(6);
+    });
+
+    it('should forward dateMin/dateMax to the date sub-picker', async () => {
+      // Arrange: Wrapper bounded to 10-20 January 2026; the January value pins the viewed month
+      // to January 2026 (the grid opens on the value's month), so the test never depends on
+      // when the suite runs.
+      const fixture = await arrangeDateTimePicker({ mode: 'date' });
+      const value = new Date(Date.UTC(2026, 0, 15));
+      fixture.componentRef.setInput('value', value);
+      fixture.componentRef.setInput('dateMin', new Date(Date.UTC(2026, 0, 10)));
+      fixture.componentRef.setInput('dateMax', new Date(Date.UTC(2026, 0, 20)));
+      await flush(fixture);
+      await openCalendarPanel(fixture);
+
+      // Assert: Out-of-range days are marked for AT; the in-range day stays pickable.
+      const before = findDayCell(fixture, 5);
+      const inRange = findDayCell(fixture, 15);
+      const after = findDayCell(fixture, 25);
+      expect(before, 'precondition: day 5 should be on the January 2026 grid').not.toBeNull();
+      expect(inRange, 'precondition: day 15 should be on the January 2026 grid').not.toBeNull();
+      expect(after, 'precondition: day 25 should be on the January 2026 grid').not.toBeNull();
+      expect(before?.getAttribute('aria-disabled'), 'day before dateMin should be aria-disabled').toBe('true');
+      expect(inRange?.hasAttribute('aria-disabled'), 'in-range day should stay pickable').toBe(false);
+      expect(after?.getAttribute('aria-disabled'), 'day after dateMax should be aria-disabled').toBe('true');
+
+      // Act: Click the out-of-range day.
+      before?.click();
+      await flush(fixture);
+
+      // Assert: The bounds reached the date sub-picker - no value change, panel stays open.
+      expect(fixture.componentInstance.value(), 'out-of-range pick must not change the value').toBe(value);
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'out-of-range pick must keep the calendar open').toBe('true');
+    });
+
+    it('should forward canNull to the date sub-picker', async () => {
+      // Arrange: date mode, deselectable, carrying a value whose day is already selected.
+      const fixture = await arrangeDateTimePicker({ mode: 'date' });
+      fixture.componentRef.setInput('canNull', true);
+      fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15)));
+      await flush(fixture);
+      await openCalendarPanel(fixture);
+
+      // Act: Re-click the value's own day - a deselect is only allowed when canNull reached
+      // the sub-picker (its default is false).
+      const selected = fixture.nativeElement.querySelector('.day.selected') as HTMLElement | null;
+      expect(selected, 'precondition: value day should be marked selected').not.toBeNull();
+      selected?.click();
+      await flush(fixture);
+
+      // Assert: The deselect cleared the value and emptied the input.
+      expect(fixture.componentInstance.value(), 'deselect must clear the wrapper value').toBeNull();
+      expect(getDateInput(fixture).value, 'date input should be empty after deselect').toBe('');
+    });
+
+    it('should forward canNull to the time sub-picker', async () => {
+      // Arrange: time mode, deselectable, carrying a value.
+      const fixture = await arrangeDateTimePicker({ mode: 'time' });
+      fixture.componentRef.setInput('canNull', true);
+      fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 30)));
+      await flush(fixture);
+
+      // Act: Press Backspace on the time input - the clear path is gated on canNull.
+      getTimeInput(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+
+      // Assert: The clear reached the wrapper through the shared value model.
+      expect(fixture.componentInstance.value(), 'Backspace with canNull must clear the value').toBeNull();
+      expect(getTimeInput(fixture).value, 'time input should be empty after clear').toBe('');
     });
   });
 
@@ -492,6 +780,51 @@ describe('DateTimePicker', () => {
       expect(touchSpy, 'click-first label toggle should not emit touch').not.toHaveBeenCalled();
     });
 
+    it('should open the calendar on click-first label activation when both panels are closed in datetime mode', async () => {
+      // Arrange: Render wrapper in datetime mode with closed panels and an associated label.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      const label = appendAssociatedLabel(fixture);
+
+      // Act: One full click-first activation (WebKit order): the forwarded click runs while both
+      // panels are closed, so it records the 'open' decision and opens the calendar itself; the
+      // focus of the hidden button that follows must consume that decision instead of toggling.
+      activateClickFirst(label, getHiddenButton(fixture));
+      await flush(fixture);
+      await flush(fixture);
+
+      // Assert: The calendar is open with keyboard focus in its grid (date leads the open
+      // redirect); the clock stays closed throughout.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'click-first activation should open the calendar').toBe('true');
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'the clock must stay closed in datetime mode').toBe('false');
+      expect(document.activeElement, 'focus should end in the calendar grid').toBe(getCalendarGrid(fixture));
+    });
+
+    it('should close the clock and park focus on the time input on click-first label activation while only the clock is open in datetime mode', async () => {
+      // Arrange: datetime mode with ONLY the clock panel open (opened through its input), so the
+      // forwarded click records WHICH panel it closed - the `closed:time` branch the single-mode
+      // tests can only reach without a sibling date sub-picker present.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      const label = appendAssociatedLabel(fixture);
+      const touchSpy = vi.fn();
+      fixture.componentInstance.touch.subscribe(touchSpy);
+      getTimeInput(fixture).click();
+      await flush(fixture);
+      await flush(fixture);
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'clock panel should be open before act').toBe('true');
+
+      // Act: Click-first activation with the calendar closed and the clock open.
+      activateClickFirst(label, getHiddenButton(fixture));
+      await flush(fixture);
+
+      // Assert: The click closed the clock via hidePanelAndRefocus and the focus that followed
+      // only restored on the time input; the calendar must never open on the way, and the whole
+      // relay stays inside the wrapper, so no touch is reported.
+      expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'label activation should close the clock').toBe('false');
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar must not open while closing the clock').toBe('false');
+      expect(document.activeElement, 'focus should end on the time input').toBe(getTimeInput(fixture));
+      expect(touchSpy, 'label toggle should not emit touch').not.toHaveBeenCalled();
+    });
+
     registerLabelPreventionTests({
       ident: 'test-dtp',
       arrange: async (ident) => {
@@ -664,6 +997,108 @@ describe('DateTimePicker', () => {
       // Assert: Panel chrome is inside the wrapper, so the press must not close either.
       expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'mousedown on the panel chrome should keep the panel open').toBe('true');
     });
+
+    it('should close the calendar panel when mousedown lands outside the wrapper', async () => {
+      // Arrange: Render wrapper in date mode with the calendar open and a button outside it -
+      // the shared suite above drives the same guard through the clock, this one proves the
+      // `onOutsidePress` close also reaches the date sub-picker.
+      const fixture = await arrangeDateTimePicker({ mode: 'date' });
+      await openCalendarPanel(fixture);
+      const outside = document.createElement('button');
+      document.body.appendChild(outside);
+
+      try {
+        // Act: Press outside the wrapper - the document guard forwards it to onOutsidePress.
+        dispatchMousedown(outside);
+        await flush(fixture);
+
+        // Assert: Panel closed by the press itself.
+        expect(getDateInput(fixture).getAttribute('aria-expanded'), 'outside mousedown should close the calendar panel').toBe('false');
+      } finally { // cleanup
+        outside.remove();
+      }
+    });
+
+    it('should keep calendar panel open when mousedown lands inside the wrapper', async () => {
+      // Arrange: Open the calendar; both the input and the panel chrome are valid inside targets.
+      const fixture = await arrangeDateTimePicker({ mode: 'date' });
+      await openCalendarPanel(fixture);
+
+      // Act: Press the date input (its own mousedown handler runs as well).
+      dispatchMousedown(getDateInput(fixture));
+      await flush(fixture);
+
+      // Assert: Input press must not close - it toggles through the subsequent click.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'mousedown on the date input should keep the calendar open').toBe('true');
+
+      // Act: Press the calendar panel chrome (padding/border area).
+      dispatchMousedown(fixture.nativeElement.querySelector('.calendar-container'));
+      await flush(fixture);
+
+      // Assert: Panel chrome is inside the wrapper, so the press must not close either.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'mousedown on the panel chrome should keep the calendar open').toBe('true');
+    });
+  });
+
+  // The wrapper binds ONE value model to both sub-pickers: a write through either of them (and
+  // through the consumer) must reach every rendered sub-input. The sub-picker specs verify their
+  // own half of the model; these tests verify the wiring across the wrapper.
+  describe('value', () => {
+    it('should render an externally set value in both sub-inputs in datetime mode', async () => {
+      // Arrange: Render wrapper in datetime mode with no value.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+
+      // Act: Consumer writes a value into the shared model after creation.
+      fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 45)));
+      await flush(fixture);
+
+      // Assert: Both sub-pickers read the same model instance - the date input shows the UTC
+      // date part, the time input the UTC time part.
+      expect(getDateInput(fixture).value, 'date input should show the UTC date part').toBe('2026-01-15');
+      expect(getTimeInput(fixture).value, 'time input should show the UTC time part').toBe('14:45');
+    });
+
+    it('should commit a date pick through the wrapper value while keeping the time of day', async () => {
+      // Arrange: datetime mode carrying a value; the calendar opens on the value's month.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 30)));
+      await flush(fixture);
+      await openCalendarPanel(fixture);
+
+      // Act: Pick a new day in the calendar.
+      const day20 = findDayCell(fixture, 20);
+      expect(day20, 'precondition: day 20 should be on the January 2026 grid').not.toBeNull();
+      day20?.click();
+      await flush(fixture);
+
+      // Assert: The pick flowed through the wrapper model - new date, time of day preserved and
+      // both sub-inputs agree with it; the calendar completes the interaction by closing.
+      expect(fixture.componentInstance.value()?.toISOString(), 'committed pick should keep the time of day').toBe('2026-01-20T14:30:00.000Z');
+      expect(getDateInput(fixture).value, 'date input should show the picked day').toBe('2026-01-20');
+      expect(getTimeInput(fixture).value, 'time input should keep showing the time of day').toBe('14:30');
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should close after the pick').toBe('false');
+    });
+
+    it('should clear both sub-inputs when the date sub-picker deselects the value', async () => {
+      // Arrange: datetime mode, deselectable, carrying a value rendered in both sub-inputs.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      fixture.componentRef.setInput('canNull', true);
+      fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 30)));
+      await flush(fixture);
+      await openCalendarPanel(fixture);
+
+      // Act: Re-click the value's own day - a deselect allowed by canNull.
+      const selected = fixture.nativeElement.querySelector('.day.selected') as HTMLElement | null;
+      expect(selected, 'precondition: value day should be marked selected').not.toBeNull();
+      selected?.click();
+      await flush(fixture);
+
+      // Assert: The null cleared through the shared model empties BOTH sub-inputs - the clock
+      // must not keep showing the time of a value that no longer exists.
+      expect(fixture.componentInstance.value(), 'deselect must clear the wrapper value').toBeNull();
+      expect(getDateInput(fixture).value, 'date input should be empty after the deselect').toBe('');
+      expect(getTimeInput(fixture).value, 'time input should be empty after the shared value cleared').toBe('');
+    });
   });
 
   describe('time-first value seeding', () => {
@@ -729,6 +1164,22 @@ describe('DateTimePicker', () => {
       // its focus handler opens the panel, and focus continues into the hour listbox.
       expect(getTimeInput(fixture).getAttribute('aria-expanded'), 'focus() should open the clock panel').toBe('true');
       expect(document.activeElement, 'focus() should end with keyboard focus in the hour listbox').toBe(getHourColumn(fixture));
+    });
+
+    it('should focus the date input and open the calendar panel in date mode', async () => {
+      // Arrange: Render wrapper in date-only mode - the time sub-picker is absent, so focus()
+      // must delegate to the date one without touching the missing view child.
+      const fixture = await arrangeDateTimePicker({ mode: 'date' });
+
+      // Act: Focus the control programmatically (FormUiControl.focus contract).
+      fixture.componentInstance.focus();
+      await flush(fixture);
+      await flush(fixture);
+
+      // Assert: The date input took focus, its focus handler opened the panel, and keyboard
+      // focus continued into the calendar grid so arrow navigation works right away.
+      expect(getDateInput(fixture).getAttribute('aria-expanded'), 'focus() should open the calendar panel').toBe('true');
+      expect(document.activeElement, 'focus() should end with keyboard focus in the calendar grid').toBe(getCalendarGrid(fixture));
     });
 
     it('should be a no-op when disabled', async () => {
