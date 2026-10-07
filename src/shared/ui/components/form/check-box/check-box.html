@@ -29,6 +29,6 @@
     (click)="toggle()"
     (keydown.enter)="toggle()"
     (keydown.space)="toggle(); $event.preventDefault()"
-    (blur)="touch.emit()">
+    (blur)="handleBlur()">
   </div>
 </div>

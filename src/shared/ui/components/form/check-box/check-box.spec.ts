@@ -210,6 +210,24 @@ describe('CheckBox', () => {
         expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
       });
 
+      it('should not emit touch when blur is caused by becoming disabled while focused', async () => {
+        // Arrange: Create component, focus it (the state a mode switch would find it in)
+        // and spy on touch output.
+        const fixture = await arrangeCheckBox();
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+        checkbox.focus();
+
+        // Act: Disable while focused, then the programmatic blur the browser produces.
+        fixture.componentRef.setInput('disabled', true);
+        fixture.detectChanges();
+        checkbox.dispatchEvent(new Event('blur'));
+
+        // Assert: A programmatic blur must not mark the field as touched.
+        expect(touchSpy, 'programmatic blur must not emit touch').not.toHaveBeenCalled();
+      });
+
       it('should not receive focus or toggle on click when disabled', async () => {
         // Arrange: Create component with disabled state and user event setup.
         const user = userEvent.setup();
@@ -412,6 +430,45 @@ describe('CheckBox', () => {
         const checkbox = fixture.nativeElement.querySelector('.checkbox');
         expect(checkbox.hasAttribute('aria-labelledby'), 'aria-labelledby should not be set when label is empty').toBe(false);
       });
+
+      describe('label', () => {
+        it('should warn in dev mode when the label id matches no element', async () => {
+          // Arrange: Spy on console.warn; label reference deliberately left dangling.
+          const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+          try {
+            // Act: Create the component - its dev-only effect checks the reference on first CD.
+            await arrangeCheckBox({ label: 'ghost-label' });
+
+            // Assert: The dangling id is reported, naming this component.
+            const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+            expect(messages, 'dangling label id should be reported in dev mode').toContain('ghost-label');
+            expect(messages, 'warning should name the emitting component').toContain('[check-box]');
+          } finally { // cleanup
+            warnSpy.mockRestore();
+          }
+        });
+
+        it('should not warn when the label id resolves to an element', async () => {
+          // Arrange: Spy on console.warn; a real element carries the referenced id.
+          const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+          const labelElement = document.createElement('label');
+          labelElement.id = 'real-label';
+          document.body.appendChild(labelElement);
+
+          try {
+            // Act: Create the component - its dev-only effect checks the reference on first CD.
+            await arrangeCheckBox({ label: 'real-label' });
+
+            // Assert: Resolvable reference is not a defect.
+            const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+            expect(messages, 'resolvable label id must not warn').not.toContain('[check-box]');
+          } finally { // cleanup
+            labelElement.remove();
+            warnSpy.mockRestore();
+          }
+        });
+      });
     });
 
     describe('label activation', () => {
@@ -472,6 +529,33 @@ describe('CheckBox', () => {
 
         // Assert: Engine skips label activation entirely for a disabled control.
         expect(hiddenButton.disabled, 'disabled component should block label activation at the source').toBe(true);
+      });
+    });
+
+    describe('focus contract', () => {
+      it('should focus the checkbox on behalf of the signal-forms Field directive', async () => {
+        // Arrange: Create component; the contract consumer is Angular's Field directive,
+        // which cannot run in this fixture, so the public contract method is called directly.
+        const fixture = await arrangeCheckBox();
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+
+        // Act: Call the optional FormUiControl.focus contract method.
+        fixture.componentInstance.focus();
+
+        // Assert: The checkbox box received focus.
+        expect(document.activeElement, 'focus() should focus the checkbox box').toBe(checkbox);
+      });
+
+      it('should not focus the checkbox when disabled', async () => {
+        // Arrange: Create disabled component.
+        const fixture = await arrangeCheckBox({ disabled: true });
+        const checkbox = fixture.nativeElement.querySelector('.checkbox');
+
+        // Act: Call the contract method.
+        fixture.componentInstance.focus();
+
+        // Assert: Disabled checkbox stays unfocused.
+        expect(document.activeElement, 'focus() must be a no-op when disabled').not.toBe(checkbox);
       });
     });
 

@@ -1,7 +1,8 @@
-import { Component, model, input, output, computed, inject, linkedSignal, viewChild, ElementRef } from '@angular/core';
+import { Component, effect, model, input, output, computed, inject, linkedSignal, viewChild, ElementRef, DOCUMENT } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
+import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 
 /**
  * Custom form component that allows choice between true, false and null (optional). Equivalent of `<input type="checkbox">`.
@@ -19,7 +20,7 @@ import { IdService } from '@/shared/utils/id/id-service';
  *
  * Inputs:
  * - ident - Used for identification and `id` attribute in focusable element (so `<label>` etc. work properly). Used instead of `id` for technical reasons. Optional. If omitted, unique `check-box-N` is generated; provide it explicitly for `<label for>` pairing or a stable test id.
- * - label - For `aria-labelledby`. Optional.
+ * - label - For `aria-labelledby`. Optional; dev mode warns when the id matches no element.
  * - canNull - If true, can use `null` value when cycling checkbox. Note `canNull` affects only user ability to set `null` value. Component still can have `null` set programmatically.
  *
  * Outputs:
@@ -38,6 +39,8 @@ import { IdService } from '@/shared/utils/id/id-service';
 })
 export class CheckBox implements FormValueControl<boolean | null> {
   private readonly idService = inject(IdService);
+  /** Document the `label` id is resolved against (not the global, see `warnDanglingLabel`). */
+  private readonly document = inject(DOCUMENT);
   /** Reference to the focusable checkbox box (the `role="checkbox"` div). */
   private readonly checkboxRef = viewChild.required<ElementRef<HTMLDivElement>>('checkboxRef');
 
@@ -61,6 +64,15 @@ export class CheckBox implements FormValueControl<boolean | null> {
   /** Informs that user blurred out of component. */
   public touch = output<void>();
 
+  constructor() {
+    // Dev-only: catch a `label` id that matches no element. A dangling aria-labelledby would
+    // leave this checkbox with no accessible name (it has no aria-label fallback), which no app
+    // test catches; re-runs whenever label or ident changes (see `warnDanglingLabel`).
+    effect(() => {
+      warnDanglingLabel(this.document, this.label(), this.resolvedIdent(), 'check-box');
+    });
+  }
+
   // COMPUTED
 
   /** Compute value needed for aria-checked. */
@@ -79,8 +91,29 @@ export class CheckBox implements FormValueControl<boolean | null> {
    * button never receives activation in the first place; this guard is defense in depth).
    */
   public focusBox() {
+    this.focus();
+  }
+
+  /**
+   * Focus the checkbox box on behalf of the signal-forms `Field` directive (the optional
+   * `FormUiControl.focus` contract - e.g. "focus first invalid field"). Without this method the
+   * directive would fall back to focusing the non-focusable `<check-box>` host and silently do
+   * nothing. No-op when disabled.
+   * @param options Native focus options (e.g. `preventScroll`), forwarded to the checkbox box.
+   */
+  public focus(options?: FocusOptions): void {
     if (this.disabled()) return;
-    this.checkboxRef().nativeElement.focus();
+    this.checkboxRef().nativeElement.focus(options);
+  }
+
+  /**
+   * Handle blur of the checkbox box. Blur caused by the component becoming disabled while
+   * focused is programmatic, not a user leaving the control, so it must not mark the field
+   * as touched.
+   */
+  public handleBlur() {
+    if (this.disabled()) return;
+    this.touch.emit();
   }
 
   /**
