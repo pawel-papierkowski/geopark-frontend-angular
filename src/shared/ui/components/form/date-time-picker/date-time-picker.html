@@ -14,12 +14,16 @@
   <button #labelBtnRef type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
     (focus)="handleLabelFocus()" (click)="handleLabelClick()" [disabled]="disabled()"></button>
 
-  <!-- Qualifier is needed ONLY in datetime mode: there the same visible <label> names BOTH
-       sub-inputs, so each one appends its own hidden "Date"/"Time" suffix to stay
-       distinguishable (single-mode pickers already carry a distinct fallback name). -->
+  <!-- Sub-picker value wiring: in datetime mode each sub-picker reads/writes ITS OWN half
+       (`dateSubValue`/`timeSubValue` -> `onDateSubValueChange`/`onTimeSubValueChange`), and the
+       wrapper recombines the halves into `value` only once both are selected - so a date-only
+       pick never drags a default 00:00 time along, and a time-only pick never drags today's
+       date. In date/time modes the sub-picker binds `value` directly (single-mode semantics
+       stay exactly as they were). -->
   @if (mode() === 'datetime' || mode() === 'date') {
     <date-picker
-      [(value)]="value"
+      [value]="dateSubValue()"
+      (valueChange)="onDateSubValueChange($event)"
       (touch)="touch.emit()"
 
       [ident]="dateIdent()"
@@ -40,7 +44,8 @@
 
   @if (mode() === 'datetime' || mode() === 'time') {
     <time-picker
-      [(value)]="value"
+      [value]="timeSubValue()"
+      (valueChange)="onTimeSubValueChange($event)"
       (touch)="touch.emit()"
 
       [ident]="timeIdent()"

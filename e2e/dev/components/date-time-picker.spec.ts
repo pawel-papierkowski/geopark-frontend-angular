@@ -167,8 +167,9 @@ function getDayCell(page: Page, header: string, day: number): Locator {
 /**
  * Open the datetime row's calendar and pick a deterministic day through mouse interaction.
  * The header is read AFTER the open, so the expected value is derived from the month the panel
- * actually shows instead of the machine's clock. The pick commits and closes the calendar,
- * leaving focus on the date input.
+ * actually shows instead of the machine's clock. The pick commits the DATE HALF and closes the
+ * calendar, leaving focus on the date input (the form value stays unset until the time half is
+ * picked too).
  * @param page Browser page.
  * @param day Day of the viewed month to pick. Defaults to 15 (always exists in any month).
  * @returns The committed date as `YYYY-MM-DD`.
@@ -183,8 +184,9 @@ async function pickDay(page: Page, day: number = 15): Promise<string> {
 
 /**
  * Commit a deterministic time (14:30) through the datetime row's clock via mouse interaction.
- * The hour pick stays partial (panel open, value untouched); the minute pick completes the
- * session, which commits the value, closes the clock and leaves focus on the time input.
+ * The hour pick stays partial (panel open); the minute pick completes the session, which
+ * commits the TIME HALF, closes the clock and leaves focus on the time input. In datetime mode
+ * the form value only follows once the date half is picked too.
  * @param page Browser page.
  */
 async function selectTime(page: Page): Promise<void> {
@@ -199,43 +201,46 @@ async function selectTime(page: Page): Promise<void> {
  * E2e tests of the DateTimePicker wrapper on the dev page, all on the `cc-dateTimePicker` row in
  * mode="datetime" - the mode that renders BOTH sub-pickers plus their name qualifiers, so the
  * wrapper-level logic is exercised: label activation weighing two visibility signals, real focus
- * containment between the two inputs, outside press against the wrapper boundary, and the shared
- * form value both sub-pickers write into. The label tests reproduce the real activation order of
- * each browser project (focus-then-click on Chromium/Firefox, click-then-focus on WebKit), which
- * is exactly what unit tests can only simulate.
+ * containment between the two inputs, outside press against the wrapper boundary, and the form
+ * value the wrapper only completes once BOTH sub-pickers carry a selection (each half alone
+ * leaves it unset). The label tests reproduce the real activation order of each browser project
+ * (focus-then-click on Chromium/Firefox, click-then-focus on WebKit), which is exactly what unit
+ * tests can only simulate.
  */
 test.describe('DateTimePicker', () => {
   test.describe('clicking', () => {
     test('should commit a date and a time through both sub-pickers into the form value', async ({ page }) => {
-      // Arrange: Navigate to the custom components page; the shared value starts unset.
+      // Arrange: Navigate to the custom components page; the value starts unset.
       await goToComponentsPage(page);
       await expect(getValueDisplay(page)).toContainText('❓');
 
       // Act: Pick a deterministic day through the calendar.
       const day = await pickDay(page);
 
-      // Assert: The date committed at midnight, the calendar closed itself and the clock
-      // never opened - one sub-picker's session must not wake the sibling.
+      // Assert: Only the date half is selected - the form value must NOT gain an implied
+      // 00:00 time, the time input stays empty, the calendar closed itself and the clock
+      // never opened (one sub-picker's session must not wake the sibling).
       await expect(getDateInput(page)).toHaveValue(day);
       await expect(getDateInput(page)).toHaveAttribute('aria-expanded', 'false');
       await expect(getTimeInput(page), 'the clock must stay closed after a date pick').toHaveAttribute('aria-expanded', 'false');
-      await expect(getValueDisplay(page)).toContainText(`${day}T00:00:00`);
+      await expect(getTimeInput(page), 'the time input must stay empty after a date-only pick').toHaveValue('');
+      await expect(getValueDisplay(page), 'a date-only pick must not produce a form value').toContainText('❓');
 
       // Act: Pick 14:30 through the clock (hour stays partial, minute completes the session).
       await getTimeInput(page).click();
       await expect(getHourColumn(page)).toBeFocused();
       await getHour(page, 14).click();
 
-      // Assert: An hour-only session must not commit - the form still carries the midnight
-      // time the date pick produced, and the clock stays open for the minute column.
+      // Assert: An hour-only session must not commit - the form is still waiting for both
+      // halves, and the clock stays open for the minute column.
       await expect(getTimeInput(page)).toHaveAttribute('aria-expanded', 'true');
-      await expect(getValueDisplay(page), 'partial time pick must not rewrite the value').toContainText(`${day}T00:00:00`);
+      await expect(getValueDisplay(page), 'partial time pick must not rewrite the value').toContainText('❓');
 
       // Act: Complete the session with minute 30.
       await getMinute(page, 30).click();
 
-      // Assert: The completed session committed BOTH parts into the single shared value -
-      // sub-inputs agree with it, the clock closed and focus parked on its input.
+      // Assert: With BOTH halves selected the wrapper completes the form value - sub-inputs
+      // agree with it, the clock closed and focus parked on its input.
       await expect(getTimeInput(page)).toHaveValue('14:30');
       await expect(getTimeInput(page)).toHaveAttribute('aria-expanded', 'false');
       await expect(getTimeInput(page)).toBeFocused();
@@ -244,11 +249,13 @@ test.describe('DateTimePicker', () => {
     });
 
     test('should close the calendar and keep the committed value when clicking outside after label activation', async ({ page }) => {
-      // Arrange: Commit a deterministic day, then reopen the calendar THROUGH THE LABEL so
-      // keyboard focus sits in the grid - the state only label activation produces.
+      // Arrange: Commit BOTH halves (deterministic day + 14:30), so the form carries a real
+      // value to preserve, then reopen the calendar THROUGH THE LABEL so keyboard focus sits
+      // in the grid - the state only label activation produces.
       await goToComponentsPage(page);
       const day = await pickDay(page);
-      await expect(getValueDisplay(page)).toContainText(`${day}T00:00:00`);
+      await selectTime(page);
+      await expect(getValueDisplay(page)).toContainText(`${day}T14:30:00`);
       await getLabel(page).click();
       await expect(getDateInput(page)).toHaveAttribute('aria-expanded', 'true');
       await expect(getGrid(page)).toBeFocused();
@@ -260,16 +267,17 @@ test.describe('DateTimePicker', () => {
       // value survived, and the clock never opened along the way.
       await expect(getDateInput(page)).toHaveAttribute('aria-expanded', 'false');
       await expect(getTimeInput(page), 'the clock must stay closed throughout').toHaveAttribute('aria-expanded', 'false');
-      await expect(getValueDisplay(page)).toContainText(`${day}T00:00:00`);
+      await expect(getValueDisplay(page)).toContainText(`${day}T14:30:00`);
     });
 
     test('should close the clock and keep the committed value when clicking the outside Submit button', async ({ page }) => {
-      // Arrange: Commit a deterministic time through the clock (minute pick closes it), then
-      // reopen the clock so focus sits in the hour listbox.
+      // Arrange: Commit BOTH halves (deterministic day + 14:30) so the form carries a real
+      // value, then reopen the clock so focus sits in the hour listbox.
       await goToComponentsPage(page);
+      const day = await pickDay(page);
       await selectTime(page);
       await expect(getTimeInput(page)).toHaveAttribute('aria-expanded', 'false');
-      await expect(getValueDisplay(page)).toContainText('T14:30:00');
+      await expect(getValueDisplay(page)).toContainText(`${day}T14:30:00`);
       await getTimeInput(page).click();
       await expect(getTimeInput(page)).toHaveAttribute('aria-expanded', 'true');
       await expect(getHourColumn(page)).toBeFocused();
@@ -283,7 +291,7 @@ test.describe('DateTimePicker', () => {
       // Assert: The clock closed by the press itself and the committed value was retained.
       await expect(getTimeInput(page)).toHaveAttribute('aria-expanded', 'false');
       await expect(getClockPanel(page)).toBeHidden();
-      await expect(getValueDisplay(page)).toContainText('T14:30:00');
+      await expect(getValueDisplay(page)).toContainText(`${day}T14:30:00`);
     });
   });
 

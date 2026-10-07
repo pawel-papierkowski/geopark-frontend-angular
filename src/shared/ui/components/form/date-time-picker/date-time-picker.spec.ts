@@ -293,6 +293,24 @@ describe('DateTimePicker', () => {
         expect(getTimeInput(fixture), 'time sub-picker should appear after switching to datetime').not.toBeNull();
       });
 
+      it('should adopt a value set in date mode into both halves after switching to datetime', async () => {
+        // Arrange: date-only mode carrying a value (only the date sub-picker exists to show it).
+        const fixture = await arrangeDateTimePicker({ mode: 'date' });
+        fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 45)));
+        await flush(fixture);
+        expect(getDateInput(fixture).value, 'precondition: date input should show the value').toBe('2026-01-15');
+
+        // Act: Consumer switches to datetime after creation.
+        fixture.componentRef.setInput('mode', 'datetime');
+        await flush(fixture);
+
+        // Assert: The freshly mounted time half adopts the time part of the existing value -
+        // switching modes must not lose the value or leave the new sub-input empty.
+        expect(getDateInput(fixture).value, 'date input should keep showing the value').toBe('2026-01-15');
+        expect(getTimeInput(fixture).value, 'time input should adopt the time part after the mode switch').toBe('14:45');
+        expect(fixture.componentInstance.value(), 'the wrapper value must survive the mode switch').not.toBeNull();
+      });
+
       it('should close the clock and mount a closed calendar when mode switches from time to date with the clock panel open', async () => {
         // Arrange: time mode with the clock panel open (keyboard focus sits in its hour listbox).
         const fixture = await arrangeDateTimePicker({ mode: 'time' });
@@ -1040,19 +1058,22 @@ describe('DateTimePicker', () => {
     });
   });
 
-  // The wrapper binds ONE value model to both sub-pickers: a write through either of them (and
-  // through the consumer) must reach every rendered sub-input. The sub-picker specs verify their
-  // own half of the model; these tests verify the wiring across the wrapper.
+  // In datetime mode the wrapper keeps a SEPARATE model per sub-picker (date half, time half)
+  // and only combines them into the wrapper value when BOTH halves are selected - a half-only
+  // pick must never leak its default counterpart (00:00 time / today's date) into the wrapper
+  // value or into the sibling input. In single modes the sub-picker binds the wrapper value
+  // directly. The sub-picker specs verify their own half of the model; these tests verify the
+  // split wiring, the combination and consumer writes across the wrapper.
   describe('value', () => {
     it('should render an externally set value in both sub-inputs in datetime mode', async () => {
       // Arrange: Render wrapper in datetime mode with no value.
       const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
 
-      // Act: Consumer writes a value into the shared model after creation.
+      // Act: Consumer writes a value into the wrapper model after creation.
       fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 45)));
       await flush(fixture);
 
-      // Assert: Both sub-pickers read the same model instance - the date input shows the UTC
+      // Assert: The consumer value is split into both halves - the date input shows the UTC
       // date part, the time input the UTC time part.
       expect(getDateInput(fixture).value, 'date input should show the UTC date part').toBe('2026-01-15');
       expect(getTimeInput(fixture).value, 'time input should show the UTC time part').toBe('14:45');
@@ -1079,7 +1100,102 @@ describe('DateTimePicker', () => {
       expect(getDateInput(fixture).getAttribute('aria-expanded'), 'calendar should close after the pick').toBe('false');
     });
 
-    it('should clear both sub-inputs when the date sub-picker deselects the value', async () => {
+    it('should keep the wrapper value unset and the time input empty when only a date is picked', async () => {
+      // Arrange: Clock pinned to 15 January 2026 so the no-value calendar seeds its grid on a
+      // known month regardless of when the suite runs.
+      const fixture = await withMockedNow(new Date('2026-01-15T00:30:00+01:00'), async () => {
+        const created = await arrangeDateTimePicker({ mode: 'datetime' });
+
+        // Act: Pick a day through the calendar.
+        await openCalendarPanel(created);
+        const day20 = findDayCell(created, 20);
+        expect(day20, 'precondition: day 20 should be on the January 2026 grid').not.toBeNull();
+        day20?.click();
+        await flush(created);
+        return created;
+      });
+
+      // Assert: Only the date half is selected - the wrapper stays unset (no implied 00:00
+      // time) and the time input must not show a default time the user never picked.
+      expect(fixture.componentInstance.value(), 'date-only pick must not produce a wrapper value').toBeNull();
+      expect(getDateInput(fixture).value, 'date input should show the picked day').toBe('2026-01-20');
+      expect(getTimeInput(fixture).value, 'time input must stay empty until a time is picked').toBe('');
+    });
+
+    it('should keep the wrapper value unset and the date input empty when only a time is picked', async () => {
+      // Arrange: datetime mode with no value (the clock seeds its view from the local time).
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+
+      // Act: Complete a clock pick - hour 14 first, then minute 45, which commits the time half.
+      await openClockPanel(fixture);
+      fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_h14"]').click();
+      await flush(fixture);
+      fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_m45"]').click();
+      await flush(fixture);
+
+      // Assert: Only the time half is selected - the wrapper stays unset (no auto-seeded
+      // calendar date) and the date input must not show today unless the user picks a day.
+      expect(fixture.componentInstance.value(), 'time-only pick must not produce a wrapper value').toBeNull();
+      expect(getTimeInput(fixture).value, 'time input should show the picked time').toBe('14:45');
+      expect(getDateInput(fixture).value, 'date input must stay empty until a day is picked').toBe('');
+    });
+
+    it('should combine a date pick followed by a time pick into the wrapper value', async () => {
+      // Arrange: Clock pinned to 15 January 2026 so both picks land on a known calendar.
+      const fixture = await withMockedNow(new Date('2026-01-15T00:30:00+01:00'), async () => {
+        const created = await arrangeDateTimePicker({ mode: 'datetime' });
+
+        // Act: Pick day 20 through the calendar, then 14:45 through the clock (hour partial,
+        // minute completing the session).
+        await openCalendarPanel(created);
+        findDayCell(created, 20)?.click();
+        await flush(created);
+        await openClockPanel(created);
+        created.nativeElement.querySelector('[data-testid="timeId_test-dtp_h14"]').click();
+        await flush(created);
+        created.nativeElement.querySelector('[data-testid="timeId_test-dtp_m45"]').click();
+        await flush(created);
+        return created;
+      });
+
+      // Assert: Both halves picked -> the wrapper value carries their combination and both
+      // sub-inputs agree with it.
+      expect(fixture.componentInstance.value()?.toISOString(), 'value should combine the picked date and time').toBe('2026-01-20T14:45:00.000Z');
+      expect(getDateInput(fixture).value, 'date input should show the picked day').toBe('2026-01-20');
+      expect(getTimeInput(fixture).value, 'time input should show the picked time').toBe('14:45');
+    });
+
+    it('should combine a time pick followed by a date pick onto the picked day, not onto today', async () => {
+      // Arrange: Clock pinned to 15 January 2026 - today's date is a trap: a time picked first
+      // must NOT seed it into the calendar half.
+      const fixture = await withMockedNow(new Date('2026-01-15T00:30:00+01:00'), async () => {
+        const created = await arrangeDateTimePicker({ mode: 'datetime' });
+
+        // Act: Complete a clock pick first (14:45) - the wrapper must stay unset so far.
+        await openClockPanel(created);
+        created.nativeElement.querySelector('[data-testid="timeId_test-dtp_h14"]').click();
+        await flush(created);
+        created.nativeElement.querySelector('[data-testid="timeId_test-dtp_m45"]').click();
+        await flush(created);
+        expect(created.componentInstance.value(), 'precondition: time-only pick must stay unset').toBeNull();
+        expect(getDateInput(created).value, 'precondition: date input must stay empty after the time pick').toBe('');
+
+        // Act: Then pick day 20 through the calendar (its no-value grid seeds on the mocked
+        // local date, 15 January 2026).
+        await openCalendarPanel(created);
+        findDayCell(created, 20)?.click();
+        await flush(created);
+        return created;
+      });
+
+      // Assert: The value carries the PICKED day with the picked time - never an auto-seeded
+      // date.
+      expect(fixture.componentInstance.value()?.toISOString(), 'value should combine picked time with picked day').toBe('2026-01-20T14:45:00.000Z');
+      expect(getDateInput(fixture).value, 'date input should show the picked day').toBe('2026-01-20');
+      expect(getTimeInput(fixture).value, 'time input should keep showing the picked time').toBe('14:45');
+    });
+
+    it('should clear the wrapper value but keep the time input when the date half deselects', async () => {
       // Arrange: datetime mode, deselectable, carrying a value rendered in both sub-inputs.
       const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
       fixture.componentRef.setInput('canNull', true);
@@ -1093,39 +1209,55 @@ describe('DateTimePicker', () => {
       selected?.click();
       await flush(fixture);
 
-      // Assert: The null cleared through the shared model empties BOTH sub-inputs - the clock
-      // must not keep showing the time of a value that no longer exists.
+      // Assert: Only the date half clears - the wrapper value follows it to null, while the
+      // time half survives so the user does not lose the picked time.
       expect(fixture.componentInstance.value(), 'deselect must clear the wrapper value').toBeNull();
       expect(getDateInput(fixture).value, 'date input should be empty after the deselect').toBe('');
-      expect(getTimeInput(fixture).value, 'time input should be empty after the shared value cleared').toBe('');
+      expect(getTimeInput(fixture).value, 'time input should keep the surviving time half').toBe('14:30');
     });
-  });
 
-  describe('time-first value seeding', () => {
-    it('should put a time picked before any date on the local calendar date in datetime mode', async () => {
-      // Arrange: Clock pinned to 15 January 2026, 00:30 Warsaw time - the UTC date is still
-      // 14 January, but the calendar's `today` marker reads the LOCAL date (15 January), so
-      // the date input must agree with it after a time is picked with no prior value.
-      const fixture = await withMockedNow(new Date('2026-01-15T00:30:00+01:00'), async () => {
-        const created = await arrangeDateTimePicker({ mode: 'datetime' });
+    it('should clear the wrapper value but keep the date input when the time half deselects', async () => {
+      // Arrange: datetime mode, deselectable, carrying a value rendered in both sub-inputs.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      fixture.componentRef.setInput('canNull', true);
+      fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 30)));
+      await flush(fixture);
+      await openClockPanel(fixture);
 
-        // Act: Open the clock through its input (two open rounds, as on every open path) and
-        // complete a pick - hour first, then the minute, which commits the value.
-        getTimeInput(created).click();
-        await flush(created);
-        await flush(created);
-        created.nativeElement.querySelector('[data-testid="timeId_test-dtp_h14"]').click();
-        created.detectChanges();
-        created.nativeElement.querySelector('[data-testid="timeId_test-dtp_m45"]').click();
-        created.detectChanges();
-        return created;
-      });
+      // Act: Un-pick both clock columns (re-picking a column's own value toggles it to
+      // discarded under canNull) - the second discard of each column completes the clear.
+      fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_h14"]').click();
+      await flush(fixture);
+      fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_h14"]').click();
+      await flush(fixture);
+      fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_m30"]').click();
+      await flush(fixture);
+      fixture.nativeElement.querySelector('[data-testid="timeId_test-dtp_m30"]').click();
+      await flush(fixture);
 
-      // Assert: Value, time input and date input all describe the same moment - the picked
-      // time on the user's today, never on the already-passed UTC date.
-      expect(fixture.componentInstance.value()?.getUTCDate(), 'value day should match the local calendar date').toBe(15);
-      expect(getTimeInput(fixture).value, 'time input should show the picked time').toBe('14:45');
-      expect(getDateInput(fixture).value, 'date input should show the local calendar date').toBe('2026-01-15');
+      // Assert: Only the time half clears - the wrapper value follows it to null, while the
+      // date half survives so the user does not lose the picked day.
+      expect(fixture.componentInstance.value(), 'clear must empty the wrapper value').toBeNull();
+      expect(getTimeInput(fixture).value, 'time input should be empty after the clear').toBe('');
+      expect(getDateInput(fixture).value, 'date input should keep the surviving date half').toBe('2026-01-15');
+    });
+
+    it('should clear both sub-inputs when the consumer clears the value', async () => {
+      // Arrange: datetime mode carrying a value rendered in both sub-inputs.
+      const fixture = await arrangeDateTimePicker({ mode: 'datetime' });
+      fixture.componentRef.setInput('value', new Date(Date.UTC(2026, 0, 15, 14, 45)));
+      await flush(fixture);
+      expect(getDateInput(fixture).value, 'precondition: date input should show the value').toBe('2026-01-15');
+      expect(getTimeInput(fixture).value, 'precondition: time input should show the value').toBe('14:45');
+
+      // Act: Consumer writes null into the wrapper model.
+      fixture.componentRef.setInput('value', null);
+      await flush(fixture);
+
+      // Assert: The cleared value empties BOTH halves - nothing may survive an external clear.
+      expect(fixture.componentInstance.value(), 'value should stay null after the external clear').toBeNull();
+      expect(getDateInput(fixture).value, 'date input should be empty after the external clear').toBe('');
+      expect(getTimeInput(fixture).value, 'time input should be empty after the external clear').toBe('');
     });
   });
 

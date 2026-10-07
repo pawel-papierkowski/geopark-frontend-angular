@@ -1,4 +1,4 @@
-import { Component, model, input, output, computed, inject, linkedSignal, viewChild, DestroyRef, DOCUMENT, ElementRef } from '@angular/core';
+import { Component, model, input, output, computed, effect, inject, linkedSignal, signal, viewChild, DestroyRef, DOCUMENT, ElementRef } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
 import { IdService } from '@/shared/utils/id/id-service';
@@ -9,13 +9,28 @@ import { DatePicker } from './date-picker';
 import { TimePicker } from './time-picker';
 
 /**
+ * Compare two instants for value equality, treating invalid dates (NaN time) as equal to
+ * NOTHING - not even to each other - so a corrupted value can never masquerade as "already
+ * described" and is always (re)adopted. Null equals only null.
+ * @param a First instant or null.
+ * @param b Second instant or null.
+ * @returns True when both carry the same valid time, or both are null.
+ */
+function sameInstant(a: Date | null, b: Date | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.getTime() === b.getTime();
+}
+
+/**
  * This is a date and time picker. Uses `Date` class for both input and output.
  * It is wrapper for two subcomponents: `DatePicker` and `TimePicker`.
  * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
  * Values are read/written through UTC accessors, but the time sub-picker's default "current time"
  * highlight and keyboard/scroll seed (used when no value is set) come from the browser's local
  * timezone, and a time picked with no prior value is written onto the LOCAL calendar date
- * (UTC-anchored), so it always lands on the day the user sees as today.
+ * (UTC-anchored), so it always lands on the day the user sees as today. In `datetime` mode the
+ * wrapper ignores that seeded day - the calendar day of the selection always comes from the
+ * date half (see Features).
  * Designed to be used with signal-based forms.
  *
  * Features:
@@ -61,7 +76,9 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
 
-  /** Value held by component. */
+  /** Value held by component. In `datetime` mode it only carries a date+time once BOTH halves
+   * (date sub-picker, time sub-picker) are selected - null while either half is unpicked; see
+   * the class doc. */
   public value = model<Date | null>(null);
   /** Identifier for this component. */
   public ident = input<string>('');
@@ -89,6 +106,11 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   /** Informs that user blurred out of component. */
   public touch = output<void>();
 
+  /** Date half of the selection in `datetime` mode. */
+  private readonly datePart = signal<Date | null>(null);
+  /** Time half of the selection in `datetime` mode. */
+  private readonly timePart = signal<Date | null>(null);
+
   /** Label-activation coordination (focus-opens marker + forwarded-click decision) plus the
    * document guard; see `LabelActivation` for the full contract. `closed:date`/`closed:time`
    * record WHICH sub-picker the click closed, because by the time the focus handler runs that
@@ -109,6 +131,26 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   public dateIdent = computed(() => `dateId_${this.resolvedIdent()}`);
   public timeIdent = computed(() => `timeId_${this.resolvedIdent()}`);
 
+  /** Value bound to the date sub-picker: the date half in `datetime` mode, the wrapper value
+   * in date-only mode (a single-mode value IS the half, so it binds `value` directly and keeps
+   * its exact semantics - e.g. a `time`-mode value keeps its local-today date part). */
+  public readonly dateSubValue = computed<Date | null>(() => (this.mode() === 'datetime' ? this.datePart() : this.value()));
+  /** Value bound to the time sub-picker; same rule as `dateSubValue`. */
+  public readonly timeSubValue = computed<Date | null>(() => (this.mode() === 'datetime' ? this.timePart() : this.value()));
+
+  /** Both halves combined into one instant, or null while either half is unpicked: the single
+   * source of truth for what `value` should hold in `datetime` mode (see `recombineValue` and
+   * the adopt effect in the constructor). */
+  private readonly combinedValue = computed<Date | null>(() => {
+    const date = this.datePart();
+    const time = this.timePart();
+    if (date === null || time === null) return null;
+    return new Date(Date.UTC(
+      date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
+      time.getUTCHours(), time.getUTCMinutes(), time.getUTCSeconds(), time.getUTCMilliseconds(),
+    ));
+  });
+
   constructor() {
     // Document-level guard for label activation: resets the interaction markers, cancels the
     // focus steal when the press lands on this component's own label and closes the sub-picker
@@ -124,6 +166,70 @@ export class DateTimePicker implements FormValueControl<Date | null> {
         this.timePicker()?.hidePanel();
       },
     });
+
+    // Adopt a consumer-written value into the datetime halves. `value` is the public contract
+    // (forms and consumers write it directly), so whenever it holds something the halves do
+    // not describe - a fresh external value, an external clear, a mode switch INTO `datetime`
+    // (reading `mode()` here is what re-runs the effect on the switch) - it wins and is split
+    // into the two halves. The equality guard is what makes this converge with
+    // `recombineValue`: a value the halves already describe (including one `recombineValue`
+    // itself just wrote) is left alone, so a half-only pick - combined null against an
+    // already-null value - is never clobbered, and re-splitting after our own write is a
+    // no-op. Invalid dates split into two null halves but keep `value` untouched, so a
+    // corrupted value still heals on the next pick exactly as before.
+    effect(() => {
+      if (this.mode() !== 'datetime') return;
+      const value = this.value();
+      if (sameInstant(value, this.combinedValue())) return;
+      const usable = value !== null && !Number.isNaN(value.getTime());
+      this.datePart.set(usable ? new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())) : null);
+      this.timePart.set(usable ? new Date(value) : null);
+    });
+  }
+
+  // SUB-PICKER VALUE WIRING
+
+  /**
+   * Handle a value write from the date sub-picker (`valueChange`).
+   * In `datetime` mode the write lands on the DATE HALF only and the wrapper value is then
+   * recombined from both halves (null while the time half is unpicked); in date-only mode the
+   * sub-picker edits the wrapper value directly.
+   * @param value New date half, or null on deselect.
+   */
+  public onDateSubValueChange(value: Date | null): void {
+    if (this.mode() !== 'datetime') {
+      this.value.set(value);
+      return;
+    }
+    this.datePart.set(value);
+    this.recombineValue();
+  }
+
+  /**
+   * Handle a value write from the time sub-picker (`valueChange`); mirror of
+   * `onDateSubValueChange` with the halves swapped.
+   * @param value New time half, or null on clear.
+   */
+  public onTimeSubValueChange(value: Date | null): void {
+    if (this.mode() !== 'datetime') {
+      this.value.set(value);
+      return;
+    }
+    this.timePart.set(value);
+    this.recombineValue();
+  }
+
+  /**
+   * Recombine the two datetime halves into the wrapper `value`: the combination once both
+   * halves are selected, null while either half is unpicked. Writes only when the value
+   * actually changes (compared by time, see `sameInstant`), so a form bound to the picker is
+   * never notified spuriously. Must be called AFTER the changed half was written, so
+   * `combinedValue` already reflects the new pick.
+   */
+  private recombineValue(): void {
+    const combined = this.combinedValue();
+    if (sameInstant(this.value(), combined)) return;
+    this.value.set(combined);
   }
 
   /**
