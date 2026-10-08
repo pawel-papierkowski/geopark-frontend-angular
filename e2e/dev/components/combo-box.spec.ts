@@ -244,6 +244,7 @@ test.describe('ComboBox', () => {
 
       // Assert: List closed, translated text shown, raw value propagated to form display.
       await expect(comboBox).toHaveAttribute('aria-expanded', 'false');
+      await expect(comboBox).not.toHaveAttribute('aria-activedescendant');
       await expect(comboBox.locator('.combobox-selected-text')).toContainText('First option');
       await expect(getValueDisplay(page)).toContainText('OPT1');
     });

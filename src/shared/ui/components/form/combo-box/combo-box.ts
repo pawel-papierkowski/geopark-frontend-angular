@@ -322,9 +322,9 @@ export class ComboBox implements FormValueControl<number | string | null> {
     if (this.disabled()) return;
 
     this.value.set(option);
-    this.isOpen.set(false);
-    this.typeaheadBuffer = '';
-    this.resetInteractionState();
+    // Close through hidePanel: it also resets the highlight, so aria-activedescendant never
+    // stays on the closed combobox pointing into the display:none list.
+    this.hidePanel();
   }
 
   /**

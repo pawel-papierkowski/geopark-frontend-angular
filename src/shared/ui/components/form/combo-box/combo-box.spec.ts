@@ -434,21 +434,24 @@ describe('ComboBox', () => {
       });
 
       it('should select option by click, close list and reset highlight', async () => {
-        // Arrange: Create component and open the list.
-        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'] });
+        // Arrange: Create component with a preselected value so opening seeds a real highlight
+        // (with no selection the seed stays -1 and the reset assertion below would pass vacuously).
+        const fixture = await arrangeComboBox({ options: ['a', 'b', 'c'], value: 'a' });
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.click();
         fixture.detectChanges();
+        expect(fixture.componentInstance.highlightedIndex(), 'opening should seed highlight on the current value').toBe(0);
 
         // Act: Click second option.
         const option = fixture.nativeElement.querySelector('[data-testid="test-combo_1"]');
         option.click();
         fixture.detectChanges();
 
-        // Assert: Value selected, list closed, highlight reset.
+        // Assert: Value selected, list closed, highlight reset and no stale aria-activedescendant.
         expect(fixture.componentInstance.value(), 'value should be b after click').toBe('b');
         expect(fixture.componentInstance.isOpen(), 'list should close after selection').toBe(false);
         expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset after selection').toBe(-1);
+        expect(root.hasAttribute('aria-activedescendant'), 'closed combobox must not reference a hidden option').toBe(false);
       });
 
       it('should set value to null when null option is clicked', async () => {
@@ -1573,9 +1576,12 @@ describe('ComboBox', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
-        // Assert: Second option selected, list closed.
+        // Assert: Second option selected, list closed, highlight reset and no stale
+        // aria-activedescendant left pointing into the hidden list.
         expect(fixture.componentInstance.value(), 'Enter should select highlighted option').toBe('b');
         expect(fixture.componentInstance.isOpen(), 'list should close after Enter selection').toBe(false);
+        expect(fixture.componentInstance.highlightedIndex(), 'Enter selection should reset highlight').toBe(-1);
+        expect(root.hasAttribute('aria-activedescendant'), 'closed combobox must not reference a hidden option').toBe(false);
       });
 
       it('should select highlighted option and close list on Space when open', async () => {
