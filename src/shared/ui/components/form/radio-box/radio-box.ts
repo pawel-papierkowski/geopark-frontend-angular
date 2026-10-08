@@ -3,7 +3,7 @@ import { FormValueControl } from '@angular/forms/signals';
 
 import { TranslateService } from '@ngx-translate/core';
 
-import { NavUtils } from '@/core/utils/NavUtils';
+import { NavUtils } from '@/core/utils/nav-utils';
 import { IdService } from '@/shared/utils/id/id-service';
 import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 

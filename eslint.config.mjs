@@ -4,6 +4,43 @@ import tseslint from 'typescript-eslint';
 import angular from 'angular-eslint';
 import globals from 'globals';
 
+/**
+ * Custom rule plugin enforcing the kebab-case file-name convention from AGENTS.md
+ * (e.g. `language-service.ts`, never `LanguageService.ts`). Defined inline with core ESLint
+ * only - no filename-case plugin needed. Dots are allowed between lowercase segments so
+ * Angular-conventional compound names like `environment.prod.ts` keep passing.
+ */
+const filenameConventionPlugin = {
+  rules: {
+    'kebab-case': {
+      meta: {
+        type: 'problem',
+        schema: [],
+        messages: {
+          notKebab: 'File name "{{name}}" must be kebab-case: lowercase segments separated by hyphens (dots allowed, as in environment.prod.ts).',
+        },
+      },
+      /**
+       * Report the file when its basename (extension and `.spec` marker stripped) is not
+       * kebab-case. Reports on the `Program` node because file names have no AST anchor.
+       * @param context ESLint rule context.
+       * @returns Listeners mapping AST nodes to handlers.
+       */
+      create(context) {
+        return {
+          Program() {
+            const base = context.filename.split(/[\\/]/).pop() ?? context.filename;
+            const stem = base.replace(/(\.spec)?\.(ts|mts|cts)$/, '');
+            if (!/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(stem)) {
+              context.report({ loc: { line: 1, column: 0 }, messageId: 'notKebab', data: { name: base } });
+            }
+          },
+        };
+      },
+    },
+  },
+};
+
 export default defineConfig([
   globalIgnores([
     '**/node_modules/**',
@@ -82,6 +119,18 @@ export default defineConfig([
     files: ['src/**/testing/**/*.ts'],
     rules: {
       'no-restricted-globals': 'off',
+    },
+  },
+  {
+    // File-name convention from AGENTS.md: application and e2e sources are kebab-case
+    // (`nav-utils.ts`, never `NavUtils.ts`). Root tooling configs (vitest.config.ts, ...)
+    // follow their ecosystem's camelCase convention and are deliberately not covered.
+    files: ['src/**/*.ts', 'e2e/**/*.ts'],
+    plugins: {
+      'filename-convention': filenameConventionPlugin,
+    },
+    rules: {
+      'filename-convention/kebab-case': 'error',
     },
   },
 ]);

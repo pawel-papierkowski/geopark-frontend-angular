@@ -1,8 +1,8 @@
 import { Directive, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, DOCUMENT, type WritableSignal } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
-import { NavUtils } from '@/core/utils/NavUtils';
-import type { PanelInsets, PanelPlacement } from '@/core/utils/WindowUtils';
+import { NavUtils } from '@/core/utils/nav-utils';
+import type { PanelInsets, PanelPlacement } from '@/core/utils/window-utils';
 import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { forRender } from '@/shared/utils/render/after-render';
 

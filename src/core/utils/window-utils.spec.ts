@@ -1,4 +1,4 @@
-import { WindowUtils, type PanelPlacement } from './WindowUtils';
+import { WindowUtils, type PanelPlacement } from './window-utils';
 
 /**
  * Unit tests of WindowUtils.

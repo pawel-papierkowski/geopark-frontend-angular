@@ -22,6 +22,7 @@ GeoPark handles all things related to city parking system: parking meters, zonin
   - Avoid the `any` type; use `unknown` when type is uncertain.
   - Constants are camelCase.
   - Code must be well commented. Comment classes and functions. Use `@param`, `@returns` and similar.
+  - Files have kebab-case.
 - **Framework:**
   - Always use standalone components over NgModules.
   - Must NOT set `standalone: true` inside Angular decorators. It's the default in Angular v20+.

@@ -1,6 +1,6 @@
 import { signal, type WritableSignal } from '@angular/core';
 
-import { WindowUtils, type PanelInsets, type PanelPlacement } from '@/core/utils/WindowUtils';
+import { WindowUtils, type PanelInsets, type PanelPlacement } from '@/core/utils/window-utils';
 
 /**
  * Placement state of ONE anchored popup panel: owns the inline insets signal plus the

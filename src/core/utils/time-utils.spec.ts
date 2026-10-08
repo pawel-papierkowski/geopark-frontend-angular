@@ -1,4 +1,4 @@
-import { TimeUtils } from './TimeUtils';
+import { TimeUtils } from './time-utils';
 
 /**
  * Unit tests of TimeUtils.

@@ -1,4 +1,4 @@
-import type { PanelPlacement } from '@/core/utils/WindowUtils';
+import type { PanelPlacement } from '@/core/utils/window-utils';
 
 /**
  * Placement of an input-anchored popup panel (clock, calendar) relative to its input - single

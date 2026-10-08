@@ -1,4 +1,4 @@
-import { NavUtils } from './NavUtils';
+import { NavUtils } from './nav-utils';
 
 /**
  * Unit tests of NavUtils focus navigation.
