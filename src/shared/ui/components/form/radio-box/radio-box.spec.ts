@@ -261,18 +261,89 @@ describe('RadioBox', () => {
         expect(fixture.componentInstance.value(), 'value should be 2').toBe(2);
       });
 
-      it('should emit touch event on blur', async () => {
-        // Arrange: Create component and spy on touch output.
-        const fixture = await arrangeRadioBox();
+      it('should select option when ident is not a valid CSS selector', async () => {
+        // Arrange: Create component with an ident that would break `#ident` selector queries.
+        const fixture = await arrangeRadioBox({ ident: '123', options: ['a', 'b', 'c'] });
+
+        // Act: Click second option.
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        options[1].click();
+        fixture.detectChanges();
+
+        // Assert: Selection and focus both work despite the numeric ident.
+        expect(fixture.componentInstance.value(), 'click should select the option despite numeric ident').toBe('b');
+        expect(document.activeElement, 'click should focus the option despite numeric ident').toBe(options[1]);
+      });
+    });
+
+    describe('touch', () => {
+      it('should emit touch when focus leaves the group', async () => {
+        // Arrange: Create component with a focusable element after it and a spy on touch output.
+        const user = userEvent.setup();
+        const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
         const touchSpy = vi.fn();
         fixture.componentInstance.touch.subscribe(touchSpy);
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        document.body.appendChild(nextButton);
+        fixture.detectChanges();
 
-        // Act: Simulate blur on the radiobox div.
-        const radio = fixture.nativeElement.querySelector('.radiobox');
-        radio.dispatchEvent(new Event('blur'));
+        try {
+          // Act: Tab into the group, then Tab again to leave it.
+          await user.tab();
+          await user.tab();
+          await fixture.whenStable();
 
-        // Assert: Touch event was emitted.
-        expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
+          // Assert: Focus left the component and touch was emitted exactly once.
+          expect(document.activeElement, 'second Tab should leave the group').toBe(nextButton);
+          expect(touchSpy, 'leaving the group should emit touch').toHaveBeenCalledTimes(1);
+        } finally { // cleanup
+          document.body.removeChild(nextButton);
+        }
+      });
+
+      it('should not emit touch when focus moves between options', async () => {
+        // Arrange: Create component with first option selected and focused.
+        const user = userEvent.setup();
+        const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        options[0].focus();
+
+        // Act: ArrowDown moves focus to the next option inside the same group.
+        await user.keyboard('{ArrowDown}');
+        await fixture.whenStable();
+
+        // Assert: Internal focus move is not a blur out of the component.
+        expect(fixture.componentInstance.value(), 'ArrowDown should select next option').toBe('b');
+        expect(touchSpy, 'internal focus move must not emit touch').not.toHaveBeenCalled();
+      });
+
+      it('should not emit touch when focus leaves a disabled group', async () => {
+        // Arrange: Create disabled component with programmatically focused option.
+        const user = userEvent.setup();
+        const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        document.body.appendChild(nextButton);
+        fixture.detectChanges();
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        options[0].focus();
+
+        try {
+          // Act: Tab out of the disabled group.
+          await user.tab();
+          await fixture.whenStable();
+
+          // Assert: Focus moved away, but a disabled control must not report touch.
+          expect(document.activeElement, 'Tab should leave the disabled group').toBe(nextButton);
+          expect(touchSpy, 'disabled group must not report touch on focus loss').not.toHaveBeenCalled();
+        } finally { // cleanup
+          document.body.removeChild(nextButton);
+        }
       });
     });
   });
@@ -432,6 +503,182 @@ describe('RadioBox', () => {
         expect(options[0].getAttribute('tabindex'), 'unselected option should have tabindex -1').toBe('-1');
         expect(options[2].getAttribute('tabindex'), 'unselected option should have tabindex -1').toBe('-1');
       });
+
+      it('should give first option tabindex 0 when nothing is selected and no null option', async () => {
+        // Arrange: Create component with null value and options without a null entry.
+        const fixture = await arrangeRadioBox({ value: null, options: ['a', 'b', 'c'] });
+
+        // Assert: The group keeps a single tab stop (APG: first radio) so Tab can reach it.
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        expect(options[0].getAttribute('tabindex'), 'first option should be the tab stop').toBe('0');
+        expect(options[1].getAttribute('tabindex'), 'second option should not be a tab stop').toBe('-1');
+        expect(options[2].getAttribute('tabindex'), 'third option should not be a tab stop').toBe('-1');
+      });
+
+      it('should give all options tabindex -1 when disabled', async () => {
+        // Arrange: Create disabled component with a selected option.
+        const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
+
+        // Assert: A disabled group must not expose any tab stop.
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        expect(options[0].getAttribute('tabindex'), 'selected option of disabled group should not be a tab stop').toBe('-1');
+        expect(options[1].getAttribute('tabindex'), 'unselected option of disabled group should not be a tab stop').toBe('-1');
+        expect(options[2].getAttribute('tabindex'), 'unselected option of disabled group should not be a tab stop').toBe('-1');
+      });
+
+      describe('label', () => {
+        it('should warn in dev mode when the label id matches no element', async () => {
+          // Arrange: Spy on console.warn; label reference deliberately left dangling.
+          const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+          try {
+            // Act: Create the component - its dev-only effect checks the reference on first CD.
+            await arrangeRadioBox({ label: 'ghost-label' });
+
+            // Assert: The dangling id is reported, naming this component.
+            const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+            expect(messages, 'dangling label id should be reported in dev mode').toContain('ghost-label');
+            expect(messages, 'warning should name the emitting component').toContain('[radio-box]');
+          } finally { // cleanup
+            warnSpy.mockRestore();
+          }
+        });
+
+        it('should not warn when the label id resolves to an element', async () => {
+          // Arrange: Spy on console.warn; a real element carries the referenced id.
+          const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+          const labelElement = document.createElement('label');
+          labelElement.id = 'real-label';
+          document.body.appendChild(labelElement);
+
+          try {
+            // Act: Create the component - its dev-only effect checks the reference on first CD.
+            await arrangeRadioBox({ label: 'real-label' });
+
+            // Assert: Resolvable reference is not a defect.
+            const messages = warnSpy.mock.calls.map(call => String(call[0])).join('\n');
+            expect(messages, 'resolvable label id must not warn').not.toContain('[radio-box]');
+          } finally { // cleanup
+            labelElement.remove();
+            warnSpy.mockRestore();
+          }
+        });
+      });
+    });
+
+    describe('label activation', () => {
+      it('should redirect focus from hidden label target to the checked option', async () => {
+        // Arrange: Create component with a checked option and its hidden label button.
+        const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+
+        // Act: Simulate the focus that label activation puts on the hidden target.
+        hiddenButton.dispatchEvent(new Event('focus'));
+        fixture.detectChanges();
+
+        // Assert: Focus must not stay on the aria-hidden button; selection is untouched.
+        expect(document.activeElement, 'focus should be redirected to the checked option').toBe(options[1]);
+        expect(fixture.componentInstance.value(), 'checked option must stay selected').toBe('b');
+      });
+
+      it('should focus and select the first option when nothing is selected', async () => {
+        // Arrange: Create component with null value and no null option.
+        const fixture = await arrangeRadioBox({ value: null, options: ['a', 'b', 'c'] });
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+
+        // Act: Simulate label activation.
+        hiddenButton.dispatchEvent(new Event('focus'));
+        fixture.detectChanges();
+
+        // Assert: The group gets its tab stop by checking the first option.
+        expect(fixture.componentInstance.value(), 'first option should be selected').toBe('a');
+        expect(document.activeElement, 'first option should receive focus').toBe(options[0]);
+      });
+
+      it('should activate when the hidden label target is clicked', async () => {
+        // Arrange: Create component with null value and its hidden label button.
+        const fixture = await arrangeRadioBox({ value: null, options: ['a', 'b', 'c'] });
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+
+        // Act: Label activation forwards its click to the hidden target.
+        hiddenButton.click();
+        fixture.detectChanges();
+
+        // Assert: Click selects and focuses the first option.
+        expect(fixture.componentInstance.value(), 'label-target click should select first option').toBe('a');
+        expect(document.activeElement, 'label-target click should focus first option').toBe(options[0]);
+      });
+
+      it('should not activate when disabled', async () => {
+        // Arrange: Create disabled component.
+        const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+
+        // Act: Simulate the focus that label activation would put on the hidden target.
+        hiddenButton.dispatchEvent(new Event('focus'));
+        fixture.detectChanges();
+
+        // Assert: Disabled group must not take focus or change value.
+        expect(document.activeElement, 'disabled group should not receive redirected focus').toBe(document.body);
+        expect(fixture.componentInstance.value(), 'disabled group value must stay unchanged').toBe('a');
+      });
+
+      it('should disable hidden label target when component is disabled', async () => {
+        // Arrange: Create enabled component.
+        const fixture = await arrangeRadioBox();
+        const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
+
+        // Assert: Enabled component keeps label activation working at the source.
+        expect(hiddenButton.disabled, 'enabled component should keep label activation working').toBe(false);
+
+        // Act: Disable the component.
+        fixture.componentRef.setInput('disabled', true);
+        fixture.detectChanges();
+
+        // Assert: Engine skips label activation entirely for a disabled control.
+        expect(hiddenButton.disabled, 'disabled component should block label activation at the source').toBe(true);
+      });
+    });
+
+    describe('focus contract', () => {
+      it('should focus the checked option on behalf of the signal-forms Field directive', async () => {
+        // Arrange: Create component; the contract consumer is Angular's Field directive,
+        // which cannot run in this fixture, so the public contract method is called directly.
+        const fixture = await arrangeRadioBox({ value: 'b', options: ['a', 'b', 'c'] });
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+
+        // Act: Call the optional FormUiControl.focus contract method.
+        fixture.componentInstance.focus();
+
+        // Assert: The checked option received focus.
+        expect(document.activeElement, 'focus() should focus the checked option').toBe(options[1]);
+      });
+
+      it('should focus the first option when nothing is selected', async () => {
+        // Arrange: Create component with null value and no null option.
+        const fixture = await arrangeRadioBox({ value: null, options: ['a', 'b', 'c'] });
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+
+        // Act: Call the contract method.
+        fixture.componentInstance.focus();
+
+        // Assert: The tab-stop option received focus.
+        expect(document.activeElement, 'focus() should focus the first option').toBe(options[0]);
+      });
+
+      it('should not focus when disabled', async () => {
+        // Arrange: Create disabled component.
+        const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'], disabled: true });
+
+        // Act: Call the contract method.
+        fixture.componentInstance.focus();
+
+        // Assert: Disabled group stays unfocused.
+        expect(document.activeElement, 'focus() must be a no-op when disabled').toBe(document.body);
+      });
     });
 
     describe('keyboard', () => {
@@ -523,6 +770,52 @@ describe('RadioBox', () => {
 
         // Assert: Value wrapped to last option.
         expect(fixture.componentInstance.value(), 'ArrowUp from first should wrap to last').toBe('c');
+      });
+
+      it('should select first option on Home', async () => {
+        // Arrange: Create component with last option selected.
+        const user = userEvent.setup();
+        const fixture = await arrangeRadioBox({ value: 'c', options: ['a', 'b', 'c'] });
+
+        // Act: Focus last option and press Home.
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        options[2].focus();
+        await user.keyboard('{Home}');
+        await fixture.whenStable();
+
+        // Assert: Value moved to first option.
+        expect(fixture.componentInstance.value(), 'Home should select first option').toBe('a');
+        expect(document.activeElement, 'Home should focus first option').toBe(options[0]);
+      });
+
+      it('should select last option on End', async () => {
+        // Arrange: Create component with first option selected.
+        const user = userEvent.setup();
+        const fixture = await arrangeRadioBox({ value: 'a', options: ['a', 'b', 'c'] });
+
+        // Act: Focus first option and press End.
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        options[0].focus();
+        await user.keyboard('{End}');
+        await fixture.whenStable();
+
+        // Assert: Value moved to last option.
+        expect(fixture.componentInstance.value(), 'End should select last option').toBe('c');
+        expect(document.activeElement, 'End should focus last option').toBe(options[2]);
+      });
+
+      it('should enter the group with Tab when nothing is selected', async () => {
+        // Arrange: Create component with null value and options without a null entry.
+        const user = userEvent.setup();
+        const fixture = await arrangeRadioBox({ value: null, options: ['a', 'b', 'c'] });
+
+        // Act: Tab from the start of the document.
+        await user.tab();
+        await fixture.whenStable();
+
+        // Assert: The group exposes its tab stop, so focus lands on the first option.
+        const options = fixture.nativeElement.querySelectorAll('.radiobox-option');
+        expect(document.activeElement, 'Tab should land on the first option when nothing is selected').toBe(options[0]);
       });
 
       it('should not respond to arrows when disabled', async () => {

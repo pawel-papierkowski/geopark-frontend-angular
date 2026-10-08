@@ -102,19 +102,21 @@ test.describe('RadioBox', () => {
   });
 
   test.describe('label', () => {
-    test('should select first option when label is clicked', async ({ page }) => {
+    test('should focus the checked option when label is clicked', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);
       const label = page.getByTestId('cc-radioBox-label');
 
-      // Assert: Initial state is null.
+      // Assert: Initial state is null (option 0 checked, because null is one of the options).
       await expect(getOption(page, 0)).toHaveAttribute('aria-checked', 'true');
 
       // Act: Click the label.
       await label.click();
 
-      // Assert: First option remains selected (label targets the hidden button which doesn't toggle).
+      // Assert: The checked option stays selected and takes focus - label activation must not
+      // strand focus on the hidden aria-hidden target, and an existing choice is never clobbered.
       await expect(getOption(page, 0)).toHaveAttribute('aria-checked', 'true');
+      await expect(getOption(page, 0)).toBeFocused();
     });
 
     test('should have accessible name from label', async ({ page }) => {

@@ -1,7 +1,16 @@
 
 <div class="radiobox-wrapper">
   <!-- Hidden button: labelable target for <label for="...">. -->
-  <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"></button>
+  <button
+    type="button"
+    [id]="resolvedIdent()"
+    class="hidden-label-button"
+    tabindex="-1"
+    aria-hidden="true"
+    [disabled]="disabled()"
+    (focus)="handleLabelActivation()"
+    (click)="handleLabelActivation()"></button>
+
   <div
     [attr.data-testid]="resolvedIdent()"
     class="radiobox"
@@ -16,18 +25,21 @@
     [attr.aria-invalid]="invalid() || null"
     [attr.aria-disabled]="disabled() || null"
 
-    (blur)="touch.emit()">
+    (focusout)="handleFocusout($event)">
+
     @for (option of options(); track $index) {
       <div
+        #optRef
         [attr.data-testid]="resolvedIdent()+'_'+$index"
         [id]="optionId($index)"
         class="radiobox-option"
 
         role="radio"
-        [tabindex]="option === value() && !disabled() ? 0 : -1"
+        [tabindex]="$index === tabStopIndex() ? 0 : -1"
 
         [attr.aria-checked]="option === value()"
 
+        (mousedown)="blockIfDisabled($event)"
         (click)="selectOption(option, $index)"
         (keydown)="handleKeydown($event)">
         <div class="radiobox-circle" [class.mark]="option === value()"></div>
