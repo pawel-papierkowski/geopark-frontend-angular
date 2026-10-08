@@ -1,4 +1,4 @@
-/** Used in test environment. Will be replaced with other environment file as configured in angular.json. */
+/** Used in the test environment. Will be replaced with another environment file as configured in angular.json. */
 import { ProjectEnv } from "@/shared/config/types";
 
 /** Environment variables for test environment. */

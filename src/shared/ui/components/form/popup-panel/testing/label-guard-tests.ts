@@ -35,7 +35,7 @@ export function registerLabelPreventionTests(driver: LabelPreventionDriver): voi
     // Act: Dispatch mousedown as a real pointer interaction would.
     const event = dispatchMousedown(label);
 
-    // Assert: Default canceled, so focus is not stolen from the control.
+    // Assert: Default cancelled, so focus is not stolen from the control.
     expect(event.defaultPrevented, 'mousedown on associated label should be default-prevented').toBe(true);
 
     // Cleanup: Remove label element.
@@ -197,7 +197,7 @@ export function registerOutsidePressTests(driver: OutsidePressDriver): void {
       const event = dispatchMousedown(label);
       await fixture.settle();
 
-      // Assert: Popup stays open (the label toggle owns it) and the default stays canceled
+      // Assert: Popup stays open (the label toggle owns it) and the default stays cancelled
       // (existing focus-steal guard).
       expect(fixture.isOpen(), `own label mousedown should keep the ${driver.popup} open for the label toggle`).toBe(true);
       expect(event.defaultPrevented, 'own label mousedown should stay default-prevented').toBe(true);

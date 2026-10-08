@@ -3,8 +3,8 @@ import AxeBuilder from '@axe-core/playwright';
 
 /**
  * Locate the time-picker input on the custom components page.
- * The page hosts two time-picker instances (datetime row and time row), so the ident prefix
- * `timeId_cc-timePicker` is what distinguishes this instance.
+ * The page hosts four time sub-pickers (the datetime and time rows plus their nullable
+ * variants), so the ident prefix `timeId_cc-timePicker` is what distinguishes this instance.
  * @param page Browser page.
  * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the time-picker input.
@@ -377,23 +377,26 @@ test.describe('TimePicker', () => {
       await expect(getHourColumn(page)).toHaveAttribute('aria-activedescendant', /timeId_cc-timePicker_opt_h\d+/);
       await installFocusoutCounter(page);
 
-      // Act: Click the top-left chrome of the panel (1px border + 8px padding).
+      // Act: Click just past the panel's top-left chrome (1px border + 4px padding). Playwright
+      // positions relative to the padding box, so {x:5,y:5} lands 1px inside the panel content.
       await getPanel(page).click({ position: { x: 5, y: 5 } });
 
       // Assert: Panel stays open and focus stays in the column. No focusout at all means the
       // component never blurred, so no spurious touch was emitted either.
       await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
       await expect(getHourColumn(page)).toBeFocused();
-      expect(await readFocusoutCount(page), 'clicking panel padding must not blur the component').toBe(0);
+      expect(await readFocusoutCount(page), 'clicking just past the panel chrome must not blur the component').toBe(0);
 
-      // Act: Click the left border in the middle of the panel height.
+      // Act: Click the panel's left edge in the middle of its height. Padding-box relative
+      // {x:0.5} lands in the 4px padding right next to the 1px border, never on the border.
       const panelHeight = await getPanel(page).evaluate((el) => el.getBoundingClientRect().height);
       await getPanel(page).click({ position: { x: 0.5, y: panelHeight / 2 } });
 
-      // Assert: Border behaves like padding - still open, still focused, still no blur.
+      // Assert: The padding next to the border behaves like the rest of the chrome - still
+      // open, still focused, still no blur.
       await expect(timePicker).toHaveAttribute('aria-expanded', 'true');
       await expect(getHourColumn(page)).toBeFocused();
-      expect(await readFocusoutCount(page), 'clicking panel border must not blur the component').toBe(0);
+      expect(await readFocusoutCount(page), 'clicking the panel padding must not blur the component').toBe(0);
 
       // Act: Keyboard navigation after the chrome clicks.
       await getHourColumn(page).press('ArrowDown');
@@ -585,7 +588,7 @@ test.describe('TimePicker', () => {
       // Arrange: short viewport + downward scroll place the picker so the panel fits on
       // NEITHER side of the input (no room above or below it), which keeps the panel at its
       // baseline position extending past the viewport bottom - the exact below-the-fold state
-      // the open path documents at length (time-picker.ts, toggleTimePickerVisibility).
+      // the open path documents at length (`togglePanel`, popup-input-base.ts).
       await page.setViewportSize({ width: 1100, height: 300 });
       await goToComponentsPage(page);
       await page.evaluate(() => window.scrollTo(0, 390));

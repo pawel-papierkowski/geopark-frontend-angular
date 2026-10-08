@@ -1950,8 +1950,8 @@ describe('TimePicker', () => {
 
       it('should page hours by the measured page size, clamping and then wrapping at the ends', async () => {
         // Arrange: Open panel, stub geometry so the page step is measurable (jsdom has no
-        // layout): 180 (the 200px row minus the header, which now sits OUTSIDE the scroller)
-        // / 20 option = 9 visible, minus 1 overlap => step 8.
+        // layout): 180 stubbed (the real clock row is 230px minus its header, which sits
+        // OUTSIDE the scroller) / 20 option = 9 visible, minus 1 overlap => step 8.
         const user = userEvent.setup();
         const fixture = await arrangeTimePicker({ value: utcTime(14, 30) });
         await openPanel(fixture);

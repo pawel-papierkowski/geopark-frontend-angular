@@ -21,7 +21,7 @@ describe('NavAdmin', () => {
     const fixture = TestBed.createComponent(NavAdmin);
     await fixture.whenStable();
 
-    // Assert: Page contains correct data.
+    // Assert: Navigation contains correct data.
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('nav')?.textContent).toContain('header.admin.overview');
   });

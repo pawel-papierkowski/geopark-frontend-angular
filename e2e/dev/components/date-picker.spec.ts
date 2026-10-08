@@ -301,16 +301,17 @@ test.describe('DatePicker', () => {
       const panelHeight = await getPanel(page).evaluate((el) => el.getBoundingClientRect().height);
       const panelWidth = await getPanel(page).evaluate((el) => el.getBoundingClientRect().width);
 
-      // Act: Click the left border in the middle of the panel height (beside the grid, below the
+      // Act: Click the panel's left edge in the middle of its height (beside the grid, below the
       // header nav buttons - unlike the clock panel, the calendar's top-left chrome is a
-      // navigation button that would change the viewed year).
+      // navigation button that would change the viewed year). Padding-box relative {x:0.5} lands
+      // in the 4px padding right next to the 1px border, never on the border itself.
       await getPanel(page).click({ position: { x: 0.5, y: panelHeight / 2 } });
 
       // Assert: Panel stays open and focus stays in the grid. No focusout at all means the
       // component never blurred, so no spurious touch was emitted either.
       await expect(datePicker).toHaveAttribute('aria-expanded', 'true');
       await expect(getGrid(page)).toBeFocused();
-      expect(await readFocusoutCount(page), 'clicking panel border must not blur the component').toBe(0);
+      expect(await readFocusoutCount(page), 'clicking the panel padding must not blur the component').toBe(0);
 
       // Act: Click the bottom border in the middle of the panel width. Playwright's position is
       // relative to the padding box (the panel has a 1px border), and when the panel flips above

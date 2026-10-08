@@ -19,8 +19,8 @@ import { DocumentService } from '@/shared/utils/document/document-service';
  * `onLangChange`, so stale or failed loads never claim success.
  *
  * This service uses two subscriptions:
- * - track `translateService.onLangChange`: this language has actually become active (single for entire service)
- * - track `translateService.use(language)`: watch an individual activation request for failure (instanced)
+ * - track `translateService.onLangChange`: this language has actually become active (single for the entire service)
+ * - track `translateService.use(language)`: watch an individual activation request for failure (one per activation request)
  */
 @Service()
 export class LanguageService {
@@ -120,7 +120,7 @@ export class LanguageService {
 
     // Subscription: watch an individual activation request for failure.
     subscription.add(this.translateService.use(language).subscribe({
-      // We use only `error` callback. Success is handled by other subscription.
+      // We use only the `error` callback. Success is handled by the other subscription.
       error: (error: unknown) => {
         // We handle this failure only if this is still the latest request and the service is still alive.
         if (sequence !== this.requestSequence || this.destroyRef.destroyed) return;

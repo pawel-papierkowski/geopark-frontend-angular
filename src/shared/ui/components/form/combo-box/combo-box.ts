@@ -315,8 +315,8 @@ export class ComboBox implements FormValueControl<number | string | null> {
   }
 
   /**
-   * User clicked on combobox option.
-   * @param option Clicked option.
+   * User selected a combobox option (click, or Enter/Space in the keyboard handler).
+   * @param option Selected option.
    */
   public selectOption(option: number | string | null) {
     if (this.disabled()) return;
@@ -328,11 +328,12 @@ export class ComboBox implements FormValueControl<number | string | null> {
   }
 
   /**
-   * Show value of option if selected. Placeholder text will be shown under these conditions:
+   * Display text for an option - rendered for the current selection and for every entry in
+   * the list. Placeholder text will be shown under these conditions:
    * - there is no selection (null value)
    * - and that null is not on list of options
    * @param option Option to show.
-   * @returns Value of option.
+   * @returns Display text of the option (translated when langPrefix is set).
    */
   public showOption(option: number | string | null): number | string | null {
     // When to show placeholder text? Note that if null IS in list of options, placeholder text is never used.
@@ -418,8 +419,9 @@ export class ComboBox implements FormValueControl<number | string | null> {
     // clicks (preceded by mousedown) and test/programmatic clicks (no mousedown).
     this.isOpen.update((currVal) => !currVal);
     if (this.isOpen()) {
-      // Record the decision so a focus-first-paired focus handler (WebKit forwards the click
-      // BEFORE focusing the hidden button) does not toggle again right after this one.
+      // Record the decision so the focus handler paired with this click-first activation
+      // (WebKit forwards the click BEFORE focusing the hidden button) does not toggle again
+      // right after this one.
       this.labelActivation.setDecision('open');
       this.openList();
     } else {

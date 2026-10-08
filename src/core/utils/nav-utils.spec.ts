@@ -2,8 +2,9 @@ import { NavUtils } from './NavUtils';
 
 /**
  * Unit tests of NavUtils focus navigation.
- * DOM fixtures are appended to `document.body` (focus requires an attached element) and removed
- * again by the owning test, so document order stays deterministic for every case.
+ * Focus fixtures are appended to `document.body` (focus requires an attached element) and removed
+ * again by the owning test, so document order stays deterministic for every case - only the
+ * document-ownership case builds its fixtures in a secondary document instead.
  */
 describe('NavUtils', () => {
   /**
@@ -35,9 +36,10 @@ describe('NavUtils', () => {
   }
 
   /**
-   * Read the focused element by its testid.
-   * @param testid Testid of the expected focus target.
-   * @returns The focused element, or null when another element (or body) is focused.
+   * Find the fixture element carrying the given testid.
+   * @param testid Testid of the element to look up.
+   * @returns The element with that testid, or null when it is not in the document. Callers
+   * compare it against `document.activeElement` to assert who owns focus.
    */
   function focusedBy(testid: string): HTMLElement | null {
     return document.querySelector<HTMLElement>(`[data-testid="${testid}"]`);

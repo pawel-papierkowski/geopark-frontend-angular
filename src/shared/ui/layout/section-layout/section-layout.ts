@@ -7,7 +7,7 @@ import { AppHeader } from '@/layout/header/app-header';
 import { AppFooter } from '@/layout/footer/app-footer';
 
 /**
- * Defines layout for given section. All sections use SectionLayout, but content can differ depending on what section is currently visited.
+ * Defines layout for a given section. All sections use SectionLayout, but content can differ depending on what section is currently visited.
  */
 @Component({
   imports: [RouterOutlet, AppHeader, AppFooter],

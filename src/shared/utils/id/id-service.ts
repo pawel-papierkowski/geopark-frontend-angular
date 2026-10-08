@@ -14,7 +14,7 @@ export class IdService {
   private readonly counters = new Map<string, number>();
 
   /**
-   * Generate next unique identifier for given prefix.
+   * Generate the next unique identifier for a given prefix.
    * @param ident Ident. If invalid, generate a custom identifier.
    * @param prefix Component-specific prefix, kebab-case component name (e.g. `text-box`).
    * @returns Original identifier if valid or a generated identifier in the form `<prefix>-<number>`, e.g. `text-box-1`.

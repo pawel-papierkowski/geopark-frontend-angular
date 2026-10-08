@@ -16,7 +16,7 @@ export class PageNotFound implements OnInit, OnDestroy {
   private tag: HTMLMetaElement | null = null;
 
   public ngOnInit(): void {
-    // Inject additional metadata into the header of the page to inform.
+    // Add a `prerender-status-code: 404` meta tag to the document head so a prerendering server can serve a real 404 status.
     this.tag = this.meta.addTag({ name: 'prerender-status-code', content: '404', id: 'prerender-status-code' });
   }
 

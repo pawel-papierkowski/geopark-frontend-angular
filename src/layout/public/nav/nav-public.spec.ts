@@ -21,7 +21,7 @@ describe('NavPublic', () => {
     const fixture = TestBed.createComponent(NavPublic);
     await fixture.whenStable();
 
-    // Assert: Page contains correct data.
+    // Assert: Navigation contains correct data.
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('nav')?.textContent).toContain('header.public.landing');
   });

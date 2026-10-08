@@ -14,19 +14,19 @@ import { Section } from '@/shared/config/types';
  * ```
  * <nav class="app-nav-wrapper">
  *   <ul class="app-nav-container">
- *     <li><nav-link target="/" name="landing" /></li>
- *     <li><nav-link target="/about" name="about" /></li>
+ *     <li><nav-link currSection="public" target="/" name="landing" /></li>
+ *     <li><nav-link currSection="public" target="/about" name="about" /></li>
  *   </ul>
  * </nav>
  * ```
  * Requires presence of language keys:
- * - `'header.[currentSection].'+name()+'.label'` - Key for ARIA label.
- * - `'header.[currentSection].'+name()+'.content'` - Key for actual text of nav link.
+ * - `'header.'+currSection()+'.'+name()+'.label'` - Key for ARIA label.
+ * - `'header.'+currSection()+'.'+name()+'.content'` - Key for actual text of nav link.
  *
  * Inputs:
  * - currSection - Current section.
- * - target - Target for link - must be route. Example: `/about`
- * - name - Key name of link. Used in language keys.
+ * - target - Target for the link - must be a route. Example: `/about`
+ * - name - Key name of the link. Used in the language keys.
  */
 @Component({
   selector: 'nav-link',

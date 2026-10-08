@@ -36,7 +36,7 @@ export type CalendarCell = {
 
 /**
  * Render-ready calendar cell: structural cell data plus presentation state, all precomputed
- * ONCE per cells rebuild (viewed month, selection, range, language) instead of being derived
+ * ONCE per cell rebuild (viewed month, selection, range, language) instead of being derived
  * in the template on every change-detection pass. Template bindings therefore only read
  * plain fields - no method calls, no `new Date()` allocations, no impure translate pipes.
  * Week cells (type `Week`) carry no per-day state: their day-only fields are `undefined`/neutral.

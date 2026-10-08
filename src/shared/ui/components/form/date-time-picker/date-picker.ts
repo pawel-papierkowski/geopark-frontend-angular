@@ -399,7 +399,7 @@ export class DatePicker extends PopupInputBase<Date> {
     const days: CalendarCell[] = [];
     let ix = 0;
 
-    // Padding for previous month. Note that if a month has the first day on Monday, the entire previous week will be shown.
+    // Padding for previous month. Note that if a month has the first day on Sunday, the entire previous week (Monday through Saturday) will be shown.
     for (let i = firstDay - 1; i >= 0; i--) {
       const d = new Date(Date.UTC(year, month, -i));
       days.push({
@@ -740,7 +740,7 @@ export class DatePicker extends PopupInputBase<Date> {
 
   /**
    * Set up focus values. Seeds from the DISPLAY selection, falling back to the viewed local date.
-   * @param force If true, will override focused values. If false, will set focused values only if these are null.
+   * @param force If true, will override the focused value. If false, will set the focused value only if it is null.
    */
   private setupFocus(force: boolean) {
     if (force || this.focusedDate() === null) {

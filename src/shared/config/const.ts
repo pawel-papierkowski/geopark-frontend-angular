@@ -9,7 +9,7 @@ export const projectProp: ProjectProp = {
   author: 'Paweł Papierkowski',
   dateRange: '2026',
   build: environment.build,
-  version: environment.version, // from package.json, defined in environment.ts and related
+  version: environment.version, // from package.json in environment.dev.ts/environment.prod.ts; default environment.ts hardcodes '0.0.0'
 };
 
 /* LANGUAGE */
@@ -22,7 +22,7 @@ export { languages };
 
 /* ROUTING */
 
-/** Definition of sections existing in project. */
+/** Definition of the sections existing in the project. */
 export const sections = ['public', 'dev', 'admin'] as const;
 
 /* OTHER */

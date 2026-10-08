@@ -122,7 +122,7 @@ export class RadioBox implements FormValueControl<number | string | null> {
   }
 
   /**
-   * User clicked on option.
+   * User selected an option (click, or arrow/Home/End navigation in the keyboard handler).
    * @param option Option to select.
    * @param index Index of the option for focus management.
    */
@@ -146,7 +146,8 @@ export class RadioBox implements FormValueControl<number | string | null> {
    * nothing is checked, check the first option as well so the group gains its tab stop.
    * Never runs when disabled (a disabled hidden button is not activated by the engine anyway;
    * the guard covers synthetic dispatches). Idempotent, so both the focus and the click of a
-   * label activation may call it - engines disagree on their order (see template comment).
+   * label activation may call it - engines disagree on their order (see `LabelActivation`:
+   * focus-first in Chromium/Firefox, click-first in WebKit).
    */
   public handleLabelActivation(): void {
     if (this.disabled()) return;

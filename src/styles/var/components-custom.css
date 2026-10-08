@@ -72,7 +72,7 @@
   /* Date picker. */
   --datetimepicker-date-width: 145px;
 
-  /* Reserved space for the decorative clock glyph inside the date input. The glyph itself is
+  /* Reserved space for the decorative calendar glyph inside the date input. The glyph itself is
      markup (aria-hidden span), the input only reserves room for it via padding. Must cover the
      rendered emoji advance (~22px at the base font size) plus the gap, or the value text would
      start inside the glyph. */

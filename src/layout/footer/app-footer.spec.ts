@@ -24,7 +24,9 @@ describe('AppFooter', () => {
     }).compileComponents();
 
     // Note we manually set relevant translation keys for this test suite.
-    // Needed for test 'should display correct bottom text'.
+    // Needed by every test asserting translated text: 'should display correct top text'
+    // (footer.repository.text), 'should preserve the repository URL...' (footer.repository.label)
+    // and 'should display correct bottom text' (footer.copyright).
     translateService = TestBed.inject(TranslateService);
     translateService.setTranslation('en', {
       footer: {

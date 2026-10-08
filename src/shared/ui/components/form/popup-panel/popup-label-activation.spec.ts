@@ -101,7 +101,7 @@ describe('LabelActivation', () => {
       // Act: Press the component's own label.
       const event = press(label);
 
-      // Assert: Default canceled (focus stays put), nothing reported as outside.
+      // Assert: Default cancelled (focus stays put), nothing reported as outside.
       expect(event.defaultPrevented, 'press on the own label should cancel the default').toBe(true);
       expect(fixture.componentInstance.outsidePresses, 'own label is inside, not an outside press').toHaveLength(0);
     });

@@ -241,8 +241,9 @@ test.describe('CheckBox', () => {
       // Act: Hover the invalid checkBox.
       await checkBox.hover();
 
-      // Assert: The generic hover rule must not swap the error color/background for hover ones
-      // (--input-err-background #ffe8e8, --input-err-color #660000; hover would be #f8f8f8/#111827).
+      // Assert: The component's own hover rule must not swap the error color/background for
+      // hover ones (--input-err-background #ffe8e8, --input-err-color #660000; hover would be
+      // --checkbox-hover-background #f6f6f6 / #111827).
       await expect(checkBox, 'invalid background must survive hover').toHaveCSS('background-color', 'rgb(255, 232, 232)');
       await expect(checkBox, 'invalid color must survive hover').toHaveCSS('color', 'rgb(102, 0, 0)');
     });

@@ -2,10 +2,12 @@ import { isDevMode } from '@angular/core';
 
 /**
  * Dev-only diagnostic for components that turn a consumer-provided `label` id into an
- * `aria-labelledby` reference (date-time-picker family). When the id matches no element,
- * the reference dangles: the browser's name computation resolves nothing and the component
- * deliberately suppresses its `aria-label` fallback whenever `label` is set, so the input
- * ends up with NO accessible name (WCAG 4.1.2 failure) that no test in the app would catch.
+ * `aria-labelledby` reference.
+ * When the id matches no element, the reference dangles: the browser's name computation
+ * resolves nothing - the date/time pickers additionally suppress their `aria-label`
+ * fallback whenever `label` is set, the other components bind only `aria-labelledby` - so
+ * the input ends up with NO accessible name (WCAG 4.1.2 failure) that no test in the app
+ * would catch.
  * The warning surfaces that typo early, naming the offending id and the component instance.
  *
  * Behaviour:

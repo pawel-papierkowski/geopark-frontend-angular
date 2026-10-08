@@ -48,8 +48,9 @@
 
 /*** SUBFORMS ***/
 
-/* Spans the whole form and inherits its tracks, so the label lands in column 1, the
-   control in column 2 and the value in column 3 - exactly like every other row. */
+/* Spans the whole form and inherits its tracks, so the label lands in column 1 and the
+   control in column 2 (the triple variant below also puts the value in column 3) - exactly
+   like every other row. */
 .form-subform-double {
   grid-column: 1 / -1;
   display: grid;

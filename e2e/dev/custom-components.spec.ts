@@ -24,8 +24,9 @@ test.describe('Custom components page', () => {
   });
 
   test('should name both datetime sub-inputs with the label plus distinct qualifiers', async ({ page }) => {
-    // Arrange: Start on custom components page; the datetime row is the only one rendering
-    // both sub-inputs (cc-dateTimePicker), each named after the same visible <label>.
+    // Arrange: Start on custom components page; both datetime rows render both sub-inputs
+    // (this test reads the non-nullable one, cc-dateTimePicker), each named after the same
+    // visible <label>.
     await page.goto('/dev/components');
     const dateInput = page.locator('[data-testid="dateId_cc-dateTimePicker_input"]');
     const timeInput = page.locator('[data-testid="timeId_cc-dateTimePicker_input"]');

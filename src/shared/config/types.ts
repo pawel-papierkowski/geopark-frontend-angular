@@ -30,5 +30,5 @@ export type Lang = typeof languages[number];
 /** Definition of type describing sections. */
 export type Section = typeof sections[number];
 
-/** Route with enforced section data. */
+/** Route whose `data`, when present, carries the `section` this route belongs to. */
 export type SectionRoute = Route & { data?: { section: Section } };

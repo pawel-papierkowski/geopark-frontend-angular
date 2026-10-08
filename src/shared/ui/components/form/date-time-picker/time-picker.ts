@@ -404,7 +404,8 @@ export class TimePicker extends PopupInputBase<Date> {
    * The move always clamps to the list ends first: a press that reaches an end stops there,
    * and only the NEXT press - cursor already standing on the end item - wraps to the opposite
    * end, landing exactly on it rather than on a step-aligned value.
-   * Step example with 5 cells visible: 1 2 [3] 4 5 will be 6 7 [8] 9 10. So no overlap, but also no gaps in values.
+   * Step example with 5 cells visible: step is 4, so 1 2 [3] 4 5 becomes 4 5 [6] 7 8 - one
+   * cell of the previous page stays visible as context, and no values are skipped.
    * Clamp example with step 12 on minutes: 30 -> 42 -> 54 -> 59 (clamp) -> 0 (wrap) -> 12.
    * A null cursor is only seeded (no movement), mirroring how the Arrow-key cases treat it.
    * @param current Current cursor value, or null when nothing is focused yet.

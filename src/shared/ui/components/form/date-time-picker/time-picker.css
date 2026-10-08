@@ -87,7 +87,7 @@
 
 /* One column's vertical stack: static header on top, scroller filling the rest.
    min-height: 0 lets the scroller shrink below its content height (a column flex item
-   defaults to min-content, which would break out of the fixed 200px row instead of scrolling). */
+   defaults to min-content, which would break out of the fixed 230px row instead of scrolling). */
 
 .clock-column-group {
   flex: 1;

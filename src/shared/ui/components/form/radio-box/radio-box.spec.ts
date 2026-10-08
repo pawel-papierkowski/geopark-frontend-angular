@@ -262,7 +262,8 @@ describe('RadioBox', () => {
       });
 
       it('should select option when ident is not a valid CSS selector', async () => {
-        // Arrange: Create component with an ident that would break `#ident` selector queries.
+        // Arrange: Create component with an ident that is not a valid CSS selector (regression
+        // guard for any selector-based option lookup).
         const fixture = await arrangeRadioBox({ ident: '123', options: ['a', 'b', 'c'] });
 
         // Act: Click second option.
