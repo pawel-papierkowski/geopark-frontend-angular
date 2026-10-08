@@ -5,7 +5,7 @@ import { TextBox } from './text-box';
 
 /**
  * Unit tests of text-box component.
- * Note: TextBox is wrapper for text input, so we do not have to test as much as it would be needed for full custom component.
+ * Note: TextBox is a wrapper for text input, so we do not have to test as much as it would be needed for a full custom component.
  */
 describe('TextBox', () => {
   interface TextBoxTestOptions {

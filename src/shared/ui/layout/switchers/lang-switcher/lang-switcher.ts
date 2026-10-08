@@ -8,8 +8,8 @@ import type { Lang } from '@/shared/config/types';
 /**
  * Language switcher component.
  *
- * Shows all known languages as buttons with flag emojis. Clicking changes language used on website.
- * Choice is remembered.
+ * Shows all known languages as buttons with flag emojis. Clicking changes the language used on the website.
+ * The choice is remembered.
  */
 @Component({
   selector: 'lang-switcher',

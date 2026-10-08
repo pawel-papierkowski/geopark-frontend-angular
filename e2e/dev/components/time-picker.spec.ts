@@ -6,7 +6,7 @@ import AxeBuilder from '@axe-core/playwright';
  * The page hosts two time-picker instances (datetime row and time row), so the ident prefix
  * `timeId_cc-timePicker` is what distinguishes this instance.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the time-picker input.
  */
 function getTimePicker(page: Page, wantNullable: boolean = false): Locator {
@@ -17,7 +17,7 @@ function getTimePicker(page: Page, wantNullable: boolean = false): Locator {
 /**
  * Locate the clock panel of the time-picker.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the clock panel.
  */
 function getPanel(page: Page, wantNullable: boolean = false): Locator {
@@ -28,7 +28,7 @@ function getPanel(page: Page, wantNullable: boolean = false): Locator {
 /**
  * Locate the hour listbox column inside the clock panel (first of the two columns).
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the hour listbox.
  */
 function getHourColumn(page: Page, wantNullable: boolean = false): Locator {
@@ -38,7 +38,7 @@ function getHourColumn(page: Page, wantNullable: boolean = false): Locator {
 /**
  * Locate the minute listbox column inside the clock panel (second of the two columns).
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the minute listbox.
  */
 function getMinuteColumn(page: Page, wantNullable: boolean = false): Locator {
@@ -49,7 +49,7 @@ function getMinuteColumn(page: Page, wantNullable: boolean = false): Locator {
  * Locate a specific hour option inside the time-picker.
  * @param page Browser page.
  * @param hour Hour value (0-23).
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the hour option.
  */
 function getHour(page: Page, hour: number, wantNullable: boolean = false): Locator {
@@ -61,7 +61,7 @@ function getHour(page: Page, hour: number, wantNullable: boolean = false): Locat
  * Locate a specific minute option inside the time-picker.
  * @param page Browser page.
  * @param minute Minute value (0-59).
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the minute option.
  */
 function getMinute(page: Page, minute: number, wantNullable: boolean = false): Locator {
@@ -92,7 +92,7 @@ function getModeOption(page: Page, index: number): Locator {
 /**
  * Locate the value display div next to the time-picker using data-testid.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the value display div.
  */
 function getValueDisplay(page: Page, wantNullable: boolean = false): Locator {

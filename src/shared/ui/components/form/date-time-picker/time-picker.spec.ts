@@ -2717,7 +2717,7 @@ describe('TimePicker', () => {
       fixture.detectChanges();
 
       // Assert: Both switch moves pass preventScroll (focus() would otherwise scroll the page
-      // to a below-the-fold panel) and really moved DOM focus.
+      // to a below-the-fold panel) and really move DOM focus.
       expect(minuteFocusSpy, 'ArrowRight should focus the minute listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
       expect(hourFocusSpy, 'ArrowLeft should focus the hour listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
       expect(document.activeElement, 'focus should end back in the hour listbox').toBe(fixture.componentInstance.hourRef().nativeElement);
@@ -2736,7 +2736,7 @@ describe('TimePicker', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      // Assert: The advance passes preventScroll and landed on the minute listbox.
+      // Assert: The advance passes preventScroll and lands on the minute listbox.
       expect(minuteFocusSpy, 'hour Enter should focus the minute listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
       expect(document.activeElement, 'focus should move to the minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
     });
@@ -2751,7 +2751,7 @@ describe('TimePicker', () => {
       // Act: Press the minute column header (its handler cancels the default and focuses the column).
       header.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
-      // Assert: The header-initiated focus passes preventScroll and landed on the column.
+      // Assert: The header-initiated focus passes preventScroll and lands on the column.
       expect(minuteFocusSpy, 'header press should focus the minute listbox with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
       expect(document.activeElement, 'header press should focus the minute listbox').toBe(fixture.componentInstance.minuteRef().nativeElement);
     });
@@ -2769,7 +2769,7 @@ describe('TimePicker', () => {
       fixture.detectChanges();
 
       // Assert: The refocus passes preventScroll (it must not scroll the page back up to the
-      // input after the user scrolled down to a below-the-fold panel) and landed on the input.
+      // input after the user scrolled down to a below-the-fold panel) and lands on the input.
       expect(inputFocusSpy, 'Escape should refocus the input with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
       expect(document.activeElement, 'Escape should return focus to the input').toBe(getInput(fixture));
     });

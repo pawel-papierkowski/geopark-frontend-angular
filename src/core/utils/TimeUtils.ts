@@ -33,7 +33,7 @@ export class TimeUtils {
   //
 
   /**
-   * Converts a Date to an UTC ISO string describing full date and time (`YYYY-MM-DDTHH:mm:ss.SSS` or `YYYY-MM-DDTHH:mm:ss` if ms is zero).
+   * Converts a Date to a UTC ISO string describing full date and time (`YYYY-MM-DDTHH:mm:ss.SSS` or `YYYY-MM-DDTHH:mm:ss` if ms is zero).
    * Ignores timezone. You will need to initialize `Date` using `Date.UTC`. Example:
    * ```
    * const date = new Date(Date.UTC(2026, 5, 28, 0, 0, 0, 0));
@@ -59,7 +59,7 @@ export class TimeUtils {
   }
 
   /**
-   * Converts a Date to an UTC ISO string describing date only (`YYYY-MM-DD`).
+   * Converts a Date to a UTC ISO string describing date only (`YYYY-MM-DD`).
    * Ignores timezone. You will need to initialize `Date` using `Date.UTC`.
    * @param date Date/time JavaScript class instance.
    * @returns Date as ISO-formatted string without zone. Returns null if given date is null.
@@ -75,7 +75,7 @@ export class TimeUtils {
   }
 
   /**
-   * Converts a Date to an UTC ISO string describing time only (`HH:mm:ss.SSS` or `HH:mm:ss` if ms is zero).
+   * Converts a Date to a UTC ISO string describing time only (`HH:mm:ss.SSS` or `HH:mm:ss` if ms is zero).
    * Ignores timezone. You will need to initialize `Date` using `Date.UTC`.
    * @param date Date/time JavaScript class instance.
    * @returns Time as ISO-formatted string without zone. Returns null if given date is null.

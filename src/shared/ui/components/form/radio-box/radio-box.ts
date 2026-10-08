@@ -197,8 +197,8 @@ export class RadioBox implements FormValueControl<number | string | null> {
 
   /**
    * Handle keyboard events for accessibility.
-   * Arrow keys selects next/previous options, Home/End jump to first/last option, Space/Enter
-   * moves to next focusable component (so user can leave this component). Defaults of the
+   * Arrow keys select next/previous options, Home/End jump to first/last option, Space/Enter
+   * moves to next focusable component (so the user can leave this component). Defaults of the
    * handled keys (page scrolling) are swallowed even when disabled, so a stray focus inside a
    * disabled group cannot scroll the page.
    * @param e Keyboard event.

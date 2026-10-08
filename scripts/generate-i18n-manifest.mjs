@@ -1,5 +1,5 @@
 /**
- * This script generates manifest - list of json files found for each language. Manifest is in 'src/shared/config/translation-manifest.ts'.
+ * This script generates a manifest - a list of json files found for each language. The manifest is in 'src/shared/config/translation-manifest.ts'.
  * You need to run this script before every build or start. Use scripts.prestart and scripts.prebuild in package.json.
  */
 import { readdirSync, writeFileSync } from 'node:fs';
@@ -33,7 +33,7 @@ function findJsonFiles(dir, baseDir) {
 }
 
 /**
- * Detect all languages. Any directory in `i18nDir` will be considered language. Name of directory is language code.
+ * Detect all languages. Any directory in `i18nDir` will be considered a language. The name of the directory is the language code.
  * @param i18nDir Directory to use as root.
  * @returns List of directories.
  */

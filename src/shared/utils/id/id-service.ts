@@ -15,9 +15,9 @@ export class IdService {
 
   /**
    * Generate next unique identifier for given prefix.
-   * @param ident Ident. If invalid, generate custom identifier.
+   * @param ident Ident. If invalid, generate a custom identifier.
    * @param prefix Component-specific prefix, kebab-case component name (e.g. `text-box`).
-   * @returns Original identifier if valid or generate identifier in form `<prefix>-<number>`, e.g. `text-box-1`.
+   * @returns Original identifier if valid or a generated identifier in the form `<prefix>-<number>`, e.g. `text-box-1`.
    */
   public next(ident: unknown, prefix: string): string {
     if (this.isValid(ident)) return ident as string;
@@ -28,7 +28,7 @@ export class IdService {
   }
 
   /**
-   * Check if given ident is valid value.
+   * Check if given ident is a valid value.
    * @param ident Ident to verify.
    * @returns True if ident is valid, otherwise false.
    */

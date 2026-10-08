@@ -61,7 +61,7 @@ describe('DateTimePicker', () => {
   }
 
   /**
-   * Get the hidden label target button of given fixture.
+   * Get the hidden label target button of the given fixture.
    * @param fixture Fixture of the component.
    * @returns Hidden button that `<label for>` points at.
    */

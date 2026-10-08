@@ -14,7 +14,7 @@ input {
 }
 
 input:focus-visible {
-  /* We hide focus outline for standard input. Acceptable as cursor is visible. */
+  /* We hide the focus outline for the standard input. Acceptable as the cursor is visible. */
   outline: none;
   outline-offset: none;
 }

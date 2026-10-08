@@ -14,7 +14,7 @@ export const projectProp: ProjectProp = {
 
 /* LANGUAGE */
 
-/** Fallback language. It must exist in list of known languages. */
+/** Fallback language. It must exist in the list of known languages. */
 export const fallbackLang = 'en' satisfies typeof languages[number];
 
 /** List of known languages. */

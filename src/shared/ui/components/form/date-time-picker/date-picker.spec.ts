@@ -2576,7 +2576,7 @@ describe('DatePicker', () => {
       await flush(fixture);
 
       // Assert: The refocus passes preventScroll (it must not scroll the page back up to the
-      // input after the user scrolled down to a below-the-fold panel) and landed on the input.
+      // input after the user scrolled down to a below-the-fold panel) and lands on the input.
       expect(inputFocusSpy, 'Escape should refocus the input with preventScroll').toHaveBeenCalledWith({ preventScroll: true });
       expect(document.activeElement, 'Escape should return focus to the input').toBe(getInput(fixture));
     });

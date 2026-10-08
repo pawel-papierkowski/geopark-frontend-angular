@@ -9,7 +9,7 @@ const ENGLISH_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 
  * instances (datetime rows, the standalone date row and their nullable variants), so the ident
  * prefix `dateId_datePicker` is what distinguishes this instance.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the date-picker input.
  */
 function getDatePicker(page: Page, wantNullable: boolean = false): Locator {
@@ -20,7 +20,7 @@ function getDatePicker(page: Page, wantNullable: boolean = false): Locator {
 /**
  * Locate the calendar panel of the date-picker.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the calendar panel.
  */
 function getPanel(page: Page, wantNullable: boolean = false): Locator {
@@ -32,7 +32,7 @@ function getPanel(page: Page, wantNullable: boolean = false): Locator {
  * Locate the calendar grid inside the calendar panel. The grid is the focus container of the open
  * panel (tabindex=0 while visible) and carries aria-activedescendant for the keyboard cursor.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the calendar grid.
  */
 function getGrid(page: Page, wantNullable: boolean = false): Locator {
@@ -42,7 +42,7 @@ function getGrid(page: Page, wantNullable: boolean = false): Locator {
 /**
  * Locate the calendar header showing the viewed year and translated month name.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the header title.
  */
 function getHeader(page: Page, wantNullable: boolean = false): Locator {
@@ -52,7 +52,7 @@ function getHeader(page: Page, wantNullable: boolean = false): Locator {
 /**
  * Read the current calendar header text (e.g. `2026 October`) from an open panel.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Trimmed header text.
  */
 async function readHeader(page: Page, wantNullable: boolean = false): Promise<string> {
@@ -95,7 +95,7 @@ function formatDay(header: string, day: number): string {
  * @param page Browser page.
  * @param header Header text of the open panel (`YYYY MonthName`).
  * @param day Day of the viewed month (1-31).
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the day cell.
  */
 function getDayCell(page: Page, header: string, day: number, wantNullable: boolean = false): Locator {
@@ -105,7 +105,7 @@ function getDayCell(page: Page, header: string, day: number, wantNullable: boole
 /**
  * Locate the value display div next to the date-picker using data-testid.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the value display div.
  */
 function getValueDisplay(page: Page, wantNullable: boolean = false): Locator {
@@ -138,7 +138,7 @@ async function goToComponentsPage(page: Page): Promise<void> {
  * actually shows instead of the machine's clock.
  * @param page Browser page.
  * @param day Day of the viewed month to pick. Defaults to 15 (always exists in any month).
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns The committed date as `YYYY-MM-DD`.
  */
 async function pickDay(page: Page, day: number = 15, wantNullable: boolean = false): Promise<string> {
@@ -154,7 +154,7 @@ async function pickDay(page: Page, day: number = 15, wantNullable: boolean = fal
  * Locate the label associated with the date-picker. Its `<label for>` points at the wrapper's
  * hidden button (id = the wrapper's ident), so clicking it runs the wrapper's label activation.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the label element.
  */
 function getLabel(page: Page, wantNullable: boolean = false): Locator {

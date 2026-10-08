@@ -1,5 +1,5 @@
 /**
- * Dispatch a real bubbling mousedown on given target so it reaches a component's
+ * Dispatch a real bubbling mousedown on the given target so it reaches a component's
  * document-level listener, mimicking a pointer press anywhere on the page.
  * @param target Element the press lands on.
  * @returns The dispatched event, for defaultPrevented assertions.

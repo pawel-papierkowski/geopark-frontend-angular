@@ -39,7 +39,7 @@ async function goToComponentsPage(page: Page): Promise<void> {
 
 /**
  * E2e tests of text-box component in form present in page-custom-components.
- * Note: TextBox is wrapper for text input, so we do not have to test as much as it would be needed for full custom component.
+ * Note: TextBox is a wrapper for text input, so we do not have to test as much as it would be needed for a full custom component.
  */
 test.describe('TextBox', () => {
   test.describe('typing', () => {

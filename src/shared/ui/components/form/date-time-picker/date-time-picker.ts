@@ -22,9 +22,9 @@ function sameInstant(a: Date | null, b: Date | null): boolean {
 }
 
 /**
- * This is a date and time picker. Uses `Date` class for both input and output.
- * It is wrapper for two subcomponents: `DatePicker` and `TimePicker`.
- * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
+ * This is a date and time picker. Uses the `Date` class for both input and output.
+ * It is a wrapper for two subcomponents: `DatePicker` and `TimePicker`.
+ * Note it is timezone-agnostic. It is up to you to adjust the result to a timezone etc. as needed.
  * Values are read/written through UTC accessors, but the time sub-picker's default "current time"
  * highlight and keyboard/scroll seed (used when no value is set) come from the browser's local
  * timezone, and a time picked with no prior value is written onto the LOCAL calendar date
@@ -103,7 +103,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
   public readonly disabled = input<boolean>(false);
   /** Is component invalid? */
   public readonly invalid = input<boolean>(false);
-  /** Informs that user blurred out of component. */
+  /** Informs that the user blurred out of the component. */
   public touch = output<void>();
 
   /** Date half of the selection in `datetime` mode. */
@@ -280,7 +280,7 @@ export class DateTimePicker implements FormValueControl<Date | null> {
       this.focusSubPicker();
       return;
     }
-    // We know decision is 'none'. `wasClosed` means "NEITHER panel is open".
+    // We know the decision is 'none'. `wasClosed` means "NEITHER panel is open".
     const wasClosed = !(datePicker?.isCalendarVisible() ?? false) && !(timePicker?.isClockVisible() ?? false);
     this.focusSubPicker();
     if (wasClosed) this.labelActivation.focusOpened.set(true);

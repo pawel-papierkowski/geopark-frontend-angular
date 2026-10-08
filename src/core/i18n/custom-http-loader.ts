@@ -6,8 +6,8 @@ import { map } from 'rxjs/operators';
 import { translationManifest } from '@/shared/config/translation-manifest';
 
 /**
- * Custom language loader. Reads manifest file and merges all found json files into single object representing
- * all keys and their translations. Fails when language is not known or any translation file cannot be loaded.
+ * Custom language loader. Reads the manifest file and merges all found json files into a single object representing
+ * all keys and their translations. Fails when the language is not known or any translation file cannot be loaded.
  */
 export class CustomHttpLoader extends TranslateLoader {
   constructor(

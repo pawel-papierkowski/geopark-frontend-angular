@@ -45,7 +45,7 @@ import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-l
  *
  * Notes:
  * - Null value is supported as option. Example: const enUserStatus: (string|null)[] = [ null, 'PENDING', 'ACTIVE' ];
- * - Popup is still shown via click/keys when there is zero options, so dev can see they forgot to add options to combobox.
+ * - Popup is still shown via click/keys when there are zero options, so dev can see they forgot to add options to combobox.
  */
 @Component({
   selector: 'combo-box',
@@ -184,7 +184,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
   /**
    * Open list.
-   * @param top If true, set highlight on top, false on bottom, null do not change highlight. Ignored if highlight already set.
+   * @param top If true, set highlight on top, false on bottom, null - do not change highlight. Ignored if highlight already set.
    */
   private openList(top: boolean | null = null) {
     // Reset placement to the baseline (below the anchor, stretched) BEFORE the list renders,
@@ -195,7 +195,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     this.isOpen.set(true);
     void this.positionOptionsPanel(session);
 
-    // Yes, popup window with list is opened even if no options exist.
+    // Yes, a popup window with a list is opened even if no options exist.
     if (this.options().length === 0) return;
 
     // Set visually selected entry, if any. Works with null selection.

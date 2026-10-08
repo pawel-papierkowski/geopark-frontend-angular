@@ -137,7 +137,7 @@
              come precomputed from `weekdayLabels`. -->
         <div role="row" class="calendar-row">
           @if(showWeeks()) {
-            <div aria-hidden="true"></div> <!-- we need empty cell here for layout with week numbers -->
+            <div aria-hidden="true"></div> <!-- we need an empty cell here for layout with week numbers -->
           }
           @for(weekday of weekdayLabels(); track weekday.key) {
             <div class="weekday" role="columnheader">

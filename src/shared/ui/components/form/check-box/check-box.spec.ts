@@ -60,7 +60,7 @@ describe('CheckBox', () => {
   describe('general', () => {
     describe('rendering&display', () => {
       it('should render with default values', async () => {
-        // Note canNull affects only user ability to set null value. Component still can have null set programmatically.
+        // Note canNull affects only the user's ability to set a null value. Component still can have null set programmatically.
         // Arrange: Create component with defaults, including null value and canNull = false.
         const fixture = await arrangeCheckBox();
 
@@ -223,7 +223,7 @@ describe('CheckBox', () => {
         const checkbox = fixture.nativeElement.querySelector('.checkbox');
         checkbox.focus();
 
-        // Act: Disable while focused, then the programmatic blur the browser produces.
+        // Act: Disable while focused, then dispatch the programmatic blur the browser produces.
         fixture.componentRef.setInput('disabled', true);
         fixture.detectChanges();
         checkbox.dispatchEvent(new Event('blur'));

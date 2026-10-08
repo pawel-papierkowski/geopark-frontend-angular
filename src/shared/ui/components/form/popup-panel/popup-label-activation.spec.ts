@@ -98,7 +98,7 @@ describe('LabelActivation', () => {
       fixture.detectChanges();
       const label = fixture.nativeElement.querySelector('[data-testid="label"]') as HTMLLabelElement;
 
-      // Act: Press the own label.
+      // Act: Press the component's own label.
       const event = press(label);
 
       // Assert: Default canceled (focus stays put), nothing reported as outside.

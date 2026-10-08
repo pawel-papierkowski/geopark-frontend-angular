@@ -85,7 +85,7 @@ export class LanguageService {
 
   /**
    * Activate the language chosen by the user. The last confirmed language remains
-   * visible until the request activates; if it fails, confirmed language is restored
+   * visible until the request activates; if it fails, the confirmed language is restored
    * or, without one, the fallback language is attempted once.
    * @param language Selected language.
    */

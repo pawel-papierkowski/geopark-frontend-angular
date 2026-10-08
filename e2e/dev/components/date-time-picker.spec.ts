@@ -356,7 +356,7 @@ test.describe('DateTimePicker', () => {
 
       // Act: Click the label a second time - with the calendar OPEN the activation must not
       // arm the focus-open swallow, so the forwarded click toggles the panel shut. Regression
-      // guard: a "at least one panel closed" reading of the state was trivially true in this
+      // guard: an "at least one panel closed" reading of the state was trivially true in this
       // mode, swallowed every click and left the calendar open on Chromium.
       await getLabel(page).click();
 

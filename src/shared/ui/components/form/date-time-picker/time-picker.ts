@@ -34,9 +34,9 @@ type ColumnSession = number | 'untouched' | 'discarded';
 type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
 
 /**
- * This is a time picker. Uses `Date` class for both input and output. Do not use it directly.
+ * This is a time picker. Uses the `Date` class for both input and output. Do not use it directly.
  * Use DateTimePicker with attribute mode="time".
- * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
+ * Note it is timezone-agnostic. It is up to you to adjust the result to a timezone etc. as needed.
  * Values are read/written through UTC accessors, but the default "current time" highlight and
  * keyboard/scroll seed (used when no value is set) come from the browser's local timezone, and
  * a time picked with no prior value is written onto the LOCAL calendar date (UTC-anchored), so
@@ -88,7 +88,7 @@ export class TimePicker extends PopupInputBase<Date> {
   /** For programmatic translations. */
   private readonly translateService = inject(TranslateService);
 
-  /** List of hours. We use full 24-hour clock. */
+  /** List of hours. We use a full 24-hour clock. */
   public hours = Array.from({ length: 24 }, (_, i) => i);
   /** List of minutes. */
   public minutes = Array.from({ length: 60 }, (_, i) => i);

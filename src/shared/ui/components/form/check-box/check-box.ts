@@ -11,7 +11,7 @@ import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
  * Features:
  * - Accept true, false or null (not set) value.
  * - Can disable or mark as invalid.
- * - Mouse click and keyboard (enter or space) cycles between possible values.
+ * - Mouse click and keyboard (enter or space) cycle between possible values.
  * - Supports <label>.
  * - Supports WAI-ARIA.
  *

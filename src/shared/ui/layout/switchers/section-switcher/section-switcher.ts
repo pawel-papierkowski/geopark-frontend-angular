@@ -7,9 +7,9 @@ import { Section } from '@/shared/config/types';
 
 /**
  * Provides accessible links that allow navigation between sections of this website.
- * Note: in real application this component would not exist - any user/developer/operator would have
+ * Note: in a real application this component would not exist - any user/developer/operator would have
  * to use appropriate links.
- * But for portfolio project, way to access other sections from within website is needed.
+ * But for a portfolio project, a way to access other sections from within the website is needed.
  *
  * Inputs:
  * - currSection - Current section.

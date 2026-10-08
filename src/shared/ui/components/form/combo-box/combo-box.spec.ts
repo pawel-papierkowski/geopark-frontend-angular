@@ -1121,7 +1121,7 @@ describe('ComboBox', () => {
       });
 
       it('should generate different ids for components created without ident', async () => {
-        // Arrange: Create two components without ident within same test module.
+        // Arrange: Create two components without ident within the same test module.
         const first = await arrangeComboBox({ ident: '' });
         const second = TestBed.createComponent(ComboBox);
         second.componentRef.setInput('options', ['a', 'b', 'c']);
@@ -1610,7 +1610,7 @@ describe('ComboBox', () => {
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.focus();
 
-        // Act: Press Escape. Note that it closes list, but we are still focused on combobox (no blur).
+        // Act: Press Escape. Note that it closes the list, but we are still focused on the combobox (no blur).
         await user.keyboard('{Escape}');
         await fixture.whenStable();
         fixture.detectChanges();
@@ -1664,7 +1664,7 @@ describe('ComboBox', () => {
         root.focus();
         fixture.detectChanges();
 
-        // Assert: List is opened despite no options (deliberate behavior, as combobox doing nothing would be confusing).
+        // Assert: List is opened despite no options (deliberate behavior, as a combobox doing nothing would be confusing).
         expect(fixture.componentInstance.isOpen(), 'focus should open empty list so user sees missing options').toBe(true);
         expect(fixture.componentInstance.highlightedIndex(), 'nothing to highlight without options').toBe(-1);
 

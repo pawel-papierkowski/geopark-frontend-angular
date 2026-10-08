@@ -83,7 +83,7 @@ export function registerLabelPreventionTests(driver: LabelPreventionDriver): voi
     const label = document.createElement('label');
     document.body.appendChild(label);
 
-    // Act: Dispatch mousedown on a label without for attribute.
+    // Act: Dispatch mousedown on a label without a `for` attribute.
     const event = dispatchMousedown(label);
 
     // Assert: Generated ident never matches empty htmlFor, defaults preserved.
@@ -128,7 +128,7 @@ export interface OutsidePressDriver {
 /**
  * Register the outside-press suite shared by label-driven components (combo-box,
  * date-time-picker): a press outside the component closes the popup (blur/focusout alone
- * misses it on WebKit), the own label stays exempt (default prevented, popup open so the
+ * misses it on WebKit), the component's own label stays exempt (default prevented, popup open so the
  * forwarded label activation keeps its toggle), and the document listener dies with the
  * component. Mechanics live in `LabelActivation.installDocumentGuard`; these tests verify
  * each component wires ident, boundary and close callback. Component-specific probes
@@ -172,7 +172,7 @@ export function registerOutsidePressTests(driver: OutsidePressDriver): void {
     document.body.appendChild(label);
 
     try {
-      // Act: Press the foreign label - only the OWN associated label is exempt.
+      // Act: Press the foreign label - only the component's own associated label is exempt.
       dispatchMousedown(label);
       await fixture.settle();
 

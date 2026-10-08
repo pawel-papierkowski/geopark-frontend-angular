@@ -4,7 +4,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 /**
  * Default 404 page.
- * Note: It has handling for server with prerendering support (like Angular Universal). It won't have effect on GitHub Pages.
+ * Note: It has handling for a server with prerendering support (like Angular Universal). It won't have an effect on GitHub Pages.
  */
 @Component({
   selector: 'page-not-found',
@@ -16,7 +16,7 @@ export class PageNotFound implements OnInit, OnDestroy {
   private tag: HTMLMetaElement | null = null;
 
   public ngOnInit(): void {
-    // Inject additional metadata into header of page to inform.
+    // Inject additional metadata into the header of the page to inform.
     this.tag = this.meta.addTag({ name: 'prerender-status-code', content: '404', id: 'prerender-status-code' });
   }
 

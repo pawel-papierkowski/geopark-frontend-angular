@@ -10,9 +10,9 @@ import { PopupInputBase } from '@/shared/ui/components/form/popup-panel/popup-in
 import { EnCalendarCellType, CalendarCell, CalendarCellView } from '@/shared/ui/other/types';
 
 /**
- * This is a date picker. Uses `Date` class for both input and output. Do not use it directly.
+ * This is a date picker. Uses the `Date` class for both input and output. Do not use it directly.
  * Use DateTimePicker with attribute mode="date".
- * Note it is timezone-agnostic. It is up to you to adjust result to timezone etc. as needed.
+ * Note it is timezone-agnostic. It is up to you to adjust the result to a timezone etc. as needed.
  * Designed to be used with signal-based forms.
  *
  * Features:
@@ -312,9 +312,9 @@ export class DatePicker extends PopupInputBase<Date> {
       for (let i = 0; i < 6; i++) {
         const dayIx = i * 8; // Always on monday, will be used for splicing at the end.
         const firstDayOfWeek: CalendarCell = cells[dayIx]!;
-        // Show week number properly at week common for both years depending on which year is in focus.
-        // For example, last week of December will be (usually) 53rd week, while the first week of January
-        // (exactly same week as last week of December) is always 1st week.
+        // Show the week number properly at the week common for both years depending on which year is in focus.
+        // For example, the last week of December will be (usually) the 53rd week, while the first week of January
+        // (exactly the same week as the last week of December) is always the 1st week.
         const dayOfWeekIx = this.viewDate()?.getUTCFullYear() === firstDayOfWeek.year ? dayIx : dayIx + 6;
         const lastDayOfWeek: CalendarCell = cells[dayOfWeekIx]!;
 
@@ -335,7 +335,7 @@ export class DatePicker extends PopupInputBase<Date> {
 
   /**
    * Build the render-ready view of one structural cell: all per-cell predicates the template
-   * used to evaluate on every change-detection pass are resolved here, once per cells rebuild.
+   * used to evaluate on every change-detection pass are resolved here, once per cell rebuild.
    * @param cell Structural cell built by `calcCalendarCells`.
    * @param index Position of the cell in the final grid (matches `$index` in the template and
    * drives the element id, which `aria-activedescendant` points at).

@@ -1,10 +1,10 @@
 .switchers {
   display: flex;
-  position: absolute; /* Ensure container with switchers is at top right corner. */
+  position: absolute; /* Ensure the container with switchers is at the top right corner. */
   align-items: center;
 
   top: 50%;
-  transform: translateY(-50%); /* Ensure it is centered vertically within header. */
+  transform: translateY(-50%); /* Ensure it is centered vertically within the header. */
   right: 0;
 
   gap: 4px;
@@ -16,7 +16,7 @@
 @media (max-width: 700px) {
   .switchers {
     display: flex;
-    position: static; /* Ensure container with switchers is centered in top of header. */
+    position: static; /* Ensure the container with switchers is centered at the top of the header. */
     transform: none;
     justify-content: center;
     width: 100%;

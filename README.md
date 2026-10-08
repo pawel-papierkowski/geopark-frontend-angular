@@ -118,7 +118,17 @@ npx playwright test e2e/path/to/file/fileName.spec.ts
 
 ### Other
 
-TODO: other useful commands.
+Check if there are new versions of packages.
+
+```bash
+npm 
+```
+
+Install all new versions.
+
+```bash
+npm 
+```
 
 ## Deployment
 

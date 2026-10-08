@@ -20,7 +20,7 @@ export interface LabelGuardOptions {
   readonly ident: () => string;
   /** Element owning the label activation - presses landing outside it reach `onOutsidePress`. */
   readonly boundary: () => Element;
-  /** Runs when a press landed outside the boundary; closes whatever the component shows. */
+  /** Runs when a press lands outside the boundary; closes whatever the component shows. */
   readonly onOutsidePress: (target: Node) => void;
 }
 
@@ -58,7 +58,7 @@ export class LabelActivation<TExtra extends string = never> {
   }
 
   /**
-   * Set new value of click decision.
+   * Set a new value for the click decision.
    * @param decision Decision to set.
    */
   public setDecision(decision: LabelClickDecision<TExtra>) {
@@ -79,7 +79,7 @@ export class LabelActivation<TExtra extends string = never> {
    * Install the capture-phase document mousedown guard shared by label-driven controls.
    * On every press it:
    * 1. Resets both markers (`reset`) - a fresh interaction never inherits its predecessor's state.
-   * 2. Cancels the default focus steal when the press lands on the OWN label: a `<label>` is
+   * 2. Cancels the default focus steal when the press lands on the component's own label: a `<label>` is
    *    not focusable, so its mousedown would move focus from the control to `<body>`; that
    *    transient blur closes the panel and reports a spurious touch, right before label
    *    activation refocuses the control. Canceling the default keeps focus in place - label
@@ -89,7 +89,7 @@ export class LabelActivation<TExtra extends string = never> {
    *    presses: WebKit does not reliably move focus on an outside press (buttons and other
    *    non-text controls are not click-focused on macOS, and pressing non-focusable content
    *    does not necessarily blur the focused element), so a focusout-only close would leave
-   *    the panel open there. The press handler closes unconditionally of focus - the focusout
+   *    the panel open there. The press handler closes regardless of focus - the focusout
    *    path stays for Tab and other programmatic focus moves.
    *
    * Capture phase, so no other handler can swallow it first; mousedown (not pointerdown),
@@ -100,7 +100,7 @@ export class LabelActivation<TExtra extends string = never> {
    */
   public installDocumentGuard(options: LabelGuardOptions): void {
     /**
-     * Reset the interaction state, short-circuit presses on the own label and forward
+     * Reset the interaction state, short-circuit presses on the component's own label and forward
      * outside presses to the component's close logic.
      * @param e Mousedown event (capture phase, any target in the document).
      */

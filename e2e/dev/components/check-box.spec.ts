@@ -3,7 +3,7 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 /**
  * Locate the checkBox role element on the custom components page.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the checkBox.
  */
 function getCheckBox(page: Page, wantNullable: boolean = false): Locator {
@@ -24,7 +24,7 @@ function getModeOption(page: Page, index: number): Locator {
 /**
  * Locate the value display div next to the checkBox using data-testid.
  * @param page Browser page.
- * @param wantNullable False if you want base component, true if you want nullable version of component.
+ * @param wantNullable False if you want the base component, true if you want the nullable version of the component.
  * @returns Locator for the value display div.
  */
 function getValueDisplay(page: Page, wantNullable: boolean = false): Locator {

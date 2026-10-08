@@ -333,7 +333,7 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
   }
 
   /**
-   * Hide panel and move focus to the next focusable element on page, starting from
+   * Hide panel and move focus to the next focusable element on the page, starting from
    * `focusAnchorForNext`.
    * Focus moves BEFORE the panel is hidden: the focusout (handled by `handleFocusOut`) then
    * decides the outcome - focus leaving the wrapper reports touch, focus landing on a sibling
@@ -347,7 +347,7 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
   }
 
   /**
-   * Hide panel and move focus to the previous focusable element on page.
+   * Hide panel and move focus to the previous focusable element on the page.
    * Focus moves BEFORE the panel is hidden, so the hand-off is decided by `handleFocusOut`:
    * landing outside the wrapper it reports touch, landing on the sibling control of the same
    * wrapper (datetime mode) it stays quiet, because leaving the wrapper is what `touch` reports.
