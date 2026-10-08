@@ -134,18 +134,65 @@ describe('TimeUtils', () => {
       expect(result, 'date-only input should be read as 00:00 UTC and shifted').toBe('2026-06-28 02:00:00');
     });
 
+    it('should honor an explicit colon-separated UTC offset instead of dropping it', () => {
+      // Arrange: Noon at +02:00 = 10:00 UTC, which is 12:00 local during Polish summer time.
+      const input = '2026-06-28T12:00:00+02:00';
+
+      // Act: Convert the offset-bearing input.
+      const result = TimeUtils.zoned(input);
+
+      // Assert: The offset is honored - the result must be 12:00 local, not 14:00 (UTC misread).
+      expect(result, 'the +02:00 offset should be applied, not silently discarded').toBe('2026-06-28 12:00:00');
+    });
+
+    it('should honor a negative UTC offset', () => {
+      // Arrange: Noon at -05:00 = 17:00 UTC, which is 19:00 local during Polish summer time.
+      const input = '2026-06-28T12:00:00-05:00';
+
+      // Act: Convert the offset-bearing input.
+      const result = TimeUtils.zoned(input);
+
+      // Assert: The negative offset shifts the instant forward into local time.
+      expect(result, 'the -05:00 offset should be applied, not silently discarded').toBe('2026-06-28 19:00:00');
+    });
+
+    it('should honor a compact (colon-less) UTC offset', () => {
+      // Arrange: Noon at +02:00 written in the +0200 compact form.
+      const input = '2026-06-28T12:00:00+0200';
+
+      // Act: Convert the compact-offset input.
+      const result = TimeUtils.zoned(input);
+
+      // Assert: Compact offsets behave like their colon-separated counterparts.
+      expect(result, 'the +0200 compact offset should be applied, not silently discarded').toBe('2026-06-28 12:00:00');
+    });
+
+    it('should honor an offset together with fractional seconds', () => {
+      // Arrange: Millisecond precision combined with an explicit offset.
+      const input = '2026-06-28T12:00:00.123+02:00';
+
+      // Act: Convert the input.
+      const result = TimeUtils.zoned(input);
+
+      // Assert: Offset honored and milliseconds dropped, as with plain input.
+      expect(result, 'the offset should apply even when milliseconds are present').toBe('2026-06-28 12:00:00');
+    });
+
     it('should return the trimmed input unchanged when it cannot be parsed', () => {
       // Arrange: Two unparseable inputs - a non-date word and impossible calendar values.
       const textInput = '  not-a-date  ';
       const impossibleInput = '2026-13-45T99:00:00';
+      const zoneTextInput = '  2026-06-28T12:00:00 UTC  ';
 
       // Act: Convert both inputs.
       const textResult = TimeUtils.zoned(textInput);
       const impossibleResult = TimeUtils.zoned(impossibleInput);
+      const zoneTextResult = TimeUtils.zoned(zoneTextInput);
 
       // Assert: Garbage in, same garbage (trimmed) out - never "Invalid Date".
       expect(textResult, 'unparseable text should come back trimmed, without conversion').toBe('not-a-date');
       expect(impossibleResult, 'impossible calendar values should come back unchanged').toBe('2026-13-45T99:00:00');
+      expect(zoneTextResult, 'an unparseable zone name should come back trimmed, without conversion').toBe('2026-06-28T12:00:00 UTC');
     });
   });
 
@@ -158,6 +205,17 @@ describe('TimeUtils', () => {
 
       // Assert: Null propagates instead of becoming a string.
       expect(result, 'cnvFull(null) should be null').toBeNull();
+    });
+
+    it('should return null for an invalid date', () => {
+      // Arrange: Date carrying NaN time.
+      const date = new Date('not-a-date');
+
+      // Act: Convert the invalid date.
+      const result = TimeUtils.cnvFull(date);
+
+      // Assert: Invalid dates propagate as null instead of "NaN-NaN-NaNTNaN:NaN:NaN.NaN".
+      expect(result, 'cnvFull(Invalid Date) should be null, not NaN garbage').toBeNull();
     });
 
     it('should format a full UTC datetime without milliseconds when milliseconds are zero', () => {
@@ -205,6 +263,17 @@ describe('TimeUtils', () => {
       expect(result, 'cnvDate(null) should be null').toBeNull();
     });
 
+    it('should return null for an invalid date', () => {
+      // Arrange: Date carrying NaN time.
+      const date = new Date('not-a-date');
+
+      // Act: Convert the invalid date.
+      const result = TimeUtils.cnvDate(date);
+
+      // Assert: Invalid dates propagate as null instead of "NaN-NaN-NaN".
+      expect(result, 'cnvDate(Invalid Date) should be null, not NaN garbage').toBeNull();
+    });
+
     it('should format a UTC date with padded parts', () => {
       // Arrange: UTC datetime with single-digit month and day.
       const date = utc(2026, 0, 5, 23, 59, 59);
@@ -237,6 +306,17 @@ describe('TimeUtils', () => {
 
       // Assert: Null propagates instead of becoming a string.
       expect(result, 'cnvTime(null) should be null').toBeNull();
+    });
+
+    it('should return null for an invalid date', () => {
+      // Arrange: Date carrying NaN time.
+      const date = new Date('not-a-date');
+
+      // Act: Convert the invalid date.
+      const result = TimeUtils.cnvTime(date);
+
+      // Assert: Invalid dates propagate as null instead of "NaN:NaN:NaN.NaN".
+      expect(result, 'cnvTime(Invalid Date) should be null, not NaN garbage').toBeNull();
     });
 
     it('should format UTC time without milliseconds when milliseconds are zero', () => {
@@ -284,6 +364,17 @@ describe('TimeUtils', () => {
       expect(result, 'formatUTCDate(null) should be an empty string').toBe('');
     });
 
+    it('should return an empty string for an invalid date', () => {
+      // Arrange: Date carrying NaN time.
+      const date = new Date('not-a-date');
+
+      // Act: Format the invalid date.
+      const result = TimeUtils.formatUTCDate(date);
+
+      // Assert: Invalid dates degrade to the empty-string sentinel, never "NaN-NaN-NaN".
+      expect(result, 'formatUTCDate(Invalid Date) should be an empty string').toBe('');
+    });
+
     it('should format a UTC date with padded parts', () => {
       // Arrange: UTC datetime with single-digit month and day.
       const date = utc(2026, 0, 5, 7, 8, 9);
@@ -316,6 +407,17 @@ describe('TimeUtils', () => {
 
       // Assert: Nothing in, nothing out.
       expect(result, 'formatUTCTime(null) should be an empty string').toBe('');
+    });
+
+    it('should return an empty string for an invalid date', () => {
+      // Arrange: Date carrying NaN time.
+      const date = new Date('not-a-date');
+
+      // Act: Format the invalid date.
+      const result = TimeUtils.formatUTCTime(date);
+
+      // Assert: Invalid dates degrade to the empty-string sentinel, never "NaN:NaN".
+      expect(result, 'formatUTCTime(Invalid Date) should be an empty string').toBe('');
     });
 
     it('should format UTC hours and minutes with padding', () => {

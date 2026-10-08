@@ -3,16 +3,24 @@ export class TimeUtils {
   /**
    * Convert UTC date to date with local timezone applied.
    * @param dateStr Date as string in format `YYYY-MM-DDTHH:mm:ss` without timezone. Accepts `.SSS` if present.
+   *   An explicit zone (trailing `Z` or a numeric UTC offset such as `+02:00`/`-0500`) is honored instead of
+   *   being reinterpreted as UTC. Input that cannot be parsed is returned trimmed and unchanged.
    * @returns Date as string with timezone applied in format `YYYY-MM-DD HH:mm:ss`.
    */
   public static zoned(dateStr: string | null | undefined): string {
     if (dateStr === undefined || dateStr === null) return '';
     dateStr = dateStr.trim();
 
-    // Parse as UTC by adding 'Z' (standard ISO 8601 expects 'T' separator).
-    let dateFixedStr = dateStr.replace('T', ' ') || dateStr;
-    dateFixedStr = dateFixedStr.replace('Z', '') || dateFixedStr; // prevent 'ZZ'
-    const date = new Date(dateFixedStr + 'Z');
+    // Normalize the ISO 8601 'T' separator to a space (matches the format we emit).
+    const normalized = dateStr.replace('T', ' ');
+
+    // If the input already carries a zone designator (trailing 'Z' or a numeric UTC offset like
+    // '+02:00'/'-0500'), parse it as-is so the offset is honored. Otherwise mark the value as UTC
+    // by appending 'Z'. Blindly appending 'Z' to an offset-bearing string ('...+02:00' + 'Z') makes
+    // the parser silently discard the offset and reinterpret the value as plain UTC.
+    const hasZone = /Z$/i.test(normalized)
+      || /\s\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?[+-]\d{2}(?::?\d{2})?$/.test(normalized);
+    const date = new Date(hasZone ? normalized : normalized + 'Z');
 
     if (isNaN(date.getTime())) return dateStr; // If parsing fails, return original.
 
@@ -40,10 +48,10 @@ export class TimeUtils {
    * const result = TimeUtils.cnvFull(date);
    * ```
    * @param date Date/time JavaScript class instance.
-   * @returns Date and time as ISO-formatted string without zone. Returns null if given date is null.
+   * @returns Date and time as ISO-formatted string without zone. Returns null if given date is null or invalid.
    */
   public static cnvFull(date: Date | null): string | null {
-    if (date === null) return null;
+    if (date === null || isNaN(date.getTime())) return null;
 
     const YYYY = date.getUTCFullYear();
     const MM = this.pad(date.getUTCMonth() + 1);
@@ -62,10 +70,10 @@ export class TimeUtils {
    * Converts a Date to a UTC ISO string describing date only (`YYYY-MM-DD`).
    * Ignores timezone. You will need to initialize `Date` using `Date.UTC`.
    * @param date Date/time JavaScript class instance.
-   * @returns Date as ISO-formatted string without zone. Returns null if given date is null.
+   * @returns Date as ISO-formatted string without zone. Returns null if given date is null or invalid.
    */
   public static cnvDate(date: Date | null): string | null {
-    if (date === null) return null;
+    if (date === null || isNaN(date.getTime())) return null;
 
     const YYYY = date.getUTCFullYear();
     const MM = this.pad(date.getUTCMonth() + 1);
@@ -78,10 +86,10 @@ export class TimeUtils {
    * Converts a Date to a UTC ISO string describing time only (`HH:mm:ss.SSS` or `HH:mm:ss` if ms is zero).
    * Ignores timezone. You will need to initialize `Date` using `Date.UTC`.
    * @param date Date/time JavaScript class instance.
-   * @returns Time as ISO-formatted string without zone. Returns null if given date is null.
+   * @returns Time as ISO-formatted string without zone. Returns null if given date is null or invalid.
    */
   public static cnvTime(date: Date | null): string | null {
-    if (date === null) return null;
+    if (date === null || isNaN(date.getTime())) return null;
 
     const hh = this.pad(date.getUTCHours());
     const mm = this.pad(date.getUTCMinutes());
@@ -98,10 +106,10 @@ export class TimeUtils {
   /**
    * Format date. Ignores timezone.
    * @param date Date. Can be null.
-   * @returns Formatted date (`YYYY-MM-DD`) as string. If given Date is null, will return empty string.
+   * @returns Formatted date (`YYYY-MM-DD`) as string. If given Date is null or invalid, will return empty string.
    */
   public static formatUTCDate(date: Date | null): string {
-    if (!date) return '';
+    if (!date || isNaN(date.getTime())) return '';
     const year = date.getUTCFullYear();
     const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
     const day = date.getUTCDate().toString().padStart(2, '0');
@@ -111,10 +119,10 @@ export class TimeUtils {
   /**
    * Format time. Ignores timezone.
    * @param date Date. Can be null.
-   * @returns Formatted time as string. If null, will return empty string.
+   * @returns Formatted time as string. If null or invalid, will return empty string.
    */
   public static formatUTCTime(date: Date | null): string {
-    if (!date) return '';
+    if (!date || isNaN(date.getTime())) return '';
 
     const hour = date.getUTCHours().toString().padStart(2, '0');
     const minute = date.getUTCMinutes().toString().padStart(2, '0');
