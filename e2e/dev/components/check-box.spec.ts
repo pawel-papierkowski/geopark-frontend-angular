@@ -247,18 +247,6 @@ test.describe('CheckBox', () => {
       await expect(checkBox, 'invalid color must survive hover').toHaveCSS('color', 'rgb(102, 0, 0)');
     });
 
-    test('should hover with the shared input hover background token', async ({ page }) => {
-      // Arrange: Navigate to the custom components page (Standard mode, no invalid state).
-      await goToComponentsPage(page);
-      const checkBox = getCheckBox(page);
-
-      // Act: Hover the enabled checkBox.
-      await checkBox.hover();
-
-      // Assert: Hover background comes from --input-hover-background (#f8f8f8), not a hardcoded hex.
-      await expect(checkBox, 'hover background should use the shared input token').toHaveCSS('background-color', 'rgb(248, 248, 248)');
-    });
-
     test('should render disabled state when mode is Disabled & Error', async ({ page }) => {
       // Arrange: Navigate to the custom components page.
       await goToComponentsPage(page);

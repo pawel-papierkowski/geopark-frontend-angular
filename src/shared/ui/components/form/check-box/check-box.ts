@@ -53,7 +53,7 @@ export class CheckBox implements FormValueControl<boolean | null> {
   public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'check-box'));
   /** Label reference. */
   public label = input<string>('');
-  /** Can use null value? */
+  /** If true, allow setting null as the value. */
   public canNull = input<boolean>(false);
   /** Is component required? */
   public readonly required = input<boolean>(false);
