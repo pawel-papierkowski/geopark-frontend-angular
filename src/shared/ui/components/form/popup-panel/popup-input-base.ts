@@ -32,6 +32,10 @@ import { PanelPositioning } from './popup-panel-positioning';
  * - In the `hidePanelAnd*` family, focus ALWAYS moves BEFORE the panel is hidden, so the
  *   resulting focusout reports an internal move (focus stays inside) or a genuine blur (focus
  *   left) - `touch` fires only when focus really left the component.
+ * - The `hidePanelAndFocusNext`/`hidePanelAndFocusPrev` handoffs verify that focus actually
+ *   left the panel (`NavUtils.FocusNext`/`FocusPrev` report the outcome); when no reachable
+ *   target exists they fall back to `hidePanelAndRefocus`, so hiding the panel can never
+ *   strand keyboard focus on a hidden element (which a browser would reset to `<body>`).
  * - `suppressFocusOpen` is set only synchronously around the programmatic `focus()` call,
  *   which dispatches focus synchronously, so the paired focus handler skips auto-open.
  * - The panel baseline is re-applied BEFORE the panel renders on every open, and placement is
@@ -340,10 +344,19 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
    * control of the same wrapper stays quiet (leaving the wrapper is what `touch` reports). The
    * explicit hidePanel below closes the panel either way; on a sibling arrival the wrapper's
    * focusin handler would close it too.
+   * When the handoff cannot complete (no reachable candidate after the anchor, or the move
+   * lands back inside this panel), hiding the panel anyway would strand keyboard focus on the
+   * hidden element - a browser then resets it to `<body>`. The fallback routes through
+   * `hidePanelAndRefocus` instead: focus moves to the input FIRST (same focus-before-hide
+   * contract), stays inside the component and reports no touch.
    */
   protected hidePanelAndFocusNext() {
-    NavUtils.FocusNext(this.focusAnchorForNext());
-    this.hidePanel();
+    const moved = NavUtils.FocusNext(this.focusAnchorForNext());
+    if (moved && !this.panelRef().nativeElement.contains(this.document.activeElement)) {
+      this.hidePanel();
+    } else {
+      this.hidePanelAndRefocus();
+    }
   }
 
   /**
@@ -353,10 +366,17 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
    * wrapper (datetime mode) it stays quiet, because leaving the wrapper is what `touch` reports.
    * The explicit hidePanel below closes the panel either way; on the sibling arrival the
    * wrapper's focusin handler would close it too.
+   * When the handoff cannot complete (no reachable candidate before the input, or the move
+   * lands back inside this panel), the same `hidePanelAndRefocus` fallback as in
+   * `hidePanelAndFocusNext` applies: focus must never be stranded on a hidden panel element.
    */
   protected hidePanelAndFocusPrev() {
-    NavUtils.FocusPrev(this.inputRef().nativeElement);
-    this.hidePanel();
+    const moved = NavUtils.FocusPrev(this.inputRef().nativeElement);
+    if (moved && !this.panelRef().nativeElement.contains(this.document.activeElement)) {
+      this.hidePanel();
+    } else {
+      this.hidePanelAndRefocus();
+    }
   }
 
   /**

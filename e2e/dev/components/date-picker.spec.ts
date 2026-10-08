@@ -535,6 +535,50 @@ test.describe('DatePicker', () => {
       await expect(getValueDisplay(page)).toContainText(`${nextExpected}T00:00:00`);
     });
 
+    test('should fall back to the input on keyboard commit when no focusable control follows', async ({ page }) => {
+      // Arrange: Navigate, then hide EVERY focusable element after the date-picker so the
+      // forward handoff (hidePanelAndFocusNext on commit) has nowhere to go. jsdom cannot
+      // reproduce a browser resetting focus to <body> when the focused panel hides, so this
+      // real-browser regression only belongs in e2e. Everything inside the picker subtree
+      // (input, grid) must stay untouched - only elements following the wrapper are hidden.
+      await goToComponentsPage(page);
+      const datePicker = getDatePicker(page);
+      const hiddenCount = await page.evaluate(() => {
+        const input = document.querySelector('[data-testid="dateId_datePicker_input"]');
+        const boundary = input?.closest('.picker-general') ?? input;
+        if (!(boundary instanceof Element)) return 0;
+        const focusables = document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]');
+        let count = 0;
+        for (const element of focusables) {
+          if (boundary.contains(element)) continue;
+          if ((boundary.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) === 0) continue;
+          if (element instanceof HTMLElement) {
+            element.hidden = true;
+            count++;
+          }
+        }
+        return count;
+      });
+      expect(hiddenCount, 'the arrangement must actually hide following focusables to be meaningful').toBeGreaterThan(0);
+
+      // Act: Focus the input (auto-opens the panel and parks focus in the grid once the open
+      // settles - a bare press('Enter') would race the open and deliver the key to the grid),
+      // then confirm the day from the grid.
+      await datePicker.focus();
+      await expect(getGrid(page), 'the open should park keyboard focus in the calendar grid').toBeFocused();
+      await getGrid(page).press('Enter');
+
+      // Assert: The pick committed and the panel closed, focus fell back to the input - a real
+      // browser would otherwise have dropped it to <body> when the focused grid was hidden.
+      await expect(datePicker).toHaveAttribute('aria-expanded', 'false');
+      await expect(datePicker).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+      await expect(datePicker, 'failed forward handoff should fall back to the input').toBeFocused();
+      expect(
+        await page.evaluate(() => document.activeElement === document.body),
+        'focus must never end up on <body> after a committed pick',
+      ).toBe(false);
+    });
+
     test('should navigate from previous component to date-picker to next component on Tab presses', async ({ page }) => {
       // Arrange: Start keyboard modality on the previous component (the datetime row's time
       // input), whose clock panel opens on focus.

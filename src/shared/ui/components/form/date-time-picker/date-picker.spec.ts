@@ -2205,6 +2205,53 @@ describe('DatePicker', () => {
         }
       });
 
+      it('should return focus to the input when Enter commits and no focusable control follows', async () => {
+        // Arrange: Committed pick with NOTHING focusable after the picker: the forward handoff
+        // has no target, and hiding the panel while focus still sits on the grid would strand
+        // keyboard focus (a browser drops it to <body>). The fallback must refocus the input
+        // INTERNALLY before the panel hides - focus never leaves the component, so no touch.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedGrid({}, utcDate(2026, 0, 15, 11));
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+
+        // Act: Enter picks the focused day.
+        await user.keyboard('{Enter}');
+        await flush(fixture);
+
+        // Assert: The day is committed, the panel closes and focus lands on the input - not on
+        // the (now hidden) grid and never on <body>.
+        expect(fixture.componentInstance.value()?.toISOString().slice(0, 10), 'Enter should commit the focused day').toBe('2026-01-15');
+        expect(fixture.componentInstance.isCalendarVisible(), 'panel should close after the pick').toBe(false);
+        expect(document.activeElement, 'failed forward handoff should fall back to the input').toBe(getInput(fixture));
+        expect(document.activeElement, 'focus must never end up on the document body').not.toBe(document.body);
+        expect(touchSpy, 'internal fallback refocus should not emit touch').not.toHaveBeenCalled();
+      });
+
+      it('should return focus to the input on Shift+Tab when no focusable control precedes the picker', async () => {
+        // Arrange: Backward handoff with NOTHING focusable before the picker: FocusPrev from the
+        // input cannot resolve a target, and hiding the panel with focus still on the grid would
+        // strand keyboard focus. The fallback must refocus the input internally instead.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedGrid({ value: utcDate(2026, 0, 15, 9, 30) }, utcDate(2026, 0, 15, 11));
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const before = fixture.componentInstance.value();
+
+        // Act: Shift+Tab tries to move backwards out of the picker.
+        await user.keyboard('{Shift>}{Tab}{/Shift}');
+        await flush(fixture);
+
+        // Assert: Panel closed and cursor reset, but focus falls back to the input - not back to
+        // the (now hidden) grid and never on <body>.
+        expect(fixture.componentInstance.isCalendarVisible(), 'panel should close on Shift+Tab').toBe(false);
+        expect(fixture.componentInstance.focusedDate(), 'Shift+Tab should reset the keyboard cursor').toBeNull();
+        expect(fixture.componentInstance.value(), 'Shift+Tab should not change value').toBe(before);
+        expect(document.activeElement, 'failed backward handoff should fall back to the input').toBe(getInput(fixture));
+        expect(document.activeElement, 'focus must never end up on the document body').not.toBe(document.body);
+        expect(touchSpy, 'internal fallback refocus should not emit touch').not.toHaveBeenCalled();
+      });
+
       it('should commit the focused day on Space and close the panel', async () => {
         // Arrange: Open grid at 15 January 2026 with the cursor seeded at the current date.
         const user = userEvent.setup();

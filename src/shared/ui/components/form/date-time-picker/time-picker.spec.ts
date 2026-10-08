@@ -2506,6 +2506,35 @@ describe('TimePicker', () => {
         }
       });
 
+      it('should return focus to the input when the completing minute pick finds no next control', async () => {
+        // Arrange: Committed pick with NOTHING focusable after the picker: the forward handoff
+        // has no target, and hiding the panel while focus still sits on the minute listbox would
+        // strand keyboard focus (a browser drops it to <body>). The fallback must refocus the
+        // input INTERNALLY before the panel hides - focus never leaves, so no touch.
+        const user = userEvent.setup();
+        const fixture = await arrangeTimePicker({ value: utcTime(14, 5) });
+        await openPanel(fixture);
+        fixture.componentInstance.focusedMinute.set(30);
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+
+        // Act: Enter picks the hour (partial), the second Enter picks the minute and completes.
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+        await user.keyboard('{Enter}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Minute selected, panel closed, focus falls back to the input - not onto the
+        // (now hidden) listbox and never onto <body>.
+        expect(fixture.componentInstance.value()?.getUTCMinutes(), 'value should contain minute 30').toBe(30);
+        expect(fixture.componentInstance.isClockVisible(), 'panel should close after minute selection').toBe(false);
+        expect(document.activeElement, 'failed forward handoff should fall back to the input').toBe(getInput(fixture));
+        expect(document.activeElement, 'focus must never end up on the document body').not.toBe(document.body);
+        expect(touchSpy, 'internal fallback refocus should not emit touch').not.toHaveBeenCalled();
+      });
+
       it('should select minute on Space and close panel', async () => {
         // Arrange: Create component with value 14:05, panel open in the hour listbox and the
         // minute cursor seeded at 45.
@@ -2645,6 +2674,33 @@ describe('TimePicker', () => {
         } finally { // cleanup
           prevControl.remove();
         }
+      });
+
+      it('should return focus to the input on Shift+Tab when no focusable control precedes the picker', async () => {
+        // Arrange: Backward handoff with NOTHING focusable before the picker: FocusPrev from the
+        // input cannot resolve a target, and hiding the panel with focus still on the minute
+        // listbox would strand keyboard focus. The fallback must refocus the input internally.
+        const user = userEvent.setup();
+        const fixture = await arrangeFocusedMinute({ value: utcTime(14, 5) });
+        fixture.componentInstance.focusedMinute.set(30);
+        const touchSpy = vi.fn();
+        fixture.componentInstance.touch.subscribe(touchSpy);
+        const before = fixture.componentInstance.value();
+
+        // Act: Press Shift+Tab to try to move backwards out of the picker.
+        await user.keyboard('{Shift>}{Tab}{/Shift}');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        // Assert: Panel closed and cursors reset, but focus falls back to the input - not back
+        // to the (now hidden) listbox and never onto <body>.
+        expect(fixture.componentInstance.isClockVisible(), 'panel should close on Shift+Tab').toBe(false);
+        expect(fixture.componentInstance.focusedHour(), 'Shift+Tab should reset focused hour').toBeNull();
+        expect(fixture.componentInstance.focusedMinute(), 'Shift+Tab should reset focused minute').toBeNull();
+        expect(fixture.componentInstance.value(), 'Shift+Tab should not change value').toBe(before);
+        expect(document.activeElement, 'failed backward handoff should fall back to the input').toBe(getInput(fixture));
+        expect(document.activeElement, 'focus must never end up on the document body').not.toBe(document.body);
+        expect(touchSpy, 'internal fallback refocus should not emit touch').not.toHaveBeenCalled();
       });
 
       it('should clear value with Backspace from the minute listbox, close the panel and refocus input when canNull', async () => {

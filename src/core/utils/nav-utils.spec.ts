@@ -56,10 +56,11 @@ describe('NavUtils', () => {
         first.focus();
 
         // Act: Move forwards from the first button.
-        NavUtils.FocusNext(first);
+        const moved = NavUtils.FocusNext(first);
 
-        // Assert: Focus advanced to the element right after it.
+        // Assert: Focus advanced to the element right after it, and the move is reported.
         expect(document.activeElement, 'FocusNext should focus the following focusable element').toBe(focusedBy('nav-second'));
+        expect(moved, 'FocusNext should report a successful move').toBe(true);
       } finally { // cleanup
         row.remove();
       }
@@ -96,10 +97,11 @@ describe('NavUtils', () => {
         second.focus();
 
         // Act: Move forwards from the last control.
-        NavUtils.FocusNext(second);
+        const moved = NavUtils.FocusNext(second);
 
-        // Assert: There is no element after it, so focus did not move.
+        // Assert: There is no element after it, so focus did not move and the failure is reported.
         expect(document.activeElement, 'FocusNext must not move focus past the last control').toBe(focusedBy('nav-second'));
+        expect(moved, 'FocusNext should report a failed move when nothing follows').toBe(false);
       } finally { // cleanup
         row.remove();
       }
@@ -113,10 +115,11 @@ describe('NavUtils', () => {
 
       try {
         // Act: Call without a current element.
-        NavUtils.FocusNext(null);
+        const moved = NavUtils.FocusNext(null);
 
-        // Assert: Focus was not moved anywhere.
+        // Assert: Focus was not moved anywhere and the failure is reported.
         expect(document.activeElement, 'FocusNext(null) must be a no-op').toBe(document.body);
+        expect(moved, 'FocusNext(null) should report failure').toBe(false);
       } finally { // cleanup
         row.remove();
       }
@@ -132,12 +135,109 @@ describe('NavUtils', () => {
 
       try {
         // Act: Start from the non-focusable container.
-        NavUtils.FocusNext(container);
+        const moved = NavUtils.FocusNext(container);
 
         // Assert: A control that is not part of the focusable list resolves to no position.
         expect(document.activeElement, 'FocusNext from a non-focusable element must be a no-op').not.toBe(focusedBy('nav-inner'));
+        expect(moved, 'FocusNext from a non-focusable element should report failure').toBe(false);
       } finally { // cleanup
         container.remove();
+      }
+    });
+
+    it('should skip candidates hidden by the hidden attribute', () => {
+      // Arrange: A focusable button carrying the `hidden` attribute sits between two reachable ones.
+      const first = createButton('nav-first');
+      const hidden = createButton('nav-hidden');
+      hidden.hidden = true;
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, hidden, last);
+
+      try {
+        first.focus();
+
+        // Act: Move forwards past the hidden candidate.
+        const moved = NavUtils.FocusNext(first);
+
+        // Assert: The unreachable candidate was skipped, not focused.
+        expect(document.activeElement, 'FocusNext should skip a [hidden] candidate').toBe(focusedBy('nav-last'));
+        expect(moved, 'FocusNext should report the move past the hidden candidate').toBe(true);
+      } finally { // cleanup
+        row.remove();
+      }
+    });
+
+    it('should skip candidates inside an inert subtree', () => {
+      // Arrange: A button wrapped in an `inert` container sits between two reachable ones.
+      const first = createButton('nav-first');
+      const inertBox = document.createElement('div');
+      inertBox.setAttribute('inert', '');
+      inertBox.appendChild(createButton('nav-inert'));
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, inertBox, last);
+
+      try {
+        first.focus();
+
+        // Act: Move forwards past the inert candidate.
+        const moved = NavUtils.FocusNext(first);
+
+        // Assert: The candidate inside the inert subtree was skipped, not focused.
+        expect(document.activeElement, 'FocusNext should skip an [inert] candidate').toBe(focusedBy('nav-last'));
+        expect(moved, 'FocusNext should report the move past the inert candidate').toBe(true);
+      } finally { // cleanup
+        row.remove();
+      }
+    });
+
+    it('should skip candidates hidden by inline display:none or visibility:hidden', () => {
+      // Arrange: Two focusable buttons made unreachable through inline styles.
+      const first = createButton('nav-first');
+      const displayNone = createButton('nav-display-none');
+      displayNone.style.display = 'none';
+      const visibilityHidden = createButton('nav-visibility-hidden');
+      visibilityHidden.style.visibility = 'hidden';
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, displayNone, visibilityHidden, last);
+
+      try {
+        first.focus();
+
+        // Act: Move forwards past the style-hidden candidates.
+        const moved = NavUtils.FocusNext(first);
+
+        // Assert: Both unreachable candidates were skipped.
+        expect(document.activeElement, 'FocusNext should skip style-hidden candidates').toBe(focusedBy('nav-last'));
+        expect(moved, 'FocusNext should report the move past the style-hidden candidates').toBe(true);
+      } finally { // cleanup
+        row.remove();
+      }
+    });
+
+    it('should continue past a candidate whose focus() call silently fails', () => {
+      // Arrange: A candidate whose focus() no-ops (as a browser does for unreachable elements)
+      // sits between the focused first button and the real target.
+      const first = createButton('nav-first');
+      const stubborn = createButton('nav-stubborn');
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, stubborn, last);
+      const focusSpy = vi.spyOn(stubborn, 'focus').mockImplementation(() => {
+        // Simulates the browser rejecting focus on an unreachable element: no state change.
+      });
+
+      try {
+        first.focus();
+
+        // Act: Move forwards through the candidate that refuses focus.
+        const moved = NavUtils.FocusNext(first);
+
+        // Assert: The failed attempt was made once, then focus continued to the next candidate.
+        expect(focusSpy, 'FocusNext should attempt the failing candidate exactly once').toHaveBeenCalledTimes(1);
+        expect(document.activeElement, 'FocusNext should continue to the candidate after a failed focus()').toBe(focusedBy('nav-last'));
+        expect(moved, 'FocusNext should report the eventual successful move').toBe(true);
+      } finally { // cleanup
+        focusSpy.mockRestore();
+        row.remove();
       }
     });
   });
@@ -153,10 +253,11 @@ describe('NavUtils', () => {
         second.focus();
 
         // Act: Move backwards from the second button.
-        NavUtils.FocusPrev(second);
+        const moved = NavUtils.FocusPrev(second);
 
-        // Assert: Focus advanced to the element right before it.
+        // Assert: Focus advanced to the element right before it, and the move is reported.
         expect(document.activeElement, 'FocusPrev should focus the preceding focusable element').toBe(focusedBy('nav-first'));
+        expect(moved, 'FocusPrev should report a successful move').toBe(true);
       } finally { // cleanup
         row.remove();
       }
@@ -192,10 +293,11 @@ describe('NavUtils', () => {
         first.focus();
 
         // Act: Move backwards from the first control.
-        NavUtils.FocusPrev(first);
+        const moved = NavUtils.FocusPrev(first);
 
-        // Assert: There is no element before it, so focus did not move.
+        // Assert: There is no element before it, so focus did not move and the failure is reported.
         expect(document.activeElement, 'FocusPrev must not move focus before the first control').toBe(focusedBy('nav-first'));
+        expect(moved, 'FocusPrev should report a failed move when nothing precedes').toBe(false);
       } finally { // cleanup
         row.remove();
       }
@@ -209,11 +311,108 @@ describe('NavUtils', () => {
 
       try {
         // Act: Call without a current element.
-        NavUtils.FocusPrev(null);
+        const moved = NavUtils.FocusPrev(null);
 
-        // Assert: Focus was not moved anywhere.
+        // Assert: Focus was not moved anywhere and the failure is reported.
         expect(document.activeElement, 'FocusPrev(null) must be a no-op').toBe(document.body);
+        expect(moved, 'FocusPrev(null) should report failure').toBe(false);
       } finally { // cleanup
+        row.remove();
+      }
+    });
+
+    it('should skip candidates hidden by the hidden attribute', () => {
+      // Arrange: A focusable button carrying the `hidden` attribute sits between two reachable ones.
+      const first = createButton('nav-first');
+      const hidden = createButton('nav-hidden');
+      hidden.hidden = true;
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, hidden, last);
+
+      try {
+        last.focus();
+
+        // Act: Move backwards past the hidden candidate.
+        const moved = NavUtils.FocusPrev(last);
+
+        // Assert: The unreachable candidate was skipped, not focused.
+        expect(document.activeElement, 'FocusPrev should skip a [hidden] candidate').toBe(focusedBy('nav-first'));
+        expect(moved, 'FocusPrev should report the move past the hidden candidate').toBe(true);
+      } finally { // cleanup
+        row.remove();
+      }
+    });
+
+    it('should skip candidates inside an inert subtree', () => {
+      // Arrange: A button wrapped in an `inert` container sits between two reachable ones.
+      const first = createButton('nav-first');
+      const inertBox = document.createElement('div');
+      inertBox.setAttribute('inert', '');
+      inertBox.appendChild(createButton('nav-inert'));
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, inertBox, last);
+
+      try {
+        last.focus();
+
+        // Act: Move backwards past the inert candidate.
+        const moved = NavUtils.FocusPrev(last);
+
+        // Assert: The candidate inside the inert subtree was skipped, not focused.
+        expect(document.activeElement, 'FocusPrev should skip an [inert] candidate').toBe(focusedBy('nav-first'));
+        expect(moved, 'FocusPrev should report the move past the inert candidate').toBe(true);
+      } finally { // cleanup
+        row.remove();
+      }
+    });
+
+    it('should skip candidates hidden by inline display:none or visibility:hidden', () => {
+      // Arrange: Two focusable buttons made unreachable through inline styles.
+      const first = createButton('nav-first');
+      const displayNone = createButton('nav-display-none');
+      displayNone.style.display = 'none';
+      const visibilityHidden = createButton('nav-visibility-hidden');
+      visibilityHidden.style.visibility = 'hidden';
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, displayNone, visibilityHidden, last);
+
+      try {
+        last.focus();
+
+        // Act: Move backwards past the style-hidden candidates.
+        const moved = NavUtils.FocusPrev(last);
+
+        // Assert: Both unreachable candidates were skipped.
+        expect(document.activeElement, 'FocusPrev should skip style-hidden candidates').toBe(focusedBy('nav-first'));
+        expect(moved, 'FocusPrev should report the move past the style-hidden candidates').toBe(true);
+      } finally { // cleanup
+        row.remove();
+      }
+    });
+
+    it('should continue past a candidate whose focus() call silently fails', () => {
+      // Arrange: A candidate whose focus() no-ops (as a browser does for unreachable elements)
+      // sits between the focused last button and the real target.
+      const first = createButton('nav-first');
+      const stubborn = createButton('nav-stubborn');
+      const last = createButton('nav-last');
+      const row = arrangeRow(first, stubborn, last);
+      const focusSpy = vi.spyOn(stubborn, 'focus').mockImplementation(() => {
+        // Simulates the browser rejecting focus on an unreachable element: no state change.
+      });
+
+      try {
+        last.focus();
+
+        // Act: Move backwards through the candidate that refuses focus.
+        const moved = NavUtils.FocusPrev(last);
+
+        // Assert: The failed attempt was made once, then focus continued to the previous candidate.
+        expect(focusSpy, 'FocusPrev should attempt the failing candidate exactly once').toHaveBeenCalledTimes(1);
+        expect(document.activeElement, 'FocusPrev should continue to the candidate after a failed focus()').toBe(focusedBy('nav-first'));
+        expect(moved, 'FocusPrev should report the eventual successful move').toBe(true);
+      } finally { // cleanup
+        focusSpy.mockRestore();
         row.remove();
       }
     });
