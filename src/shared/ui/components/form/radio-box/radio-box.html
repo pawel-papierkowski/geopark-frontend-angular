@@ -27,23 +27,23 @@
 
     (focusout)="handleFocusout($event)">
 
-    @for (option of options(); track $index) {
+    @for (view of optionViews(); track $index) {
       <div
         #optRef
         [attr.data-testid]="resolvedIdent()+'_'+$index"
-        [id]="optionId($index)"
+        [id]="view.id"
         class="radiobox-option"
 
         role="radio"
         [tabindex]="$index === tabStopIndex() ? 0 : -1"
 
-        [attr.aria-checked]="option === value()"
+        [attr.aria-checked]="view.option === value()"
 
         (mousedown)="blockIfDisabled($event)"
-        (click)="selectOption(option, $index)"
+        (click)="selectOption(view.option, $index)"
         (keydown)="handleKeydown($event)">
-        <div class="radiobox-circle" [class.mark]="option === value()"></div>
-        <div class="radiobox-label">{{ showOption(option) }}</div>
+        <div class="radiobox-circle" [class.mark]="view.option === value()"></div>
+        <div class="radiobox-label">{{ view.text }}</div>
       </div>
     }
   </div>

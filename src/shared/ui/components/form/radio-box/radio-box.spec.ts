@@ -372,6 +372,36 @@ describe('RadioBox', () => {
       expect(labels[0].textContent, 'first option should switch to Polish text').toContain('Opcja Pierwsza');
       expect(labels[1].textContent, 'second option should switch to Polish text').toContain('Opcja Druga');
     });
+
+    it('should translate options once instead of on every change detection pass', async () => {
+      // Arrange: Render with langPrefix, so every option carries a translation lookup.
+      const fixture = await arrangeRadioBox({ options: ['a', 'b'], langPrefix: 'test.options' });
+      const translateService = TestBed.inject(TranslateService);
+      translateService.setTranslation('en', { test: { options: { a: 'Option One', b: 'Option Two' } } });
+      await firstValueFrom(translateService.use('en'));
+      await fixture.whenStable();
+      const labels = fixture.nativeElement.querySelectorAll('.radiobox-label');
+      expect(labels[0].textContent, 'precondition: first option should show English text').toContain('Option One');
+      expect(labels[1].textContent, 'precondition: second option should show English text').toContain('Option Two');
+      const instantSpy = vi.spyOn(translateService, 'instant');
+
+      try {
+        // Act: Several change-detection passes plus a selection (a value change) - translations
+        // are precomputed, so none of them may look a key up again.
+        fixture.detectChanges();
+        fixture.detectChanges();
+        fixture.nativeElement.querySelectorAll('.radiobox-option')[1].click();
+        fixture.detectChanges();
+        fixture.detectChanges();
+
+        // Assert: No translation work per pass, and the labels still show the translations.
+        expect(instantSpy, 'change detection passes must not re-run translation lookups').not.toHaveBeenCalled();
+        expect(labels[0].textContent, 'first option should keep showing English text').toContain('Option One');
+        expect(labels[1].textContent, 'second option should keep showing English text').toContain('Option Two');
+      } finally { // cleanup
+        instantSpy.mockRestore();
+      }
+    });
   });
 
   describe('accessibility', () => {

@@ -97,19 +97,28 @@ export class RadioBox implements FormValueControl<number | string | null> {
     return checked >= 0 ? checked : 0;
   });
 
+  /**
+   * Render-ready option views: raw option value (kept available for selection/comparison),
+   * element id and display text (translated when `langPrefix` is set), all precomputed ONCE
+   * per options/language/ident change instead of being derived in the template on every
+   * change-detection pass. Template bindings therefore only read plain fields - no method
+   * calls and no `translateService.instant` lookups (one per option per pass) while the
+   * options are on screen. Translation lookups inside `instant` are reactive, so a language
+   * change recomputes the views (same pattern as `ComboBox.optionViews`).
+   */
+  public readonly optionViews = computed(() =>
+    this.options().map((option, index) => ({
+      option,
+      id: this.resolvedIdent() + '_opt_' + index,
+      text: this.showOption(option),
+    })),
+  );
+
   // FUNCTIONS
 
   /**
-   * Id of the option element at given index.
-   * @param index Index of the option.
-   * @returns Id in form `<ident>_opt_<index>`.
-   */
-  public optionId(index: number): string {
-    return this.resolvedIdent() + '_opt_' + index;
-  }
-
-  /**
-   * Show option on webpage.
+   * Display text of a single option. Consumed by `optionViews` (never called from the
+   * template, so translations are not looked up on every change-detection pass).
    * @param option Current option.
    * @returns Text of option, possibly translated.
    */
