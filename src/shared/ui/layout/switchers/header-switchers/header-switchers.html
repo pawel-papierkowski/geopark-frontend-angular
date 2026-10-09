@@ -1,5 +1,6 @@
 <div class="switchers">
   <section-switcher [currSection]="currSection()" />
-  <div>•</div>
+  <!-- Decorative separator between the two switchers; hidden from AT so screen readers don't announce "bullet". -->
+  <div aria-hidden="true" data-testid="header-switchers.separator">•</div>
   <lang-switcher />
 </div>
