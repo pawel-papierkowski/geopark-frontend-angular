@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 
 import { Section } from '@/shared/config/types';
 
-import { HeaderSwitchers } from '@/shared/ui/layout/switchers/header-switchers/header-switchers';
+import { HeaderSwitchers } from '@/layout/switchers/header-switchers/header-switchers';
 import { NavPublic } from '@/layout/public/nav/nav-public';
 import { NavDev } from '@/layout/dev/nav/nav-dev';
 import { NavAdmin } from '@/layout/admin/nav/nav-admin';

@@ -2,7 +2,7 @@ import type { SectionRoute } from '@/shared/config/types';
 
 import { PageNotFound } from '@/layout/not-found/page-not-found';
 
-import { SectionLayout } from '@/shared/ui/layout/section-layout/section-layout';
+import { SectionLayout } from '@/layout/section-layout/section-layout';
 import { PageLanding } from './pages/landing/page-landing';
 
 /**

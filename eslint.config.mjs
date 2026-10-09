@@ -41,6 +41,25 @@ const filenameConventionPlugin = {
   },
 };
 
+/**
+ * Shared options of `no-restricted-imports` for application sources - the RxJS guard below.
+ * Kept as a constant so the layering overrides further down can extend the same restriction
+ * without dropping it (ESLint replaces a rule's options wholesale, it does not merge them).
+ */
+const rxjsRestrictedPaths = [
+  {
+    name: 'rxjs/operators',
+    message: "Import operators from 'rxjs' instead, e.g. `import { map } from 'rxjs';`.",
+  },
+];
+
+const rxjsRestrictedPatterns = [
+  {
+    group: ['rxjs/add/**'],
+    message: "RxJS 5 patch imports are removed; import the operator from 'rxjs' instead, e.g. `import { map } from 'rxjs';`.",
+  },
+];
+
 export default defineConfig([
   globalIgnores([
     '**/node_modules/**',
@@ -86,16 +105,45 @@ export default defineConfig([
       // 'rxjs/operators' is a compatibility path kept only for RxJS 6 code, and 'rxjs/add/*' are
       // RxJS 5 static patch imports removed in RxJS 7.
       'no-restricted-imports': ['error', {
-        paths: [
+        paths: rxjsRestrictedPaths,
+        patterns: rxjsRestrictedPatterns,
+      }],
+    },
+  },
+  {
+    // Layering guard (AGENTS.md): `shared` is a standalone leaf - reusable code that sits
+    // BELOW core and must not reach up into app infrastructure, app chrome or features.
+    // Dependencies point one way: shared <- core <- layout/features/app.
+    files: ['src/shared/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: rxjsRestrictedPaths,
+        patterns: [
+          ...rxjsRestrictedPatterns,
           {
-            name: 'rxjs/operators',
-            message: "Import operators from 'rxjs' instead, e.g. `import { map } from 'rxjs';`.",
+            group: ['@/core/**'],
+            message: "shared is a standalone leaf and must not import core. Move the dependency down into src/shared (a generic utility) or receive it from the caller (input/token) instead.",
+          },
+          {
+            group: ['@/layout/**', '@/features/**', '@/app/**'],
+            message: "shared must not import layout/features/app - those layers depend on shared, not the other way around.",
           },
         ],
+      }],
+    },
+  },
+  {
+    // Layering guard (AGENTS.md): `core` may build on `shared`, but sits below the
+    // application-facing layers (layout, features, app) and must not import them.
+    files: ['src/core/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: rxjsRestrictedPaths,
         patterns: [
+          ...rxjsRestrictedPatterns,
           {
-            group: ['rxjs/add/**'],
-            message: "RxJS 5 patch imports are removed; import the operator from 'rxjs' instead, e.g. `import { map } from 'rxjs';`.",
+            group: ['@/layout/**', '@/features/**', '@/app/**'],
+            message: "core sits below layout/features/app and must not import them. Keep application-specific wiring in the layer that needs it.",
           },
         ],
       }],

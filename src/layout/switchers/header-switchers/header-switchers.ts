@@ -2,8 +2,8 @@ import { Component, input } from '@angular/core';
 
 import { Section } from '@/shared/config/types';
 
-import { LangSwitcher } from '@/shared/ui/layout/switchers/lang-switcher/lang-switcher';
-import { SectionSwitcher } from '@/shared/ui/layout/switchers/section-switcher/section-switcher';
+import { LangSwitcher } from '@/layout/switchers/lang-switcher/lang-switcher';
+import { SectionSwitcher } from '@/layout/switchers/section-switcher/section-switcher';
 
 /**
  * Contains all switchers at correct place in header.

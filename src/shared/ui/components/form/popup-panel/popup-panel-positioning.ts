@@ -1,6 +1,6 @@
 import { signal, type WritableSignal } from '@angular/core';
 
-import { WindowUtils, type PanelInsets, type PanelPlacement } from '@/core/utils/window-utils';
+import { resolvePanelPlacement, type PanelInsets, type PanelPlacement } from './popup-panel-placement';
 
 /**
  * Placement state of ONE anchored popup panel: owns the inline insets signal plus the
@@ -11,8 +11,8 @@ import { WindowUtils, type PanelInsets, type PanelPlacement } from '@/core/utils
  * persist, and having both `top` and `bottom` non-auto would over-constrain the absolutely
  * positioned panel. `resetBaseline` restores the known-good baseline on every open, before the
  * panel renders, so the later `resolve` measurement always judges overflow under the baseline
- * placement - never under leftovers of the previous open (see
- * `WindowUtils.resolvePanelPlacement` for the full measurement contract).
+   * placement - never under leftovers of the previous open (see `resolvePanelPlacement`
+   * for the full measurement contract).
  *
  * Bind `containerStyle` to the panel's inline style and let the component's open path call
  * `resetBaseline` -> render -> `resolve` exactly once per open. A component with a superseded
@@ -48,11 +48,11 @@ export class PanelPositioning {
   /**
    * Resolve the panel placement so it does not overflow the viewport and write the result to
    * `containerStyle`. The panel must be VISIBLE and currently rendered under the baseline
-   * (call `resetBaseline` first) - see `WindowUtils.resolvePanelPlacement`.
+   * (call `resetBaseline` first) - see `resolvePanelPlacement`.
    * @param anchor Panel's containing block (the element the placement percentages resolve against).
    * @param panel Panel element to measure.
    */
   public resolve(anchor: HTMLElement, panel: HTMLElement): void {
-    this.containerStyle.set(WindowUtils.resolvePanelPlacement(anchor, panel, this.placement));
+    this.containerStyle.set(resolvePanelPlacement(anchor, panel, this.placement));
   }
 }

@@ -210,7 +210,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /**
    * Resolve the options list placement so it does not overflow the viewport.
    * Runs once per open, right after the list rendered under the baseline - the measurement
-   * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
+   * contract, viewport and margin details are documented on `resolvePanelPlacement`.
    * Work from a superseded open (list closed or reopened before the render settled) is dropped,
    * so the measurement can never run under a placement other than the baseline.
    * The same pass resets the list's own scroll to the top and reveals the highlighted option,

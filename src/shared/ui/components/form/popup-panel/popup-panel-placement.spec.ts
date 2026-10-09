@@ -1,12 +1,12 @@
-import { WindowUtils, type PanelPlacement } from './window-utils';
+import { resolvePanelPlacement, type PanelPlacement } from './popup-panel-placement';
 
 /**
- * Unit tests of WindowUtils.
+ * Unit tests of resolvePanelPlacement.
  * Note: jsdom performs no layout, so `documentElement.clientWidth/clientHeight` (the viewport
  * dimensions the utility checks against) always report 0 - they are stubbed to viewport-sized
  * values, and panel rects are mocked.
  */
-describe('WindowUtils', () => {
+describe('popup-panel-placement', () => {
   /** Viewport width assumed by the tests (real jsdom value is 0). */
   const VIEWPORT_WIDTH = 1024;
   /** Viewport height assumed by the tests (real jsdom value is 0). */
@@ -70,7 +70,7 @@ describe('WindowUtils', () => {
       const anchor = arrangeAnchor(ANCHOR_TOP_WITH_ROOM);
 
       // Act: Resolve placement.
-      const result = WindowUtils.resolvePanelPlacement(anchor, panel, placement);
+      const result = resolvePanelPlacement(anchor, panel, placement);
 
       // Assert: Baseline is returned as-is (same reference, so writing it back is a no-op).
       expect(result, 'fitting panel should keep the baseline').toBe(placement.baseline);
@@ -82,7 +82,7 @@ describe('WindowUtils', () => {
       const anchor = arrangeAnchor(ANCHOR_TOP_WITH_ROOM);
 
       // Act: Resolve placement.
-      const result = WindowUtils.resolvePanelPlacement(anchor, panel, placement);
+      const result = resolvePanelPlacement(anchor, panel, placement);
 
       // Assert: Horizontal axis flipped, vertical axis untouched.
       expect(result, 'right overflow should flip the horizontal axis').toEqual({
@@ -99,7 +99,7 @@ describe('WindowUtils', () => {
       const anchor = arrangeAnchor(ANCHOR_TOP_WITH_ROOM);
 
       // Act: Resolve placement.
-      const result = WindowUtils.resolvePanelPlacement(anchor, panel, placement);
+      const result = resolvePanelPlacement(anchor, panel, placement);
 
       // Assert: Vertical axis flipped, horizontal axis untouched.
       expect(result, 'bottom overflow should flip the vertical axis').toEqual({
@@ -116,7 +116,7 @@ describe('WindowUtils', () => {
       const anchor = arrangeAnchor(ANCHOR_TOP_WITH_ROOM);
 
       // Act: Resolve placement.
-      const result = WindowUtils.resolvePanelPlacement(anchor, panel, placement);
+      const result = resolvePanelPlacement(anchor, panel, placement);
 
       // Assert: Both axes flipped.
       expect(result, 'overflow on both axes should flip both axes').toEqual({
@@ -134,7 +134,7 @@ describe('WindowUtils', () => {
       const anchor = arrangeAnchor(ANCHOR_TOP_WITH_ROOM);
 
       // Act: Resolve placement.
-      const result = WindowUtils.resolvePanelPlacement(anchor, panel, placementNoFlipY);
+      const result = resolvePanelPlacement(anchor, panel, placementNoFlipY);
 
       // Assert: Missing flip leaves the baseline insets of that axis in place.
       expect(result, 'axis without configured flip should keep its baseline insets').toEqual({
@@ -151,7 +151,7 @@ describe('WindowUtils', () => {
       const anchor = arrangeAnchor(ANCHOR_TOP_NO_ROOM);
 
       // Act: Resolve placement.
-      const result = WindowUtils.resolvePanelPlacement(anchor, panel, placement);
+      const result = resolvePanelPlacement(anchor, panel, placement);
 
       // Assert: Baseline is returned as-is - the panel stays below the anchor so the user can
       // scroll down instead of being pushed off the top of the viewport.
@@ -164,7 +164,7 @@ describe('WindowUtils', () => {
       const anchor = arrangeAnchor(ANCHOR_TOP_NO_ROOM);
 
       // Act: Resolve placement.
-      const result = WindowUtils.resolvePanelPlacement(anchor, panel, placement);
+      const result = resolvePanelPlacement(anchor, panel, placement);
 
       // Assert: Horizontal axis flipped, vertical axis left at the baseline.
       expect(result, 'only the horizontal axis should flip without room above').toEqual({

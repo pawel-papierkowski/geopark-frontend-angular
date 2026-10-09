@@ -2,7 +2,7 @@ import { Component, effect, inject, signal, computed, viewChild, ElementRef } fr
 
 import { TranslateService } from '@ngx-translate/core';
 
-import { TimeUtils } from '@/core/utils/time-utils';
+import { TimeUtils } from '@/shared/utils/time/time-utils';
 import { forRender } from '@/shared/utils/render/after-render';
 import { popupPanelPlacement } from '@/shared/ui/components/form/popup-panel/popup-panel-placement';
 import { PopupInputBase } from '@/shared/ui/components/form/popup-panel/popup-input-base';

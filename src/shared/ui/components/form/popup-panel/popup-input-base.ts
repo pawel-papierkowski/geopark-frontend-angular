@@ -1,8 +1,8 @@
 import { Directive, effect, inject, Injector, model, input, output, signal, computed, viewChild, ElementRef, DOCUMENT, type WritableSignal } from '@angular/core';
 import { FormValueControl } from '@angular/forms/signals';
 
-import { NavUtils } from '@/core/utils/nav-utils';
-import type { PanelInsets, PanelPlacement } from '@/core/utils/window-utils';
+import { NavUtils } from '@/shared/utils/a11y/nav-utils';
+import type { PanelInsets, PanelPlacement } from '@/shared/ui/components/form/popup-panel/popup-panel-placement';
 import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { forRender } from '@/shared/utils/render/after-render';
 
@@ -39,7 +39,7 @@ import { PanelPositioning } from './popup-panel-positioning';
  * - `suppressFocusOpen` is set only synchronously around the programmatic `focus()` call,
  *   which dispatches focus synchronously, so the paired focus handler skips auto-open.
  * - The panel baseline is re-applied BEFORE the panel renders on every open, and placement is
- *   measured once per open under that baseline (see `WindowUtils.resolvePanelPlacement`).
+ *   measured once per open under that baseline (see `resolvePanelPlacement`).
  *
  * @template TValue Type of the value the control edits (the model additionally allows null).
  */
@@ -196,7 +196,7 @@ export abstract class PopupInputBase<TValue> implements FormValueControl<TValue 
   /**
    * Resolve the panel placement so it does not overflow the viewport.
    * Runs once per open, right after the panel rendered under the baseline - the measurement
-   * contract, viewport and margin details are documented on `WindowUtils.resolvePanelPlacement`.
+   * contract, viewport and margin details are documented on `resolvePanelPlacement`.
    */
   private positionPanel(): void {
     this.positioning.resolve(this.pickerRef().nativeElement, this.panelRef().nativeElement);

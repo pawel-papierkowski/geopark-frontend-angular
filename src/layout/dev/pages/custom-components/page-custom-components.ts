@@ -8,7 +8,7 @@ import { CheckBox } from '@/shared/ui/components/form/check-box/check-box';
 import { RadioBox } from '@/shared/ui/components/form/radio-box/radio-box';
 import { ComboBox } from '@/shared/ui/components/form/combo-box/combo-box';
 import { DateTimePicker } from '@/shared/ui/components/form/date-time-picker/date-time-picker';
-import { TimeUtils } from '@/core/utils/time-utils';
+import { TimeUtils } from '@/shared/utils/time/time-utils';
 
 /** Mode of inputs. */
 export enum EnInputMode {
