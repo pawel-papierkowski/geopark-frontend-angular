@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal, computed, viewChild, ElementRef } from '@angular/core';
+import { Component, effect, inject, signal, computed, viewChildren, ElementRef, Signal, WritableSignal } from '@angular/core';
 
 import { TranslateService } from '@ngx-translate/core';
 
@@ -32,6 +32,54 @@ type ColumnSession = number | 'untouched' | 'discarded';
  * - `null` - nothing happened (component disabled).
  */
 type PickOutcome = 'committed' | 'cleared' | 'picked' | 'unpicked' | null;
+
+/** Identifies one of the two clock columns: the left (hours) or the right (minutes) listbox. */
+type ColumnKey = 'hour' | 'minute';
+
+/**
+ * Everything that differs between the hour and the minute column. The pick, keyboard, scroll
+ * and render logic is written once and parameterized by this descriptor (see
+ * `TimePicker.columns`), so a rule (wrap, paging, focus flow) can never exist in only one
+ * column and silently drift apart in the other.
+ */
+interface ClockColumn {
+  /** Identifies the column in handlers, `activeColumn` and the session state. */
+  readonly key: ColumnKey;
+  /** Last option value: 23 for hours, 59 for minutes - bounds every cursor move. */
+  readonly max: number;
+  /** Element-id / data-testid suffix of the options: `_opt_h14` vs `_opt_m30`. */
+  readonly suffix: 'h' | 'm';
+  /** Column-specific class on every option (test/styling hook, e.g. `.time-minute`). */
+  readonly optionClass: string;
+  /** Option values in display order. */
+  readonly items: readonly number[];
+  /** Column header text and the listbox's accessible name (same translation key). */
+  readonly label: Signal<string>;
+  /** Keyboard-focus cursor of the column. */
+  readonly focused: WritableSignal<number | null>;
+  /** Currently viewed (local-time) part driving the `curr` marker. */
+  readonly view: WritableSignal<number | null>;
+  /** Highlighted option: this session's pick ?? the committed value's part; null when discarded. */
+  readonly selected: Signal<number | null>;
+  /** aria-activedescendant of the listbox; undefined while the column is not the active one. */
+  readonly activeDesc: Signal<string | undefined>;
+  /** Arrow key that moves keyboard focus to the OTHER column (the mirrored pair). */
+  readonly switchKey: 'ArrowRight' | 'ArrowLeft';
+  /** The scrollable listbox element. */
+  readonly element: () => HTMLElement;
+}
+
+/**
+ * Derive a column's highlighted option from its session and the committed value's part.
+ * @param session The column's session state.
+ * @param committed The committed value's hour/minute, or null when no value is set.
+ * @returns Highlighted option, or null when the column was discarded/empty.
+ */
+function highlightOf(session: ColumnSession, committed: number | null): number | null {
+  if (typeof session === 'number') return session;
+  if (session === 'discarded') return null;
+  return committed;
+}
 
 /**
  * This is a time picker. Uses the `Date` class for both input and output. Do not use it directly.
@@ -95,10 +143,31 @@ export class TimePicker extends PopupInputBase<Date> {
 
   // REFERENCES
 
-  /** Reference to hour listbox. */
-  public hourRef = viewChild.required<ElementRef<HTMLDivElement>>('hourRef');
-  /** Reference to minute listbox. */
-  public minuteRef = viewChild.required<ElementRef<HTMLDivElement>>('minuteRef');
+  /**
+   * Template refs of the two clock listboxes, collected in creation order (hour first, minute
+   * second - the order of `columnList`). Both listboxes render from the single column block in
+   * the template, so they share one ref name; `hourRef`/`minuteRef` re-expose them positionally.
+   */
+  private readonly columnElements = viewChildren<ElementRef<HTMLDivElement>>('colRef');
+
+  /**
+   * Reference to the hour listbox (first column). Throws when the view is not rendered yet,
+   * the same contract the previous `viewChild.required` had.
+   */
+  public hourRef = computed(() => this.columnElementAt(0));
+  /** Reference to the minute listbox (second column); see `hourRef`. */
+  public minuteRef = computed(() => this.columnElementAt(1));
+
+  /**
+   * The listbox element ref of a column by its display position (0 = hour, 1 = minute).
+   * @param index Position of the column in `columnList`.
+   * @returns The element ref of that column.
+   */
+  private columnElementAt(index: number): ElementRef<HTMLDivElement> {
+    const ref = this.columnElements()[index];
+    if (ref === undefined) throw new Error('TimePicker: clock column is not rendered yet.');
+    return ref;
+  }
 
   // SIGNALS
 
@@ -109,7 +178,7 @@ export class TimePicker extends PopupInputBase<Date> {
   /** Keyboard-focus minute index. Set when panel opens, updated via arrow navigation. */
   public focusedMinute = signal<number | null>(null);
   /** Which listbox column currently has keyboard focus. */
-  public activeColumn = signal<'hour' | 'minute'>('hour');
+  public activeColumn = signal<ColumnKey>('hour');
 
   /** Currently viewed hour. */
   public viewHour = signal<number | null>(null);
@@ -117,13 +186,14 @@ export class TimePicker extends PopupInputBase<Date> {
   public viewMinute = signal<number | null>(null);
 
   /**
-   * Pick made in the hour column during the CURRENT panel session (see `ColumnSession`).
+   * Pick made in each column during the CURRENT panel session (see `ColumnSession`).
    * Starts `'untouched'` on open and is reset in `hidePanel`, so a close without a complete
    * selection silently discards the pick - `value` is only written when both columns resolve.
    */
-  private hourSession = signal<ColumnSession>('untouched');
-  /** Pick made in the minute column during the CURRENT panel session; see `hourSession`. */
-  private minuteSession = signal<ColumnSession>('untouched');
+  private readonly sessions: Record<ColumnKey, WritableSignal<ColumnSession>> = {
+    hour: signal<ColumnSession>('untouched'),
+    minute: signal<ColumnSession>('untouched'),
+  };
 
   // COMPUTED
 
@@ -132,38 +202,12 @@ export class TimePicker extends PopupInputBase<Date> {
    * committed value's hour while the column is `'untouched'`, nothing after it was discarded.
    * Drives `.selected`/`aria-selected`, the scroll target on open and the keyboard seeds.
    */
-  public selectedHour = computed<number | null>(() => {
-    const session = this.hourSession();
-    if (typeof session === 'number') return session;
-    if (session === 'discarded') return null;
-    return this.normalizedValue()?.getUTCHours() ?? null;
-  });
+  public selectedHour = computed<number | null>(() =>
+    highlightOf(this.sessions.hour(), this.normalizedValue()?.getUTCHours() ?? null));
 
   /** Currently highlighted minute in the column; mirrors `selectedHour`. */
-  public selectedMinute = computed<number | null>(() => {
-    const session = this.minuteSession();
-    if (typeof session === 'number') return session;
-    if (session === 'discarded') return null;
-    return this.normalizedValue()?.getUTCMinutes() ?? null;
-  });
-
-  /**
-   * aria-activedescendant value for the hour listbox. Gated on `activeColumn`: the attribute
-   * belongs only to the listbox that holds DOM focus (mirrors the `.focused` ring gating in
-   * the template), otherwise the inactive column would keep announcing an active option.
-   */
-  public hourActiveDesc = computed(() => {
-    if (this.activeColumn() !== 'hour' || this.focusedHour() === null) return undefined;
-    return `${this.ident()}_opt_h${this.focusedHour()}`;
-  });
-  /**
-   * aria-activedescendant value for the minute listbox. Gated on `activeColumn`, see
-   * `hourActiveDesc`.
-   */
-  public minuteActiveDesc = computed(() => {
-    if (this.activeColumn() !== 'minute' || this.focusedMinute() === null) return undefined;
-    return `${this.ident()}_opt_m${this.focusedMinute()}`;
-  });
+  public selectedMinute = computed<number | null>(() =>
+    highlightOf(this.sessions.minute(), this.normalizedValue()?.getUTCMinutes() ?? null));
 
   /**
    * Compute currently displayed time value in time input. Always a string (never null), so
@@ -192,6 +236,48 @@ export class TimePicker extends PopupInputBase<Date> {
 
   /** Name of this component for dev-only diagnostics (see `PopupInputBase.componentName`). */
   protected readonly componentName = 'time-picker';
+
+  // COLUMNS
+
+  /**
+   * Single source of truth for the two clock columns: option lists, keyboard bounds, id
+   * suffixes and the per-column signals every shared handler is parameterized by. The template
+   * renders both listboxes from `columnList` (the same objects, in display order), so the
+   * columns can only differ where this descriptor says they do.
+   */
+  private readonly columns: Record<ColumnKey, ClockColumn> = {
+    hour: {
+      key: 'hour',
+      max: 23,
+      suffix: 'h',
+      optionClass: 'time-hour',
+      items: this.hours,
+      label: this.hourLabel,
+      focused: this.focusedHour,
+      view: this.viewHour,
+      selected: this.selectedHour,
+      activeDesc: computed(() => this.activeDescFor('hour')),
+      switchKey: 'ArrowRight',
+      element: () => this.hourRef().nativeElement,
+    },
+    minute: {
+      key: 'minute',
+      max: 59,
+      suffix: 'm',
+      optionClass: 'time-minute',
+      items: this.minutes,
+      label: this.minuteLabel,
+      focused: this.focusedMinute,
+      view: this.viewMinute,
+      selected: this.selectedMinute,
+      activeDesc: computed(() => this.activeDescFor('minute')),
+      switchKey: 'ArrowLeft',
+      element: () => this.minuteRef().nativeElement,
+    },
+  };
+
+  /** Clock columns in display order (hours, minutes) - what the template iterates over. */
+  public readonly columnList: readonly ClockColumn[] = [this.columns.hour, this.columns.minute];
 
   constructor() {
     super(popupPanelPlacement);
@@ -227,12 +313,11 @@ export class TimePicker extends PopupInputBase<Date> {
    * the (possibly changed) selection. The visible flag is already cleared by `hidePanel`.
    */
   protected resetOnClose(): void {
-    this.focusedHour.set(null);
-    this.focusedMinute.set(null);
-    this.hourSession.set('untouched');
-    this.minuteSession.set('untouched');
-    this.viewHour.set(null);
-    this.viewMinute.set(null);
+    for (const col of Object.values(this.columns)) {
+      col.focused.set(null);
+      this.sessions[col.key].set('untouched');
+      col.view.set(null);
+    }
   }
 
   // GENERAL
@@ -249,7 +334,27 @@ export class TimePicker extends PopupInputBase<Date> {
     this.viewMinute.set(date.getMinutes());
   }
 
-  //
+  /**
+   * The column opposite to the given one (the picker has exactly two).
+   * @param column Starting column.
+   * @returns The other column's key.
+   */
+  private otherColumn(column: ColumnKey): ColumnKey {
+    return column === 'hour' ? 'minute' : 'hour';
+  }
+
+  /**
+   * aria-activedescendant value for a listbox. Gated on `activeColumn`: the attribute belongs
+   * only to the listbox that holds DOM focus (mirrors the `.focused` ring gating in the
+   * template), otherwise the inactive column would keep announcing an active option.
+   * @param column Which listbox to compute the attribute for.
+   * @returns The active option's id, or undefined when the column is not keyboard-active.
+   */
+  private activeDescFor(column: ColumnKey): string | undefined {
+    const col = this.columns[column];
+    if (this.activeColumn() !== column || col.focused() === null) return undefined;
+    return `${this.ident()}_opt_${col.suffix}${col.focused()}`;
+  }
 
   /**
    * Apply one pick (click or Enter) to the given column's session and, when it completes the
@@ -265,22 +370,15 @@ export class TimePicker extends PopupInputBase<Date> {
    * @param picked Hour or minute value of the picked option.
    * @returns What the pick did; null when the component is disabled.
    */
-  private applyPick(column: 'hour' | 'minute', picked: number): PickOutcome {
+  private applyPick(column: ColumnKey, picked: number): PickOutcome {
     if (this.disabled()) return null;
 
-    if (column === 'hour') {
-      this.focusedHour.set(picked);
-    } else {
-      this.focusedMinute.set(picked);
-    }
+    const col = this.columns[column];
+    col.focused.set(picked);
 
-    const current = column === 'hour' ? this.hourSession() : this.minuteSession();
-    const next: ColumnSession = current === picked && this.canNull() ? 'discarded' : picked;
-    if (column === 'hour') {
-      this.hourSession.set(next);
-    } else {
-      this.minuteSession.set(next);
-    }
+    const session = this.sessions[column];
+    const next: ColumnSession = session() === picked && this.canNull() ? 'discarded' : picked;
+    session.set(next);
 
     const completed = this.tryCommit();
     if (completed !== null) return completed;
@@ -301,8 +399,8 @@ export class TimePicker extends PopupInputBase<Date> {
    * @returns `'committed'`/`'cleared'` when `value` was written, null when still partial.
    */
   private tryCommit(): 'committed' | 'cleared' | null {
-    const h = this.hourSession();
-    const m = this.minuteSession();
+    const h = this.sessions.hour();
+    const m = this.sessions.minute();
 
     if (typeof h === 'number' && typeof m === 'number') {
       const current = this.normalizedValue();
@@ -353,36 +451,26 @@ export class TimePicker extends PopupInputBase<Date> {
 
     // If time is not selected, use current time as scroll target.
     const targetClass = this.normalizedValue() === null ? '.curr' : '.selected';
-    const selHourElement = this.hourRef().nativeElement.querySelector<HTMLElement>(targetClass);
-    const selMinuteElement = this.minuteRef().nativeElement.querySelector<HTMLElement>(targetClass);
-    if (selHourElement) this.centerOptionInColumn(this.hourRef().nativeElement, selHourElement);
-    if (selMinuteElement) this.centerOptionInColumn(this.minuteRef().nativeElement, selMinuteElement);
+    for (const col of Object.values(this.columns)) {
+      const column = col.element();
+      const option = column.querySelector<HTMLElement>(targetClass);
+      if (option) this.centerOptionInColumn(column, option);
+    }
   }
 
   /**
-   * Scroll hour listbox so given hour is visible.
-   * @param h Hour to reveal, or null to do nothing.
+   * Scroll the given column so the option with the given value is revealed (centered).
+   * @param column Which column to scroll.
+   * @param value Hour or minute to reveal, or null to do nothing.
    */
-  private async scrollHourIntoView(h: number | null) {
-    if (h === null) return;
+  private async scrollColumnIntoView(column: ColumnKey, value: number | null) {
+    if (value === null) return;
     await forRender(this.injector);
 
-    const column = this.hourRef().nativeElement;
-    const el = column.querySelector<HTMLElement>(`[id="${this.ident()}_opt_h${h}"]`);
-    if (el) this.centerOptionInColumn(column, el);
-  }
-
-  /**
-   * Scroll minute listbox so given minute is visible.
-   * @param m Minute to reveal, or null to do nothing.
-   */
-  private async scrollMinuteIntoView(m: number | null) {
-    if (m === null) return;
-    await forRender(this.injector);
-
-    const column = this.minuteRef().nativeElement;
-    const el = column.querySelector<HTMLElement>(`[id="${this.ident()}_opt_m${m}"]`);
-    if (el) this.centerOptionInColumn(column, el);
+    const col = this.columns[column];
+    const element = col.element();
+    const option = element.querySelector<HTMLElement>(`[id="${this.ident()}_opt_${col.suffix}${value}"]`);
+    if (option) this.centerOptionInColumn(element, option);
   }
 
   /**
@@ -437,14 +525,10 @@ export class TimePicker extends PopupInputBase<Date> {
    * @param column Which column the option belongs to.
    * @param value Hour or minute value of the pressed option.
    */
-  public handleMousedownOption(column: 'hour' | 'minute', value: number): void {
+  public handleMousedownOption(column: ColumnKey, value: number): void {
     if (this.disabled()) return;
     this.activeColumn.set(column);
-    if (column === 'hour') {
-      this.focusedHour.set(value);
-    } else {
-      this.focusedMinute.set(value);
-    }
+    this.columns[column].focused.set(value);
   }
 
   /**
@@ -472,168 +556,92 @@ export class TimePicker extends PopupInputBase<Date> {
   }
 
   /**
-   * Handle click on an hour option: apply the pick to the session and close the clock panel
-   * ONLY when the pick completes the session (both columns picked in any order, or both
+   * Handle click on an hour/minute option: apply the pick to the session and close the clock
+   * panel ONLY when the pick completes the session (both columns picked in any order, or both
    * un-picked with canNull). A partial pick keeps the panel open - the other column still has
    * to be picked; a close WITHOUT completion (Escape, outside press, focusout) silently
    * discards it. Focus returns to the input (the panel's focus owner) before the panel is
    * hidden, so the resulting focusout stays internal and no touch is reported - touch fires
    * only when focus really leaves the component, same as on Escape.
-   * @param h Clicked hour.
+   * @param column Which column the pick belongs to.
+   * @param value Clicked hour or minute.
    */
-  public handleHourClick(h: number) {
+  public handleOptionClick(column: ColumnKey, value: number) {
     if (this.disabled()) return;
-    const outcome = this.applyPick('hour', h);
-    if (outcome === 'committed' || outcome === 'cleared') this.hidePanelAndRefocus();
-  }
-
-  /**
-   * Handle click on a minute option: apply the pick to the session and close the clock panel
-   * ONLY when the pick completes the session - mirrors `handleHourClick`, since either column
-   * may be the completing pick (selection order is free). A partial minute pick keeps the
-   * panel open; focus handling on close is the same as for an hour pick.
-   * @param m Clicked minute.
-   */
-  public handleMinuteClick(m: number) {
-    if (this.disabled()) return;
-    const outcome = this.applyPick('minute', m);
+    const outcome = this.applyPick(column, value);
     if (outcome === 'committed' || outcome === 'cleared') this.hidePanelAndRefocus();
   }
 
   // EVENTS: KEYBOARD HANDLERS
 
   /**
-   * Handle keyboard on the hour listbox.
+   * Handle keyboard on a clock listbox. The column's descriptor carries everything that
+   * differs between hours and minutes (cursor bounds, keyboard seed, scroll target, the arrow
+   * key that crosses to the other column), so navigation, paging, picking and the
+   * clear/escape/tab behaviour exist once for both columns.
+   * @param column Which listbox received the key press.
    * @param e Keyboard event.
    */
-  public onHourKeydown(e: KeyboardEvent) {
+  public onColumnKeydown(column: ColumnKey, e: KeyboardEvent) {
     if (this.disabled()) return;
+    const col = this.columns[column];
 
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault();
-        this.focusedHour.update((currVal) => {
-          if (currVal !== null) return currVal > 0 ? currVal - 1 : 23;
-          return this.selectedHour() ?? this.viewHour() ?? 0;
+        col.focused.update((currVal) => {
+          if (currVal !== null) return currVal > 0 ? currVal - 1 : col.max;
+          return col.selected() ?? col.view() ?? 0;
         });
-        void this.scrollHourIntoView(this.focusedHour());
+        void this.scrollColumnIntoView(column, col.focused());
         break;
       case 'ArrowDown':
         e.preventDefault();
-        this.focusedHour.update((currVal) => {
-          if (currVal !== null) return currVal < 23 ? currVal + 1 : 0;
-          return this.selectedHour() ?? this.viewHour() ?? 0;
+        col.focused.update((currVal) => {
+          if (currVal !== null) return currVal < col.max ? currVal + 1 : 0;
+          return col.selected() ?? col.view() ?? 0;
         });
-        void this.scrollHourIntoView(this.focusedHour());
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        void this.keyPressSwitchColumn();
-        break;
-      case 'Home': // Jump to start of list.
-        e.preventDefault();
-        this.focusedHour.set(0);
-        void this.scrollHourIntoView(0);
-        break;
-      case 'End': // Jump to end of list.
-        e.preventDefault();
-        this.focusedHour.set(23);
-        void this.scrollHourIntoView(23);
-        break;
-      case 'PageDown': // Page forward; wraps to the top only when already standing on the last hour.
-        e.preventDefault(); // Without it the browser scrolls the column natively, leaving the cursor behind.
-        this.focusedHour.set(this.pageMove(this.focusedHour(), 1, 23,
-          this.pageStep(this.hourRef().nativeElement), this.selectedHour() ?? this.viewHour() ?? 0));
-        void this.scrollHourIntoView(this.focusedHour());
-        break;
-      case 'PageUp': // Page backward; wraps to the bottom only when already standing on the first hour.
-        e.preventDefault();
-        this.focusedHour.set(this.pageMove(this.focusedHour(), -1, 23,
-          this.pageStep(this.hourRef().nativeElement), this.selectedHour() ?? this.viewHour() ?? 0));
-        void this.scrollHourIntoView(this.focusedHour());
-        break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        void this.keyPressSelectHour();
-        break;
-      case 'Delete':
-      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors the minute path).
-        e.preventDefault();
-        if (this.keyPressClear()) this.hidePanelAndRefocus();
-        break;
-      case 'Escape':
-        e.preventDefault();
-        this.hidePanelAndRefocus();
-        break;
-      case 'Tab':
-        // One backwards press must leave the whole component (mirrors forward Tab, which skips
-        // the input because it sits behind the panel).
-        if (e.shiftKey) {
-          e.preventDefault();
-          this.hidePanelAndFocusPrev();
-        }
-        break;
-    }
-  }
-
-  /**
-   * Handle keyboard on the minute listbox.
-   * @param e Keyboard event.
-   */
-  public onMinuteKeydown(e: KeyboardEvent) {
-    if (this.disabled()) return;
-
-    switch (e.key) {
-      case 'ArrowUp':
-        e.preventDefault();
-        this.focusedMinute.update((currVal) => {
-          if (currVal !== null) return currVal > 0 ? currVal - 1 : 59;
-          return this.selectedMinute() ?? this.viewMinute() ?? 0;
-        });
-        void this.scrollMinuteIntoView(this.focusedMinute());
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        this.focusedMinute.update((currVal) => {
-          if (currVal !== null) return currVal < 59 ? currVal + 1 : 0;
-          return this.selectedMinute() ?? this.viewMinute() ?? 0;
-        });
-        void this.scrollMinuteIntoView(this.focusedMinute());
+        void this.scrollColumnIntoView(column, col.focused());
         break;
       case 'ArrowLeft':
-        e.preventDefault();
-        void this.keyPressSwitchColumn();
+      case 'ArrowRight':
+        // Only the column's own switch key acts (hour: ArrowRight, minute: ArrowLeft - the
+        // mirrored pair); the other arrow key stays a no-op without preventDefault, exactly
+        // as before the two handlers were merged.
+        if (e.key === col.switchKey) {
+          e.preventDefault();
+          void this.keyPressSwitchColumn();
+        }
         break;
       case 'Home': // Jump to start of list.
         e.preventDefault();
-        this.focusedMinute.set(0);
-        void this.scrollMinuteIntoView(0);
+        col.focused.set(0);
+        void this.scrollColumnIntoView(column, 0);
         break;
       case 'End': // Jump to end of list.
         e.preventDefault();
-        this.focusedMinute.set(59);
-        void this.scrollMinuteIntoView(59);
+        col.focused.set(col.max);
+        void this.scrollColumnIntoView(column, col.max);
         break;
-      case 'PageDown': // Page forward; wraps to the top only when already standing on the last minute.
+      case 'PageDown': // Page forward; wraps to the top only when already standing on the last item.
         e.preventDefault(); // Without it the browser scrolls the column natively, leaving the cursor behind.
-        this.focusedMinute.set(this.pageMove(this.focusedMinute(), 1, 59,
-          this.pageStep(this.minuteRef().nativeElement), this.selectedMinute() ?? this.viewMinute() ?? 0));
-        void this.scrollMinuteIntoView(this.focusedMinute());
+        col.focused.set(this.pageMove(col.focused(), 1, col.max,
+          this.pageStep(col.element()), col.selected() ?? col.view() ?? 0));
+        void this.scrollColumnIntoView(column, col.focused());
         break;
-      case 'PageUp': // Page backward; wraps to the bottom only when already standing on the first minute.
+      case 'PageUp': // Page backward; wraps to the bottom only when already standing on the first item.
         e.preventDefault();
-        this.focusedMinute.set(this.pageMove(this.focusedMinute(), -1, 59,
-          this.pageStep(this.minuteRef().nativeElement), this.selectedMinute() ?? this.viewMinute() ?? 0));
-        void this.scrollMinuteIntoView(this.focusedMinute());
+        col.focused.set(this.pageMove(col.focused(), -1, col.max,
+          this.pageStep(col.element()), col.selected() ?? col.view() ?? 0));
+        void this.scrollColumnIntoView(column, col.focused());
         break;
       case 'Enter':
       case ' ':
         e.preventDefault();
-        void this.keyPressSelectMinute();
+        void this.keyPressSelect(column);
         break;
       case 'Delete':
-      case 'Backspace': // Clearing completes the interaction, so the panel closes (mirrors the hour path).
+      case 'Backspace': // Clearing completes the interaction, so the panel closes.
         e.preventDefault();
         if (this.keyPressClear()) this.hidePanelAndRefocus();
         break;
@@ -651,8 +659,6 @@ export class TimePicker extends PopupInputBase<Date> {
         break;
     }
   }
-
-  //
 
   /** React to column change via key press. */
   private async keyPressSwitchColumn() {
@@ -662,39 +668,34 @@ export class TimePicker extends PopupInputBase<Date> {
       return;
     }
 
-    if (this.activeColumn() === 'minute') {
-      // Switch focus to hour column.
-      this.activeColumn.set('hour');
-      await forRender(this.injector);
-      // preventScroll: same reasoning as the open-path focus in `togglePanel` -
-      // the panel may sit below the fold, and revealing it is the USER's job, not focus's.
-      // Reveal inside the column is handled by `scrollHourIntoView`/`scrollMinuteIntoView`
-      // (column scrollTop only), so nothing here needs a viewport scroll.
-      this.hourRef().nativeElement.focus({ preventScroll: true });
-    } else {
-      // Switch focus to minute column.
-      this.activeColumn.set('minute');
-      await forRender(this.injector);
-      this.minuteRef().nativeElement.focus({ preventScroll: true }); // preventScroll: see the hour branch above.
-    }
+    const next = this.otherColumn(this.activeColumn());
+    this.activeColumn.set(next);
+    await forRender(this.injector);
+    // preventScroll: same reasoning as the open-path focus in `togglePanel` - the panel may
+    // sit below the fold, and revealing it is the USER's job, not focus's. Reveal inside the
+    // column is handled by `scrollColumnIntoView` (column scrollTop only), so nothing here
+    // needs a viewport scroll.
+    this.columns[next].element().focus({ preventScroll: true });
   }
 
   /**
-   * React to selecting hour via key press.
+   * React to selecting the focused option of a column via Enter/space.
    * A completing pick/discard closes the panel - a committed time moves focus on to the next
-   * element (today's minute-Enter close), a cleared value returns to the input (today's
-   * hour-Enter deselect close). A partial pick hands focus to the minute column so the flow
-   * can continue there; a partial discard stays in the hour column being managed.
+   * element, a cleared value returns to the input. A partial pick hands focus to the OTHER
+   * column so the flow can continue there (either column may be the completing pick, selection
+   * order is free); a partial discard stays in the pressed column being managed.
+   * @param column Which column the selection key was pressed in.
    */
-  private async keyPressSelectHour() {
-    const hour = this.focusedHour();
-    if (hour === null) {
+  private async keyPressSelect(column: ColumnKey) {
+    const col = this.columns[column];
+    const focused = col.focused();
+    if (focused === null) {
       // Just show focus without selecting anything.
       this.setupFocus(false);
       return;
     }
 
-    const outcome = this.applyPick('hour', hour);
+    const outcome = this.applyPick(column, focused);
     await forRender(this.injector);
 
     if (outcome === 'committed') {
@@ -707,66 +708,28 @@ export class TimePicker extends PopupInputBase<Date> {
     }
     if (outcome === null || outcome === 'unpicked') return;
 
-    // Partial pick: continue the flow in the minute column (the mirror of
-    // keyPressSelectMinute's partial-pick branch).
-    this.activeColumn.set('minute');
-    if (this.focusedMinute() === null) {
-      this.focusedMinute.set(this.selectedMinute() ?? this.viewMinute() ?? null);
+    // Partial pick: continue the flow in the other column.
+    const other = this.columns[this.otherColumn(column)];
+    this.activeColumn.set(other.key);
+    if (other.focused() === null) {
+      other.focused.set(other.selected() ?? other.view() ?? null);
     }
     await forRender(this.injector);
-    // preventScroll: same reasoning as the column switch in `keyPressSwitchColumn` - a
-    // below-the-fold panel must not drag the viewport when the hour press advances the flow.
-    this.minuteRef().nativeElement.focus({ preventScroll: true });
+    // preventScroll: same reasoning as in `keyPressSwitchColumn` - a below-the-fold panel must
+    // not drag the viewport when a pick advances the flow.
+    other.element().focus({ preventScroll: true });
   }
 
   /**
-   * React to selecting minute via key press. Mirrors `keyPressSelectHour` with the columns
-   * swapped: a completing pick/discard closes the panel (a committed time moves focus on to
-   * the next element, a cleared value returns to the input), a partial pick hands focus to
-   * the hour column, a partial discard stays in the minute column.
-   */
-  private async keyPressSelectMinute() {
-    const minute = this.focusedMinute();
-    if (minute === null) {
-      // Just show focus without selecting anything.
-      this.setupFocus(false);
-      return;
-    }
-
-    const outcome = this.applyPick('minute', minute);
-    await forRender(this.injector);
-
-    if (outcome === 'committed') {
-      this.hidePanelAndFocusNext();
-      return;
-    }
-    if (outcome === 'cleared') {
-      this.hidePanelAndRefocus();
-      return;
-    }
-    if (outcome === null || outcome === 'unpicked') return;
-
-    // Partial pick: continue the flow in the hour column (mirrors keyPressSelectHour).
-    this.activeColumn.set('hour');
-    if (this.focusedHour() === null) {
-      this.focusedHour.set(this.selectedHour() ?? this.viewHour() ?? null);
-    }
-    await forRender(this.injector);
-    // preventScroll: same reasoning as in `keyPressSelectHour`.
-    this.hourRef().nativeElement.focus({ preventScroll: true });
-  }
-
-  /**
-   * Set up focus values. Seeds from the DISPLAY selection (`selectedHour`/`selectedMinute` -
-   * session pick ?? committed value), falling back to the viewed local time.
+   * Set up focus values on both columns. Seeds from the DISPLAY selection (session pick ??
+   * committed value), falling back to the viewed local time.
    * @param force If true, will override focused values. If false, will set focused values only if these are null.
    */
   private setupFocus(force: boolean) {
-    if (force || this.focusedHour() === null) {
-      this.focusedHour.set(this.selectedHour() ?? this.viewHour() ?? null);
-    }
-    if (force || this.focusedMinute() === null) {
-      this.focusedMinute.set(this.selectedMinute() ?? this.viewMinute() ?? null);
+    for (const col of Object.values(this.columns)) {
+      if (force || col.focused() === null) {
+        col.focused.set(col.selected() ?? col.view() ?? null);
+      }
     }
   }
 }
