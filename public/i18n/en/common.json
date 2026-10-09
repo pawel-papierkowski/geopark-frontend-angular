@@ -25,6 +25,9 @@
       },
       "navLabel": "Section navigation"
     },
+    "skipLink": {
+      "label": "Skip to main content"
+    },
     "page": {
       "notFound": "404 Page Not Found",
       "about": "About",

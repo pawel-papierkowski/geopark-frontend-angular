@@ -25,6 +25,9 @@
       },
       "navLabel": "Nawigacja między sekcjami"
     },
+    "skipLink": {
+      "label": "Przejdź do głównej treści"
+    },
     "page": {
       "notFound": "404 Strona Nie Odnaleziona",
       "about": "O nas",

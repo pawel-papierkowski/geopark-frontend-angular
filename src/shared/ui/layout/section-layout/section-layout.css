@@ -5,3 +5,38 @@
   width: 100%;
   min-height: 100dvh;
 }
+
+/*
+ * Skip link: first focusable element in each section, bypasses the header nav (WCAG 2.4.1).
+ * Visually hidden until focused, then anchored top-left so it stays discoverable.
+ */
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  padding: 0.75rem 1rem;
+
+  background: var(--body-background);
+  color: var(--body-color);
+  text-decoration: underline;
+
+  box-shadow: var(--header-box-shadow);
+
+  z-index: 1000;
+}
+
+/* Keep it out of the visual layout until a keyboard user focuses it. */
+.skip-link:not(:focus) {
+  width: 1px;
+  height: 1px;
+
+  margin: -1px;
+  padding: 0;
+  border: 0;
+
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

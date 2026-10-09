@@ -1,5 +1,5 @@
 import { ApplicationConfig, inject, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter, TitleStrategy } from '@angular/router';
+import { provideRouter, withInMemoryScrolling, TitleStrategy } from '@angular/router';
 
 import { provideHttpClient, HttpClient } from '@angular/common/http';
 import { provideTranslateService, provideTranslateLoader } from '@ngx-translate/core';
@@ -14,7 +14,11 @@ import { fallbackLang } from "@/shared/config/const";
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    // Restore scroll position on back/forward and honor #fragment links (WCAG-friendly UX).
+    provideRouter(routes, withInMemoryScrolling({
+      scrollPositionRestoration: 'enabled',
+      anchorScrolling: 'enabled',
+    })),
     // Localized per-route document titles (WCAG 2.4.2 Page Titled).
     { provide: TitleStrategy, useExisting: AppTitleStrategy },
     provideHttpClient(),

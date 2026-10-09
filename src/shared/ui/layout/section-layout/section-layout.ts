@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { sections } from '@/shared/config/const';
 import { Section } from '@/shared/config/types';
@@ -20,7 +21,7 @@ function isSection(value: unknown): value is Section {
  * Defines layout for a given section. All sections use SectionLayout, but content can differ depending on what section is currently visited.
  */
 @Component({
-  imports: [RouterOutlet, AppHeader, AppFooter],
+  imports: [TranslatePipe, RouterOutlet, AppHeader, AppFooter],
   selector: 'section-layout',
   styleUrl: './section-layout.css',
   templateUrl: './section-layout.html',
