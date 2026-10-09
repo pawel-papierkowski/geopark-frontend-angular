@@ -1,5 +1,5 @@
 <div
-    #comboRef
+    #pickerRef
     [attr.data-testid]="resolvedIdent()"
     class="combobox"
     [class.disabled]="disabled()"
@@ -20,11 +20,11 @@
     (click)="handleClick()"
     (mousedown)="handleMousedown()"
     (keydown)="handleKeydown($event)"
-    (blur)="handleBlur($event)">
+    (focusout)="handleFocusOut($event)">
 
     <!-- Hidden button: labelable target for <label for="...">. -->
     <!-- Label activation focuses this button and bubbles its click here; both handlers redirect
-         focus to the root so aria-activedescendant stays valid and (blur) works on leaving. -->
+         focus to the root so aria-activedescendant stays valid and (focusout) works on leaving. -->
     <button type="button" [id]="resolvedIdent()" class="hidden-label-button" tabindex="-1" aria-hidden="true"
       (focus)="focusRoot()" (click)="focusRoot()"></button>
 
@@ -34,7 +34,7 @@
     </div>
 
     <div
-      #optionsRef
+      #panelRef
       class="combobox-options"
       [id]="listboxId()"
       [style]="containerStyle()"

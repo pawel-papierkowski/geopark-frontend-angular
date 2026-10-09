@@ -372,9 +372,9 @@ describe('ComboBox', () => {
         fixture.detectChanges();
         expect(fixture.componentInstance.isOpen(), 'list should be open after focus').toBe(true);
 
-        // Act: Simulate root blur caused by label activation moving focus to hidden button inside root.
+        // Act: Simulate root focusout caused by label activation moving focus to hidden button inside root.
         const hiddenButton = fixture.nativeElement.querySelector('button.hidden-label-button');
-        root.dispatchEvent(new FocusEvent('blur', { relatedTarget: hiddenButton }));
+        root.dispatchEvent(new FocusEvent('focusout', { relatedTarget: hiddenButton }));
         fixture.detectChanges();
 
         // Assert: Internal focus move is not a real blur.
@@ -521,7 +521,7 @@ describe('ComboBox', () => {
         expect(touchSpy, 'touch should not be emitted on selection').not.toHaveBeenCalled();
       });
 
-      it('should close list and emit touch on blur', async () => {
+      it('should close list and emit touch on focusout', async () => {
         // Arrange: Create component, open list, spy on touch output.
         const fixture = await arrangeComboBox();
         const touchSpy = vi.fn();
@@ -529,19 +529,19 @@ describe('ComboBox', () => {
         const root = fixture.nativeElement.querySelector('[data-testid="test-combo"]');
         root.click();
         fixture.detectChanges();
-        expect(fixture.componentInstance.isOpen(), 'list should be open before blur').toBe(true);
+        expect(fixture.componentInstance.isOpen(), 'list should be open before focusout').toBe(true);
 
-        // Act: Simulate blur.
-        root.dispatchEvent(new Event('blur'));
+        // Act: Simulate focusout.
+        root.dispatchEvent(new Event('focusout'));
         fixture.detectChanges();
 
         // Assert: List closed, highlight reset, touch emitted.
-        expect(fixture.componentInstance.isOpen(), 'list should close on blur').toBe(false);
-        expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset on blur').toBe(-1);
-        expect(touchSpy, 'touch event should be emitted on blur').toHaveBeenCalledTimes(1);
+        expect(fixture.componentInstance.isOpen(), 'list should close on focusout').toBe(false);
+        expect(fixture.componentInstance.highlightedIndex(), 'highlight should be reset on focusout').toBe(-1);
+        expect(touchSpy, 'touch event should be emitted on focusout').toHaveBeenCalledTimes(1);
       });
 
-      it('should emit touch on blur even when list is already closed by selection', async () => {
+      it('should emit touch on focusout even when list is already closed by selection', async () => {
         // Arrange: Create component, select an option (closes list without touch).
         const fixture = await arrangeComboBox();
         const touchSpy = vi.fn();
@@ -555,12 +555,12 @@ describe('ComboBox', () => {
         expect(fixture.componentInstance.isOpen(), 'selection should close the list').toBe(false);
         expect(touchSpy, 'selection alone should not emit touch').not.toHaveBeenCalled();
 
-        // Act: Simulate blur after leaving the component.
-        root.dispatchEvent(new Event('blur'));
+        // Act: Simulate focusout after leaving the component.
+        root.dispatchEvent(new Event('focusout'));
         fixture.detectChanges();
 
-        // Assert: Blur marks field touched even though list was already closed.
-        expect(touchSpy, 'blur after selection should emit touch').toHaveBeenCalledTimes(1);
+        // Assert: Focusout marks field touched even though list was already closed.
+        expect(touchSpy, 'focusout after selection should emit touch').toHaveBeenCalledTimes(1);
       });
 
       it('should not open list on focus when disabled', async () => {
@@ -645,7 +645,7 @@ describe('ComboBox', () => {
         expect(touchSpy, 'closing programmatically should not emit touch').toHaveBeenCalledTimes(0);
       });
 
-      it('should not emit touch on blur after the component became disabled', async () => {
+      it('should not emit touch on focusout after the component became disabled', async () => {
         // Arrange: Enabled component with open list and touch spy.
         const fixture = await arrangeComboBox();
         const touchSpy = vi.fn();
@@ -659,11 +659,11 @@ describe('ComboBox', () => {
         fixture.componentRef.setInput('disabled', true);
         fixture.detectChanges();
         await fixture.whenStable();
-        root.dispatchEvent(new Event('blur'));
+        root.dispatchEvent(new Event('focusout'));
         fixture.detectChanges();
 
         // Assert: Losing focus after a programmatic close is not a user blur - no touch.
-        expect(touchSpy, 'blur after disabling must not report touch').not.toHaveBeenCalled();
+        expect(touchSpy, 'focusout after disabling must not report touch').not.toHaveBeenCalled();
       });
 
       it('should clamp a stale highlight when options shrink while the list is open', async () => {
@@ -728,7 +728,7 @@ describe('ComboBox', () => {
       const driver: OutsidePressDriver = {
         popup: 'list',
         subject: 'component',
-        touchSource: 'blur',
+        touchSource: 'focusout',
         ident: 'test-combo',
         arrange: async () => {
           const fixture = await arrangeComboBox();
@@ -1754,8 +1754,8 @@ describe('ComboBox', () => {
           await fixture.whenStable();
           fixture.detectChanges();
 
-          // Assert: List closed via blur, focus moved out of combobox.
-          expect(fixture.componentInstance.isOpen(), 'Tab should close the list via blur').toBe(false);
+          // Assert: List closed via focusout, focus moved out of combobox.
+          expect(fixture.componentInstance.isOpen(), 'Tab should close the list via focusout').toBe(false);
           expect(document.activeElement, 'Tab should move focus to next control').toBe(nextControl);
         } finally { // cleanup
           nextControl.remove();
@@ -1787,8 +1787,8 @@ describe('ComboBox', () => {
           await fixture.whenStable();
           fixture.detectChanges();
 
-          // Assert: List closed via blur, focus moved out of combobox backwards.
-          expect(fixture.componentInstance.isOpen(), 'Shift+Tab should close the list via blur').toBe(false);
+          // Assert: List closed via focusout, focus moved out of combobox backwards.
+          expect(fixture.componentInstance.isOpen(), 'Shift+Tab should close the list via focusout').toBe(false);
           expect(document.activeElement, 'Shift+Tab should move focus to previous control').toBe(prevControl);
         } finally { // cleanup
           prevControl.remove();

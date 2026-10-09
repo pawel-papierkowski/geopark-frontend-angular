@@ -100,7 +100,7 @@ test.describe('ComboBox', () => {
       // Act: Click page heading (moves focus away, blurring the combobox).
       await page.locator('h1').click();
 
-      // Assert: List is closed via real blur flow.
+      // Assert: List is closed via real focusout flow.
       await expect(comboBox).toHaveAttribute('aria-expanded', 'false');
       await expect(getValueDisplay(page)).toContainText('❓');
     });
@@ -117,7 +117,7 @@ test.describe('ComboBox', () => {
 
       // Act: Click the Submit button outside the combobox. Buttons are not click-focused on
       // macOS WebKit and pressing one does not reliably blur the focused root, so the
-      // blur-only close never fired there - the document-level mousedown guard is what has
+      // focusout-only close never fired there - the document-level mousedown guard is what has
       // to close the list (regression guard for the outside-press fix).
       await page.getByRole('button', { name: 'Submit' }).click();
 

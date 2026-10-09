@@ -1,12 +1,9 @@
-import { Component, effect, inject, model, input, output, computed, linkedSignal, signal, viewChild, ElementRef, DestroyRef, DOCUMENT, Injector } from '@angular/core';
-import { FormValueControl } from '@angular/forms/signals';
+import { Component, effect, inject, input, computed, linkedSignal, signal, DestroyRef } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 
-import { forRender } from '@/shared/utils/render/after-render';
 import { IdService } from '@/shared/utils/id/id-service';
-import { warnDanglingLabel } from '@/shared/utils/a11y/warn-dangling-label';
 import { stretchPanelPlacement } from '@/shared/ui/components/form/popup-panel/popup-panel-placement';
-import { PanelPositioning } from '@/shared/ui/components/form/popup-panel/popup-panel-positioning';
+import { PopupPanelBase } from '@/shared/ui/components/form/popup-panel/popup-panel-base';
 import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-label-activation';
 
 /** Custom combobox implementation. Needed because <select> and <option> have very poor CSS support for dropdown lists
@@ -53,73 +50,42 @@ import { LabelActivation } from '@/shared/ui/components/form/popup-panel/popup-l
   styleUrl: './combo-box.css',
   templateUrl: './combo-box.html',
 })
-export class ComboBox implements FormValueControl<number | string | null> {
+export class ComboBox extends PopupPanelBase<number | string> {
   private readonly translateService = inject(TranslateService);
-  private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly injector = inject(Injector);
   private readonly idService = inject(IdService);
 
-  /** Value held by component. */
-  public value = model<number | string | null>(null);
-  /** Identifier for this component. */
-  public ident = input<string>('');
   /** Resolved identifier: `ident` when provided, otherwise a generated `combo-box-N`.
    * Public, so consumers can reference it (e.g. `<label [for]>` or tests). */
   public readonly resolvedIdent = linkedSignal(() => this.idService.next(this.ident(), 'combo-box'));
-  /** Label reference: id of an external element (usually `<label>`) used for `aria-labelledby`.
-   * The id must match an element in the document - a dangling reference silently empties this
-   * combobox's accessible name (there is no `aria-label` fallback), so dev mode warns on the
-   * console (see `warnDanglingLabel`). */
-  public label = input<string>('');
   /** Array of options. String, number (so also enum) and null allowed. */
   public options = input<(number | string | null)[]>([]);
   /** Prefix, used for auto-translating entries in the list. If empty, options will be shown as is without translation. */
   public langPrefix = input<string>('');
   /** Translation key to use if nothing is selected. Treated as raw text if langPrefix is empty. Optional, not used if options have null entry. */
   public placeholder = input<string>('');
-  /** Is component required? */
-  public readonly required = input<boolean>(false);
-  /** Is component disabled? */
-  public readonly disabled = input<boolean>(false);
-  /** Is component invalid? */
-  public readonly invalid = input<boolean>(false);
-  /** Informs that user blurred out of component. */
-  public touch = output<void>();
 
-  /** Indicates visibility of combobox list. */
-  public isOpen = signal(false);
+  /** Indicates visibility of combobox list; domain-named alias of the shared `panelVisible` (see `PopupPanelBase`). */
+  public readonly isOpen = this.panelVisible;
   /** Label-activation coordination (focus-opens marker + forwarded-click decision, `closed`
    * for this component) plus the document guard; see `LabelActivation` for the full contract. */
   private readonly labelActivation = new LabelActivation<'closed'>();
   /** Index of currently highlighted option. -1 means none highlighted. */
   public highlightedIndex = signal(-1);
-  /**
-   * Placement state of the options list: inline insets plus the reset-baseline-before-measure
-   * contract (see `PanelPositioning` and `stretchPanelPlacement`). Bound to the list's inline
-   * style; reset on every open before measuring.
-   */
-  private readonly positioning = new PanelPositioning(stretchPanelPlacement);
-  /** Inline style of the options list; alias of `positioning.containerStyle`. */
-  public readonly containerStyle = this.positioning.containerStyle;
-  /** Number of the most recent open - drops stale placement work from an earlier open. */
-  private positionSession = 0;
+  /** Name of this component for dev-only diagnostics (see `PopupPanelBase.componentName`). */
+  protected readonly componentName = 'combo-box';
+  /** Highlight seed direction queued by `openList` for the next open (true = top, false =
+   * bottom, null = keep the selection-derived seed); consumed by `prepareOpen`. */
+  private pendingSeed: boolean | null = null;
   /** Typeahead search buffer: consecutive printable keystrokes merged into one prefix search. */
   private typeaheadBuffer = '';
   /** Timestamp (ms) of the last typeahead keystroke; decides when the buffer restarts. */
   private typeaheadLastKeyAt = 0;
   /** How long (ms) consecutive typeahead keystrokes keep merging into one search string. */
   private static readonly typeaheadBufferMs = 500;
-  /** Root focusable element (role=combobox). */
-  private comboRef = viewChild.required<ElementRef<HTMLDivElement>>('comboRef');
-  /** Reference to the options list popup. */
-  private optionsRef = viewChild.required<ElementRef<HTMLDivElement>>('optionsRef');
 
   constructor() {
-    // Watch `disabled` field: close open list when component becomes disabled.
-    effect(() => {
-      if (this.disabled() && this.isOpen()) this.hidePanel();
-    });
+    super(stretchPanelPlacement);
 
     // Clamp a highlight left dangling by options shrinking while the list is open (async or
     // replaced options): a stale index would point aria-activedescendant at a removed option
@@ -130,13 +96,6 @@ export class ComboBox implements FormValueControl<number | string | null> {
       if (highlighted >= optionCount) this.highlightedIndex.set(optionCount > 0 ? optionCount - 1 : -1);
     });
 
-    // Dev-only: catch a `label` id that matches no element. A dangling aria-labelledby would
-    // leave this combobox with no accessible name (no aria-label fallback), which no app test
-    // catches; re-runs whenever label or ident changes (see `warnDanglingLabel`).
-    effect(() => {
-      warnDanglingLabel(this.document, this.label(), this.resolvedIdent(), 'combo-box');
-    });
-
     // Document-level guard for label activation: resets the interaction markers, cancels the
     // focus steal when the press lands on this component's own label and closes the options
     // list when the press lands outside the component entirely (mechanics and rationale in
@@ -145,7 +104,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
       document: this.document,
       destroyRef: this.destroyRef,
       ident: () => this.resolvedIdent(),
-      boundary: () => this.comboRef().nativeElement,
+      boundary: () => this.pickerRef().nativeElement,
       onOutsidePress: () => {
         if (this.isOpen()) this.hidePanel();
       },
@@ -172,28 +131,17 @@ export class ComboBox implements FormValueControl<number | string | null> {
     this.options().map((option) => ({ option, text: this.showOption(option) })),
   );
 
-  // GENERAL FUNCTIONS
+  // PANEL HOOKS (PopupPanelBase)
 
   /**
-   * Get option element ID for aria-activedescendant.
-   * @param index Index of option element.
+   * Seed the highlight on every open, BEFORE the list first renders: the open path reveals the
+   * highlighted option after placement (see `afterPlacement`), so it must exist right away.
+   * Uses the direction queued by `openList` when the caller asked for top/bottom seeding
+   * (ArrowUp/Down, Home/End); a plain open seeds from the current selection.
    */
-  public optionId(index: number): string {
-    return `${this.resolvedIdent()}_option_${index}`;
-  }
-
-  /**
-   * Open list.
-   * @param top If true, set highlight on top, false on bottom, null - do not change highlight. Ignored if highlight already set.
-   */
-  private openList(top: boolean | null = null) {
-    // Reset placement to the baseline (below the anchor, stretched) BEFORE the list renders,
-    // so the measurement below always runs under this known alignment - measuring the list
-    // as left over from the previous open would judge alignment by the OLD placement.
-    this.positioning.resetBaseline();
-    const session = ++this.positionSession;
-    this.isOpen.set(true);
-    void this.positionOptionsPanel(session);
+  protected prepareOpen(): void {
+    const top = this.pendingSeed;
+    this.pendingSeed = null;
 
     // Yes, a popup window with a list is opened even if no options exist.
     if (this.options().length === 0) return;
@@ -208,22 +156,69 @@ export class ComboBox implements FormValueControl<number | string | null> {
   }
 
   /**
-   * Resolve the options list placement so it does not overflow the viewport.
-   * Runs once per open, right after the list rendered under the baseline - the measurement
-   * contract, viewport and margin details are documented on `resolvePanelPlacement`.
-   * Work from a superseded open (list closed or reopened before the render settled) is dropped,
-   * so the measurement can never run under a placement other than the baseline.
-   * The same pass resets the list's own scroll to the top and reveals the highlighted option,
-   * so a stale offset from a previous open never hides the freshly seeded highlight.
-   * @param session Placement session captured when the list was opened.
+   * ARIA combobox pattern: keyboard focus stays on the root and options are reached through
+   * aria-activedescendant, so nothing inside the list ever takes DOM focus on open.
+   * @returns Always null - the open path skips its focus move.
    */
-  private async positionOptionsPanel(session: number): Promise<void> {
-    await forRender(this.injector);
+  protected focusPanelTarget(): HTMLElement | null {
+    return null;
+  }
 
-    if (session !== this.positionSession || !this.isOpen()) return;
-    this.positioning.resolve(this.comboRef().nativeElement, this.optionsRef().nativeElement);
-    this.optionsRef().nativeElement.scrollTop = 0;
+  /**
+   * Reset the highlight and the typing session when the list hides (see `PopupPanelBase.hidePanel`):
+   * the closed combobox must not keep aria-activedescendant pointing into the display:none
+   * list, and the next open re-seeds the highlight from the (possibly changed) selection.
+   */
+  protected resetOnClose(): void {
+    this.highlightedIndex.set(-1);
+    this.typeaheadBuffer = '';
+    this.resetInteractionState();
+  }
+
+  /**
+   * Same pass as the placement measurement, still on the open path: reset the list's own
+   * scroll to the top and reveal the highlighted option, so a stale offset from a previous
+   * open never hides the freshly seeded highlight.
+   */
+  protected override afterPlacement(): void {
+    this.panelRef().nativeElement.scrollTop = 0;
     this.scrollHighlightedIntoView();
+  }
+
+  /**
+   * Focus really left the component (see `PopupPanelBase.onFocusLeft`): a click decision
+   * recorded by a focus-first engine's (Chromium/Firefox) label activation - whose click runs
+   * last - is now obsolete.
+   */
+  protected override onFocusLeft(): void {
+    this.labelActivation.setDecision('none');
+  }
+
+  /** Reported ident of the dev-only dangling-label diagnostics: the RESOLVED one, so the
+   * warning points at the id a generated-ident consumer's `<label for>` actually references. */
+  protected override diagnosticsIdent(): string {
+    return this.resolvedIdent();
+  }
+
+  // GENERAL FUNCTIONS
+
+  /**
+   * Get option element ID for aria-activedescendant.
+   * @param index Index of option element.
+   */
+  public optionId(index: number): string {
+    return `${this.resolvedIdent()}_option_${index}`;
+  }
+
+  /**
+   * Open list (no-op when already open or disabled, via `PopupPanelBase.showPanel`).
+   * @param top If true, set highlight on top, false on bottom, null - do not change highlight. Ignored if highlight already set.
+   */
+  private openList(top: boolean | null = null) {
+    this.pendingSeed = top;
+    // ShowPanel waits for renders internally; template event bindings never await the handler,
+    // so the work is deliberately fire-and-forget (`void` marks it as such).
+    void this.showPanel();
   }
 
   /**
@@ -238,7 +233,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
     if (!this.isOpen()) return;
     const index = this.highlightedIndex();
     if (index < 0) return;
-    const list = this.optionsRef().nativeElement;
+    const list = this.panelRef().nativeElement;
     const option = list.querySelector<HTMLElement>(`[id="${this.optionId(index)}"]`);
     if (option === null) return;
 
@@ -372,7 +367,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /**
    * Move focus from hidden label target to the combobox root. Label activation focuses the hidden
    * button; redirecting keeps DOM focus on the element that owns aria-activedescendant and makes
-   * the root's (blur) fire when the user later leaves the component.
+   * the root's (focusout) fire when the user later leaves the component.
    */
   public focusRoot() {
     this.focus();
@@ -386,23 +381,7 @@ export class ComboBox implements FormValueControl<number | string | null> {
    */
   public focus(options?: FocusOptions): void {
     if (this.disabled()) return;
-    this.comboRef().nativeElement.focus(options);
-  }
-
-  /**
-   * Handle blur. Focus moves within the component (root to hidden label button and back) are not
-   * a real blur, so they must neither close the list nor emit touch.
-   * @param e Focus event carrying the element focus moved to.
-   */
-  public handleBlur(e: FocusEvent) {
-    const next = e.relatedTarget;
-    if (next instanceof Node && this.comboRef().nativeElement.contains(next)) return;
-    // Focus really left the component: a click decision recorded by a focus-first engine's
-    // (Chromium/Firefox) label activation - whose click runs last - is now obsolete.
-    this.labelActivation.setDecision('none');
-    this.hidePanel();
-    if (this.disabled()) return; // Programmatic close (disabled while focused), not a user blur.
-    this.touch.emit();
+    this.pickerRef().nativeElement.focus(options);
   }
 
   /** Handle click: both from normal mouse click and label click. */
@@ -417,16 +396,15 @@ export class ComboBox implements FormValueControl<number | string | null> {
 
     // Toggle for direct clicks and programmatic clicks. Handles both real browser
     // clicks (preceded by mousedown) and test/programmatic clicks (no mousedown).
-    this.isOpen.update((currVal) => !currVal);
     if (this.isOpen()) {
       // Record the decision so the focus handler paired with this click-first activation
       // (WebKit forwards the click BEFORE focusing the hidden button) does not toggle again
-      // right after this one.
+      // right after this one. hidePanel also resets the highlight (see resetOnClose).
+      this.labelActivation.setDecision('closed');
+      this.hidePanel();
+    } else {
       this.labelActivation.setDecision('open');
       this.openList();
-    } else {
-      this.labelActivation.setDecision('closed');
-      this.highlightedIndex.set(-1);
     }
   }
 
@@ -522,17 +500,5 @@ export class ComboBox implements FormValueControl<number | string | null> {
   /** Reset interaction state (must be called when any interaction completes). */
   private resetInteractionState() {
     this.labelActivation.focusOpened.set(false);
-  }
-
-  /**
-   * Hide panel with list of options.
-   */
-  private hidePanel() {
-    if (!this.isOpen()) return; // already hidden
-
-    this.isOpen.set(false);
-    this.highlightedIndex.set(-1);
-    this.typeaheadBuffer = '';
-    this.resetInteractionState();
   }
 }

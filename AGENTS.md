@@ -114,13 +114,18 @@ Website is divided into three sections:
   - `environments`: Defines data that differ between various types of deployment.
   - `features`: Business functionality. Examples: user account handling.
   - `layout`: Application layout and pages. Examples: navigation, header, footer.
-  - `shared`: Reusable code indepedent of features. Examples: dialog, date pipe, generic utility.
+  - `shared`: Generic utilities live here; app-specific behavior is received via inputs/tokens from the caller. Examples: dialog, date pipe, generic utility.
   - `styles`: Globally available styles.
     - `general`: Contain reset and base styles.
     - `var`: Contains variables.
     - `app`: Contains actually used styles.
 
-Core and shared should not import from features.
+### Layering
+
+Dependencies point one way, `shared` ← `core` ← `layout`/`features`/`app`.
+- `shared` is a standalone leaf.
+- `core` may import `shared`, but must not import `layout`, `features` or `app`.
+- Nothing may import from `features` except `layout`/`app` (core and shared must stay feature-independent).
 
 ## Available Scripts & Commands
 
