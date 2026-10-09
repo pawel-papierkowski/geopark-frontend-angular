@@ -107,11 +107,11 @@ test.describe('TextBox', () => {
       // Act: Tab into textBox.
       await page.keyboard.press('Tab');
 
-      // Assert: Component textBox focused. Outline is intentionally hidden for standard inputs
-      // (caret acts as the focus indicator), so we assert outline-style none instead of solid.
+      // Assert: Component textBox focused with visible focus outline (global :focus-visible ring).
       const textBox = getTextBox(page);
       await expect(textBox).toBeFocused();
-      await expect(textBox, 'textBox should not have focus outline').toHaveCSS('outline-style', 'none');
+      await expect(textBox, 'textBox should show focus outline').toHaveCSS('outline-style', 'solid');
+      await expect(textBox, 'textBox focus outline should use the global focus color').toHaveCSS('outline-color', 'rgb(37, 99, 235)');
 
       // Act: Tab out of textBox.
       await page.keyboard.press('Tab');
@@ -128,11 +128,11 @@ test.describe('TextBox', () => {
       // Act: Shift+Tab backwards into textBox.
       await page.keyboard.press('Shift+Tab');
 
-      // Assert: Component textBox focused. Outline is intentionally hidden for standard inputs
-      // (caret acts as the focus indicator), so we assert outline-style none instead of solid.
+      // Assert: Component textBox focused with visible focus outline (global :focus-visible ring).
       const textBox = getTextBox(page);
       await expect(textBox).toBeFocused();
-      await expect(textBox, 'textBox should not have focus outline').toHaveCSS('outline-style', 'none');
+      await expect(textBox, 'textBox should show focus outline').toHaveCSS('outline-style', 'solid');
+      await expect(textBox, 'textBox focus outline should use the global focus color').toHaveCSS('outline-color', 'rgb(37, 99, 235)');
 
       // Act: Shift+Tab out of textBox.
       await page.keyboard.press('Shift+Tab');

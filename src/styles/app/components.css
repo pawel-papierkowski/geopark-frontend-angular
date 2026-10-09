@@ -13,11 +13,8 @@ input {
   border-radius: var(--input-border-radius);
 }
 
-input:focus-visible {
-  /* We hide the focus outline for the standard input. Acceptable as the cursor is visible. */
-  outline: none;
-  outline-offset: none;
-}
+/* Focus: inputs use the global :focus-visible ring (see general.css). Do not suppress it here -
+   a text caret is not a focus indicator (WCAG 2.4.7) and it never renders for non-text inputs. */
 
 input:hover {
   color: var(--input-hover-color);
