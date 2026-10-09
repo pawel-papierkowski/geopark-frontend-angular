@@ -81,6 +81,24 @@ export default defineConfig([
     },
     rules: {
       '@typescript-eslint/no-floating-promises': 'error',
+      // Guards against legacy RxJS 6 (and older) import paths. Since RxJS 7 the single public
+      // API surface is 'rxjs' - creation functions and operators alike (`import { map } from 'rxjs'`).
+      // 'rxjs/operators' is a compatibility path kept only for RxJS 6 code, and 'rxjs/add/*' are
+      // RxJS 5 static patch imports removed in RxJS 7.
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: 'rxjs/operators',
+            message: "Import operators from 'rxjs' instead, e.g. `import { map } from 'rxjs';`.",
+          },
+        ],
+        patterns: [
+          {
+            group: ['rxjs/add/**'],
+            message: "RxJS 5 patch imports are removed; import the operator from 'rxjs' instead, e.g. `import { map } from 'rxjs';`.",
+          },
+        ],
+      }],
     },
   },
   {

@@ -1,7 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { TranslateLoader, TranslationObject } from '@ngx-translate/core';
-import { Observable, forkJoin, throwError } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, forkJoin, map, throwError } from 'rxjs';
 
 import { translationManifest } from '@/shared/config/translation-manifest';
 
