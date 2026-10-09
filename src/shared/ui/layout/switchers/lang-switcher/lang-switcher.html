@@ -7,9 +7,17 @@
       [attr.data-testid]="'lang-switcher.'+language"
       [attr.aria-label]="'app.language.name.'+language | translate"
       [attr.aria-pressed]="currentLang() === language"
+      [attr.aria-busy]="pendingLang() === language"
+      [attr.data-failed]="failedLang() === language ? 'true' : null"
       [title]="'app.language.name.'+language | translate">
       {{ 'app.language.flag.'+language | translate }}
     </button>
   }
   </div>
+  <!-- Always present so screen readers reliably announce failure status changes (WCAG 4.1.3). -->
+  <span class="visually-hidden" role="status" data-testid="lang-switcher.status">
+    @if (failedLang(); as failed) {
+      {{ 'app.language.switchFailed' | translate:{ language: 'app.language.name.'+failed | translate } }}
+    }
+  </span>
 </div>

@@ -90,6 +90,10 @@ test.describe('Language', () => {
         await page.getByTestId('lang-switcher.pl').click();
         await expect.poll(() => heldRequests, { message: 'Polish requests should reach the response gate' }).toBeGreaterThan(0);
 
+        // Assert: The requested flag reports busy while the load is held.
+        await expect(page.getByTestId('lang-switcher.pl')).toHaveAttribute('aria-busy', 'true');
+        await expect(page.getByTestId('lang-switcher.en')).toHaveAttribute('aria-busy', 'false');
+
         // Assert: Check English before and after a 300 ms window with the gate still closed.
         await expectLanguage(page, 'en');
         await delay(300);
@@ -100,12 +104,42 @@ test.describe('Language', () => {
 
         // Assert: Only successful loading confirms and persists Polish.
         await expectLanguage(page, 'pl');
+        await expect(page.getByTestId('lang-switcher.pl')).toHaveAttribute('aria-busy', 'false');
       } finally {
         releaseResponses();
         if (!page.isClosed()) {
           await page.unrouteAll({ behavior: 'ignoreErrors' });
         }
       }
+    });
+  });
+
+  test.describe('failed loading', () => {
+    test('should mark the failed flag, announce the failure, and clear both on retry', async ({ page }) => {
+      // Arrange: Break every Polish translation request.
+      await page.route(/\/i18n\/pl\/.*\.json(?:\?.*)?$/, route => route.abort());
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await expectLanguage(page, 'en');
+      const polishButton = page.getByTestId('lang-switcher.pl');
+      const status = page.getByTestId('lang-switcher.status');
+
+      // Act: Select Polish (its translations cannot load).
+      await polishButton.click();
+
+      // Assert: The failed flag is marked, English stays active, failure is announced.
+      await expect(polishButton).toHaveAttribute('data-failed', 'true');
+      await expect(polishButton).toHaveAttribute('aria-busy', 'false');
+      await expect(status).toHaveText('Could not load Polish translations.');
+      await expectLanguage(page, 'en');
+
+      // Act: Restore the translations and retry.
+      await page.unroute(/\/i18n\/pl\/.*\.json(?:\?.*)?$/);
+      await polishButton.click();
+
+      // Assert: The retry clears the mark and the announcement, and Polish activates.
+      await expect(polishButton).not.toHaveAttribute('data-failed', 'true');
+      await expect(status).toHaveText('');
+      await expectLanguage(page, 'pl');
     });
   });
 

@@ -312,6 +312,88 @@ describe('LanguageService', () => {
     });
   });
 
+  describe('failure reporting', () => {
+    it('should report no failure before initialization or after a successful startup', () => {
+      // Arrange
+      expect(languageService.failedLanguage(), 'fresh coordinator must not report a failure').toBeNull();
+
+      // Act
+      languageService.initialize();
+      respond('en');
+      respond('pl');
+
+      // Assert
+      expectConfirmed('pl');
+      expect(languageService.failedLanguage(), 'successful startup must not report a failure').toBeNull();
+    });
+
+    it('should record the failed language even when fallback recovery succeeds', () => {
+      // Arrange
+      localStorage.setItem(storageKeys.language, 'en');
+      languageService.initialize();
+      respond('en');
+      expectConfirmed('en');
+
+      // Act
+      languageService.select('pl');
+      respond('pl', true);
+
+      // Assert
+      expect(languageService.failedLanguage(), 'recovery must not erase the report of the failed request').toBe('pl');
+      expectConfirmed('en');
+      httpMock.expectNone(() => true);
+    });
+
+    it('should record the last failed request when startup and fallback both fail', () => {
+      // Arrange
+      expect(languageService.failedLanguage(), 'precondition: nothing has failed yet').toBeNull();
+
+      // Act
+      languageService.initialize();
+      respond('pl', true);
+      respond('en', true);
+
+      // Assert
+      expect(languageService.failedLanguage(), 'terminal failure should report the last failed request').toBe('en');
+      expect(state(), 'terminal failure must not confirm or persist anything').toEqual({
+        active: null, pending: null, document: 'de', stored: 'pl',
+      });
+    });
+
+    it('should clear the reported failure when a new selection starts', () => {
+      // Arrange
+      localStorage.setItem(storageKeys.language, 'en');
+      languageService.initialize();
+      respond('en');
+      languageService.select('pl');
+      respond('pl', true);
+      expect(languageService.failedLanguage(), 'precondition: the previous selection must be reported as failed').toBe('pl');
+
+      // Act
+      languageService.select('en');
+
+      // Assert
+      expect(languageService.failedLanguage(), 'a new attempt must reset the failure report').toBeNull();
+      expectConfirmed('en');
+      httpMock.expectNone(() => true);
+    });
+
+    it('should not report an obsolete failure', () => {
+      // Arrange
+      languageService.initialize();
+
+      // Act
+      languageService.select('en');
+      respond('pl', true);
+
+      // Assert
+      expect(languageService.failedLanguage(), 'an obsolete failure must not be reported').toBeNull();
+      expect(languageService.pendingLanguage(), 'the newer selection must stay pending').toBe('en');
+      respond('en');
+      expectConfirmed('en');
+    });
+  });
+
   describe('storage and lifetime', () => {
     it('should initialize from the browser language when reading storage throws', () => {
       // Arrange

@@ -9,7 +9,8 @@
       "flag": {
         "pl": "🇵🇱",
         "en": "🇬🇧"
-      }
+      },
+      "switchFailed": "Nie udało się wczytać tłumaczeń: {{language}}."
     },
     "section": {
       "name": {

@@ -14,6 +14,7 @@ import { DocumentService } from '@/shared/utils/document/document-service';
  * - resolves the initial preference (stored value, then browser language, then fallback)
  * - performs all activation requests
  * - synchronizes confirmed activation to `<html lang>` and persisted preference
+ * - reports the language of failed requests so the UI can surface them
  *
  * A language is confirmed only when `TranslateService` reports it through
  * `onLangChange`, so stale or failed loads never claim success.
@@ -29,6 +30,7 @@ export class LanguageService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly active = signal<Lang | null>(null);
   private readonly pending = signal<Lang | null>(null);
+  private readonly failure = signal<Lang | null>(null);
   /** True once initialization or first selection happened; initialization is a one-shot. */
   private initialized = false;
   /** Monotonic identity of the latest request; older requests must not react to outcomes. */
@@ -42,6 +44,12 @@ export class LanguageService {
   readonly activeLanguage = this.active.asReadonly();
   /** Language of the latest outstanding request, or null when no request is in flight. */
   readonly pendingLanguage = this.pending.asReadonly();
+  /**
+   * Language whose latest request failed, or null when nothing failed yet.
+   * Kept even when fallback recovery succeeds so the failed choice stays reportable;
+   * cleared only when the user starts a new attempt via select().
+   */
+  readonly failedLanguage = this.failure.asReadonly();
 
   /** Listens for real activations and cancels coordinator requests on teardown. */
   constructor() {
@@ -92,6 +100,7 @@ export class LanguageService {
   select(language: Lang): void {
     if (this.destroyRef.destroyed) return;
     this.initialized = true;
+    this.failure.set(null); // A new user attempt supersedes the previous failure report.
     const supersedesPending = this.pending() !== null && this.pending() !== language;
     this.activate(language, true, supersedesPending);
   }
@@ -99,8 +108,8 @@ export class LanguageService {
   /**
    * Request activation of a language.
    *
-   * On failure the latest request may attempt recovery: reactivating the confirmed language
-   * (from cache) or activating the fallback language once.
+   * On failure the latest request records the failed language and may attempt recovery:
+   * reactivating the confirmed language (from cache) or activating the fallback language once.
    * Obsolete requests do nothing; a superseding selection over a pending older request is
    * allowed to retry the fallback language, so an older pending load cannot activate through
    * ngx-translate rollback.
@@ -125,6 +134,9 @@ export class LanguageService {
         // We handle this failure only if this is still the latest request and the service is still alive.
         if (sequence !== this.requestSequence || this.destroyRef.destroyed) return;
         console.error(`Failed to activate language '${language}'.`, error);
+        // Record the failure before recovery so recovery requests do not erase it;
+        // only select() starts a fresh attempt and clears it.
+        this.failure.set(language);
         // Attempt to restore the last confirmed language or use fallback if allowed.
         const confirmed = this.active();
         if (allowRecovery && confirmed !== null) {

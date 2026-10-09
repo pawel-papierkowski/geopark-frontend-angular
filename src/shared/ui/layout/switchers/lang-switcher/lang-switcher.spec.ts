@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
-import { throwError } from 'rxjs';
+import { Subject, concatMap, take, throwError } from 'rxjs';
 import userEvent from '@testing-library/user-event';
 
 import { LangSwitcher } from './lang-switcher';
@@ -30,6 +30,7 @@ describe('LangSwitcher', () => {
           label: 'Language',
           name: { pl: 'Polish', en: 'English' },
           flag: { en: '🇬🇧', pl: '🇵🇱' },
+          switchFailed: 'Could not load {{language}} translations.',
         },
       },
     });
@@ -39,6 +40,7 @@ describe('LangSwitcher', () => {
           label: 'Język',
           name: { pl: 'Polski', en: 'Angielski' },
           flag: { en: '🇬🇧', pl: '🇵🇱' },
+          switchFailed: 'Nie udało się wczytać tłumaczeń: {{language}}.',
         },
       },
     });
@@ -106,6 +108,44 @@ describe('LangSwitcher', () => {
     });
   });
 
+  describe('pending state', () => {
+    it('should mark the requested flag busy while its translations load and clear it after activation', async () => {
+      // Arrange: Hold the Polish activation behind a release gate.
+      const fixture = TestBed.createComponent(LangSwitcher);
+      await fixture.whenStable();
+      const origUse = translateService.use.bind(translateService);
+      const polishRelease = new Subject<void>();
+      vi.spyOn(translateService, 'use').mockImplementation((lang: string) =>
+        lang === 'pl' ? polishRelease.pipe(take(1), concatMap(() => origUse(lang))) : origUse(lang),
+      );
+      const compiled = fixture.nativeElement as HTMLElement;
+      const polishButton = compiled.querySelector<HTMLButtonElement>('[data-testid="lang-switcher.pl"]')!;
+      const englishButton = compiled.querySelector<HTMLButtonElement>('[data-testid="lang-switcher.en"]')!;
+      const status = compiled.querySelector('[data-testid="lang-switcher.status"]');
+
+      // Act: Select Polish while its activation is held.
+      fixture.componentInstance.selectLang('pl');
+      fixture.detectChanges();
+
+      // Assert: Only the requested flag reports busy; nothing has activated yet.
+      expect(polishButton.getAttribute('aria-busy'), 'requested language should report busy').toBe('true');
+      expect(englishButton.getAttribute('aria-busy'), 'other flags should stay idle').toBe('false');
+      expect(translateService.currentLang(), 'held request must not activate the language').toBe('en');
+      expect(status, 'failure status region should stay in the DOM for announcements').not.toBeNull();
+      expect(status!.textContent!.trim(), 'no failure has happened yet').toBe('');
+
+      // Act: Release the held activation.
+      polishRelease.next();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: Busy clears once the language is confirmed.
+      expect(polishButton.getAttribute('aria-busy'), 'busy should clear after confirmation').toBe('false');
+      expect(polishButton.getAttribute('aria-pressed'), 'confirmed language should be pressed').toBe('true');
+      expect(translateService.currentLang()).toBe('pl');
+    });
+  });
+
   describe('failed language switch', () => {
     it('should keep previous language when switch fails', async () => {
       // Arrange: Polish load fails, English loads normally.
@@ -131,6 +171,61 @@ describe('LangSwitcher', () => {
       expect(translateService.currentLang(), 'translation service should keep previous language').toBe('en');
       expect(testDocument.documentElement.lang, 'document language should stay English').toBe('en');
       expect(localStorage.getItem(storageKeys.language), 'storage should not be updated on failure').toBe(storedBefore);
+    });
+
+    it('should mark the requested flag as failed and announce the failure', async () => {
+      // Arrange: Polish load fails, English loads normally.
+      const fixture = TestBed.createComponent(LangSwitcher);
+      await fixture.whenStable();
+      const origUse = translateService.use.bind(translateService);
+      vi.spyOn(translateService, 'use').mockImplementation((lang: string) =>
+        lang === 'pl' ? throwError(() => new Error('translations unavailable')) : origUse(lang),
+      );
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const compiled = fixture.nativeElement as HTMLElement;
+      const polishButton = compiled.querySelector<HTMLButtonElement>('[data-testid="lang-switcher.pl"]')!;
+      const englishButton = compiled.querySelector<HTMLButtonElement>('[data-testid="lang-switcher.en"]')!;
+      const status = compiled.querySelector('[data-testid="lang-switcher.status"]');
+
+      // Act: Try to switch to Polish (fails).
+      fixture.componentInstance.selectLang('pl');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: Failed flag is marked, healthy flags are not, failure is announced.
+      expect(polishButton.getAttribute('data-failed'), 'failed language should be marked').toBe('true');
+      expect(polishButton.getAttribute('aria-busy'), 'failed language must not stay busy').toBe('false');
+      expect(englishButton.getAttribute('data-failed'), 'healthy flags must not be marked').toBeNull();
+      expect(status!.getAttribute('role'), 'status region should be exposed to assistive tech').toBe('status');
+      expect(status!.textContent!.trim(), 'failure should be announced with the failed language name').toBe('Could not load Polish translations.');
+    });
+
+    it('should clear the failed mark when the user selects again', async () => {
+      // Arrange: First Polish attempt fails.
+      const fixture = TestBed.createComponent(LangSwitcher);
+      await fixture.whenStable();
+      const origUse = translateService.use.bind(translateService);
+      vi.spyOn(translateService, 'use').mockImplementation((lang: string) =>
+        lang === 'pl' ? throwError(() => new Error('translations unavailable')) : origUse(lang),
+      );
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const compiled = fixture.nativeElement as HTMLElement;
+      const polishButton = compiled.querySelector<HTMLButtonElement>('[data-testid="lang-switcher.pl"]')!;
+      const status = compiled.querySelector('[data-testid="lang-switcher.status"]');
+      fixture.componentInstance.selectLang('pl');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(polishButton.getAttribute('data-failed'), 'precondition: the failed flag must be marked').toBe('true');
+
+      // Act: Start a new attempt with the cached English language.
+      fixture.componentInstance.selectLang('en');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Assert: The new attempt resets both the mark and the announcement.
+      expect(polishButton.getAttribute('data-failed'), 'a new selection must clear the failed mark').toBeNull();
+      expect(status!.textContent!.trim(), 'a new selection must clear the announcement').toBe('');
+      expect(fixture.componentInstance.currentLang(), 'cached English should confirm immediately').toBe('en');
     });
 
     it('should delegate successive selections to the application coordinator', async () => {

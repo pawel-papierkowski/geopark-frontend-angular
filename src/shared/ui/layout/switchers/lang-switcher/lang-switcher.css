@@ -28,7 +28,39 @@
   color: inherit;
 }
 
+/* Requested language is loading: signal in-flight state without disabling superseding clicks. */
+.flag-item[aria-busy='true'] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/*
+ * Latest request for this language failed. Dashed outline (a pattern change, not color alone,
+ * per WCAG 1.4.1) distinguishes it from the solid focus ring; red passes 3:1 non-text contrast.
+ */
+.flag-item[data-failed='true'] {
+  outline: 2px dashed #b91c11;
+  outline-offset: 1px;
+}
+
+/* Focus must win over the failed outline (same specificity, later rule). */
 .flag-item:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
+}
+
+/* Screen-reader-only live region for failure announcements; visually hidden on purpose. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+
+  margin: -1px;
+  padding: 0;
+  border: 0;
+
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
