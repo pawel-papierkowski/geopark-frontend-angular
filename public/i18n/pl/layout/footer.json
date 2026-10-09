@@ -2,7 +2,8 @@
   "footer": {
     "repository": {
       "text": "Repozytorium",
-      "label": "Repozytorium dla projektu geopark-frontend-angular na GitHub."
+      "label": "Repozytorium dla projektu geopark-frontend-angular na GitHub.",
+      "newTabHint": "Otwiera w nowej karcie."
     },
     "copyright": "© {{dateRange}} {{author}} | v. {{version}} {{build}}"
   }

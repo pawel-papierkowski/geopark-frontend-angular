@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Layout', () => {
   test.describe('footer', () => {
-    test('repository link keeps its URL as its accessible name and adds a description', async ({ page }) => {
+    test('repository link keeps its URL as its accessible name and describes target and new tab', async ({ page }) => {
       await test.step('Arrange', async () => {
         await page.addInitScript(() => localStorage.setItem('app.language', 'en'));
       });
@@ -20,7 +20,12 @@ test.describe('Layout', () => {
         await expect(link).toBeVisible();
         await expect(link).toHaveText(url);
         await expect(link).toHaveAccessibleName(url);
-        await expect(link).toHaveAccessibleDescription('Repository for geopark-frontend-angular project on GitHub.');
+        // Both aria-describedby entries are part of the description: what the link is
+        // (repository) and what it does (opens a new tab).
+        await expect(link).toHaveAccessibleDescription(
+          'Repository for geopark-frontend-angular project on GitHub. Opens in a new tab.',
+        );
+        await expect(link).toHaveAttribute('target', '_blank');
       });
     });
   });
