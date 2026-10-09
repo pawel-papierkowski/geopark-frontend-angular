@@ -39,6 +39,38 @@ test.describe('Navigation', () => {
     });
   });
 
+  test.describe('section switcher feedback', () => {
+    test('should highlight and press a section link on hover and mouse down', async ({ page }) => {
+      // Arrange: Start on default public page. Hover gradient matches --button-hover-background.
+      await page.goto('/');
+      const devLink = page.getByTestId('section-switcher.dev');
+      const hoverGradient = 'linear-gradient(rgb(255, 226, 122) 0%, rgb(255, 207, 86) 100%)';
+
+      // Assert: Resting link has no highlight.
+      await expect(devLink, 'resting link must not show the hover background').not.toHaveCSS('background-image', hoverGradient);
+
+      // Act: Hover the link.
+      await devLink.hover();
+
+      // Assert: Hover shows the same yellow highlight the language flag buttons get.
+      await expect(devLink, 'hovered link should show the button hover background').toHaveCSS('background-image', hoverGradient);
+
+      // Act: Press and hold the mouse button over the link.
+      const box = await devLink.boundingBox();
+
+      expect(box, 'hovered link should be laid out').not.toBeNull();
+      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+      await page.mouse.down();
+
+      // Assert: Press pushes the link down by 1px (translateY(1px) serializes as this matrix).
+      await expect(devLink, 'pressed link should translate down by 1px').toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 1)');
+
+      // Act: Release the mouse away from the link so no navigation is triggered.
+      await page.mouse.move(0, 0);
+      await page.mouse.up();
+    });
+  });
+
   test.describe('unknown page', () => {
     test('should show 404 in public section', async ({ page }) => {
       // Arrange: Start on nonexistent public page.

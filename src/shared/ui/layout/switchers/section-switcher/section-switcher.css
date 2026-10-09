@@ -17,10 +17,37 @@
 }
 
 .section-link {
-  display: inline;
+  /* inline-block so the :active transform can move the link (transforms are ignored on inline boxes). */
+  display: inline-block;
   cursor: pointer;
   color: inherit;
   text-decoration: none;
 
   padding: 0px 5px;
+
+  /* Explicit resets matching .flag-item, so hover styles start from a clean slate. */
+  background: none;
+  box-shadow: none;
+
+  /*
+   * Click/hover feedback parity with the global button styles (see styles/app/components.css):
+   * the language flag buttons are <button> elements, so they inherit button:hover/button:active
+   * transitions and visuals. These links are <a> elements, so the same variables are applied here.
+   * The hover border is intentionally omitted: a border appearing on hover would grow the link
+   * by 2px and shift the whole row.
+   */
+  transition: var(--button-transition);
+  border-radius: var(--button-border-radius);
+}
+
+/* Hover: same yellow highlight the language flag buttons get from the global button:hover rule. */
+.section-link:hover {
+  background: var(--button-hover-background);
+  box-shadow: var(--button-hover-box-shadow);
+}
+
+/* Pressed: same push-down and inset shadow as the global button:active rule. */
+.section-link:active {
+  transform: var(--button-active-transform);
+  box-shadow: var(--button-active-box-shadow);
 }
