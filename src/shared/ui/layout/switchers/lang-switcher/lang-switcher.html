@@ -1,15 +1,15 @@
 <div class="flag-wrapper">
   <div class="flag-container" role="group" [attr.aria-label]="'app.language.label' | translate">
   @for (language of languages; track language) {
-    <button class="flag-item"
+    <button class="flag-item text-tooltip"
       type="button"
       (click)="selectLang(language)"
       [attr.data-testid]="'lang-switcher.'+language"
       [attr.aria-label]="'app.language.name.'+language | translate"
+      [attr.data-tooltip]="'app.language.name.'+language | translate"
       [attr.aria-pressed]="currentLang() === language"
       [attr.aria-busy]="pendingLang() === language"
-      [attr.data-failed]="failedLang() === language ? 'true' : null"
-      [title]="'app.language.name.'+language | translate">
+      [attr.data-failed]="failedLang() === language ? 'true' : null">
       {{ 'app.language.flag.'+language | translate }}
     </button>
   }

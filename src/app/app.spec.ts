@@ -250,7 +250,7 @@ describe('App language integration', () => {
    */
   function currentState() {
     return {
-      translation: button('pl').title,
+      translation: button('pl').getAttribute('aria-label'),
       active: translateService.currentLang(),
       document: document.documentElement.lang,
       englishPressed: button('en').getAttribute('aria-pressed'),

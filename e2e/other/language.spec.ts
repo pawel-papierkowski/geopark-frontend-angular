@@ -10,7 +10,8 @@ import { test, expect, type Page } from '@playwright/test';
  */
 async function expectLanguage(page: Page, language: 'en' | 'pl'): Promise<void> {
   await expect.poll(() => page.evaluate(() => ({
-    title: document.querySelector('[data-testid="lang-switcher.pl"]')?.getAttribute('title'),
+    label: document.querySelector('[data-testid="lang-switcher.pl"]')?.getAttribute('aria-label'),
+    tooltip: document.querySelector('[data-testid="lang-switcher.pl"]')?.getAttribute('data-tooltip'),
     englishPressed: document.querySelector('[data-testid="lang-switcher.en"]')?.getAttribute('aria-pressed'),
     polishPressed: document.querySelector('[data-testid="lang-switcher.pl"]')?.getAttribute('aria-pressed'),
     documentLanguage: document.documentElement.lang,
@@ -19,7 +20,8 @@ async function expectLanguage(page: Page, language: 'en' | 'pl'): Promise<void> 
     message: 'Translations, selected buttons, document language, and storage should agree',
     timeout: 15_000,
   }).toEqual({
-    title: language === 'en' ? 'Polish' : 'Polski',
+    label: language === 'en' ? 'Polish' : 'Polski',
+    tooltip: language === 'en' ? 'Polish' : 'Polski',
     englishPressed: String(language === 'en'),
     polishPressed: String(language === 'pl'),
     documentLanguage: language,
@@ -39,13 +41,13 @@ test.describe('Language', () => {
       await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       // Assert: We have English language on page.
-      await expect(page.getByTestId('lang-switcher.pl')).toHaveAttribute('title', 'Polish');
+      await expect(page.getByTestId('lang-switcher.pl')).toHaveAttribute('aria-label', 'Polish');
 
       // Act: Click on Polish language button.
       await page.getByTestId('lang-switcher.pl').click();
 
       // Assert: We have Polish language on page.
-      await expect(page.getByTestId('lang-switcher.pl')).toHaveAttribute('title', 'Polski');
+      await expect(page.getByTestId('lang-switcher.pl')).toHaveAttribute('aria-label', 'Polski');
     });
 
     test('should synchronize English to Polish and back and retain the selection on reload', async ({ page }) => {

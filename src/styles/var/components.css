@@ -54,4 +54,13 @@
   --button-hover-danger-color: #320000;
   --button-hover-danger-background: linear-gradient(to bottom, #ffb9b9 0%, #ff8686 100%);
   --button-hover-danger-border: 1px solid #7b0000;
+
+  /* Tooltips (visual-only; fed by the data-tooltip attribute, never exposed to assistive tech). */
+  --tooltip-background: #111111;
+  --tooltip-color: #fefefe;
+  --tooltip-font-size: 0.8rem;
+  --tooltip-border-radius: 4px;
+  --tooltip-padding: 2px 8px;
+  --tooltip-gap: 4px;
+  --tooltip-z-index: 10;
 }

@@ -95,5 +95,49 @@ button:disabled.danger {
   color: var(--button-disabled-color);
   background: var(--button-disabled-background);
   border: var(--button-disabled-border);
+  box-shadow: var(--button-disabled-box-shadow);
+}
+
+/* Tooltips. */
+
+/*
+ * Visual-only tooltip for icon-only controls. Text comes from the data-tooltip attribute via
+ * attr(). data-* attributes and CSS generated content are not exposed to assistive tech, so the
+ * accessible name stays the element's aria-label - unlike a native title attribute, which browsers
+ * expose as a description and screen readers end up announcing twice.
+ */
+.text-tooltip {
+  position: relative;
+}
+
+.text-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  /* Below the trigger, not above: the tooltip's current consumers live in the top-of-viewport
+     header, where there is no room for an above-trigger tooltip without viewport clipping. */
+  top: calc(100% + var(--tooltip-gap));
+  /* Right-aligned to the trigger, not centered: the header switchers sit flush against the right
+     viewport edge, so a centered tooltip would overflow and be clipped on the rightmost control. */
+  right: 0;
+  z-index: var(--tooltip-z-index);
+
+  padding: var(--tooltip-padding);
+  font-size: var(--tooltip-font-size);
+
+  color: var(--tooltip-color);
+  background: var(--tooltip-background);
+  border-radius: var(--tooltip-border-radius);
+
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Shown on mouse hover and on keyboard focus (the native title tooltip never reached keyboard users). */
+.text-tooltip:hover::after,
+.text-tooltip:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
 }
 

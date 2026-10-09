@@ -77,9 +77,13 @@ describe('LangSwitcher', () => {
 
       expect(flags.length).toBe(2);
       expect(flags[0].textContent).toContain('🇬🇧');
-      expect(flags[0].getAttribute('title')).toBe('English');
+      expect(flags[0].getAttribute('aria-label')).toBe('English');
+      expect(flags[0].getAttribute('data-tooltip')).toBe('English');
+      expect(flags[0].hasAttribute('title'), 'title must stay absent to avoid doubled screen reader output').toBe(false);
       expect(flags[1].textContent).toContain('🇵🇱');
-      expect(flags[1].getAttribute('title')).toBe('Polish');
+      expect(flags[1].getAttribute('aria-label')).toBe('Polish');
+      expect(flags[1].getAttribute('data-tooltip')).toBe('Polish');
+      expect(flags[1].hasAttribute('title'), 'title must stay absent to avoid doubled screen reader output').toBe(false);
     });
 
     it('should switch language', async () => {
@@ -102,9 +106,9 @@ describe('LangSwitcher', () => {
 
       expect(flags.length).toBe(2);
       expect(flags[0].textContent).toContain('🇬🇧');
-      expect(flags[0].getAttribute('title')).toBe('Angielski'); // would be in English if switch failed
+      expect(flags[0].getAttribute('aria-label')).toBe('Angielski'); // would be in English if switch failed
       expect(flags[1].textContent).toContain('🇵🇱');
-      expect(flags[1].getAttribute('title')).toBe('Polski'); // would be in English if switch failed
+      expect(flags[1].getAttribute('aria-label')).toBe('Polski'); // would be in English if switch failed
     });
   });
 

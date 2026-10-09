@@ -3,11 +3,11 @@
   <ul class="section-container">
     @for (section of otherSections(); track section) {
       <li>
-        <a class="section-link"
+        <a class="section-link text-tooltip"
           [routerLink]="sectionRoutes[section]"
           [attr.data-testid]="'section-switcher.'+section"
           [attr.aria-label]="'app.section.name.'+section | translate"
-          [title]="'app.section.name.'+section | translate">
+          [attr.data-tooltip]="'app.section.name.'+section | translate">
           {{ 'app.section.icon.'+section | translate }}
         </a>
       </li>

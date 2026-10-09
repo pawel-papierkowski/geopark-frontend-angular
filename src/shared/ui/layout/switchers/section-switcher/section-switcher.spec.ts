@@ -41,10 +41,12 @@ describe('SectionSwitcher', () => {
       expect(links[0].closest('li'), 'link should be inside <li>').not.toBeNull();
       expect(links[0].textContent).toContain('app.section.icon.dev');
       expect(links[0].getAttribute('aria-label')).toBe('app.section.name.dev');
-      expect(links[0].getAttribute('title')).toBe('app.section.name.dev');
+      expect(links[0].getAttribute('data-tooltip')).toBe('app.section.name.dev');
+      expect(links[0].hasAttribute('title'), 'title must stay absent to avoid doubled screen reader output').toBe(false);
       expect(links[1].textContent).toContain('app.section.icon.admin');
       expect(links[1].getAttribute('aria-label')).toBe('app.section.name.admin');
-      expect(links[1].getAttribute('title')).toBe('app.section.name.admin');
+      expect(links[1].getAttribute('data-tooltip')).toBe('app.section.name.admin');
+      expect(links[1].hasAttribute('title'), 'title must stay absent to avoid doubled screen reader output').toBe(false);
     });
 
     it('should render links with correct routerLink targets', async () => {
