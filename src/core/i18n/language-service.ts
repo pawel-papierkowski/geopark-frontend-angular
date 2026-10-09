@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { fallbackLang, languages, storageKeys } from '@/shared/config/const';
 import type { Lang } from '@/shared/config/types';
 import { DocumentService } from '@/shared/utils/document/document-service';
+import { StorageService } from '@/shared/utils/storage/storage-service';
 
 /**
  * Application-wide coordinator for language selection and activation.
@@ -27,6 +28,7 @@ import { DocumentService } from '@/shared/utils/document/document-service';
 export class LanguageService {
   private readonly translateService = inject(TranslateService);
   private readonly documentService = inject(DocumentService);
+  private readonly storageService = inject(StorageService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly active = signal<Lang | null>(null);
   private readonly pending = signal<Lang | null>(null);
@@ -165,7 +167,7 @@ export class LanguageService {
    */
   private readLanguage(): string | null {
     try {
-      const storedLang = localStorage.getItem(storageKeys.language);
+      const storedLang = this.storageService.getItem(storageKeys.language);
       return storedLang?.toLowerCase() || null;
     } catch {
       return null;
@@ -179,7 +181,7 @@ export class LanguageService {
    */
   private persistLanguage(language: Lang): void {
     try {
-      localStorage.setItem(storageKeys.language, language);
+      this.storageService.setItem(storageKeys.language, language);
     } catch {
       return;
     }

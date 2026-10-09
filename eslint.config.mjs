@@ -111,20 +111,35 @@ export default defineConfig([
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
   },
   {
-    // Guards against production code reaching for the global document instead of an injected
-    // DOCUMENT or an element-scoped lookup (`viewChild` / `ownerDocument`) - a document-wide
-    // lookup inside a component silently resolves to a foreign element when idents collide.
+    // Guards against production code reaching for ambient browser globals instead of an injected
+    // dependency:
+    // - `document`: a document-wide lookup inside a component silently resolves to a foreign
+    //   element when idents collide - use an injected DOCUMENT or an element-scoped lookup
+    //   (`viewChild` / `ownerDocument`).
+    // - `localStorage` / `sessionStorage`: the storage reference must be resolvable through DI
+    //   (and therefore replaceable in tests) - use inject(StorageService).
     files: ['src/**/*.ts'],
     rules: {
-      'no-restricted-globals': ['error', {
-        name: 'document',
-        message: 'Use inject(DOCUMENT) or an element-scoped lookup (viewChild / ownerDocument) instead of the global document.',
-      }],
+      'no-restricted-globals': ['error',
+        {
+          name: 'document',
+          message: 'Use inject(DOCUMENT) or an element-scoped lookup (viewChild / ownerDocument) instead of the global document.',
+        },
+        {
+          name: 'localStorage',
+          message: "Use inject(StorageService) from '@/shared/utils/storage/storage-service' instead of the global localStorage.",
+        },
+        {
+          name: 'sessionStorage',
+          message: "Use inject(StorageService) from '@/shared/utils/storage/storage-service' instead of the global sessionStorage.",
+        },
+      ],
     },
   },
   {
-    // Specs legitimately read document.activeElement to assert focus; e2e files live outside
-    // src, so their page.evaluate callbacks are never matched by the rule above.
+    // Specs legitimately read document.activeElement to assert focus and poke localStorage to
+    // seed language preferences; e2e files live outside src, so their page.evaluate callbacks
+    // are never matched by the rule above.
     files: ['src/**/*.spec.ts'],
     rules: {
       'no-restricted-globals': 'off',
