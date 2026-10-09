@@ -18,6 +18,35 @@ describe('IdService', () => {
       expect(id, 'identifier should be proper-ident').toBe('proper-ident');
     });
 
+    it('should pass through string identifier that is not a valid CSS selector', () => {
+      // Arrange: Prepare service.
+      const service = TestBed.inject(IdService);
+
+      // Act: Request identifiers that cannot appear in a `#...` selector.
+      const numeric = service.next('123', 'text-box');
+      const spaced = service.next('has space', 'text-box');
+
+      // Assert: Identifiers are returned verbatim (components support arbitrary idents).
+      expect(numeric, 'identifier should be 123 verbatim').toBe('123');
+      expect(spaced, 'identifier should be "has space" verbatim').toBe('has space');
+    });
+
+    it('should generate identifier if ident is not a string', () => {
+      // Arrange: Prepare service. The parameter type rejects non-strings, so bypass it the way
+      // a cast or plain JS caller would - this exercises the runtime guard.
+      const service = TestBed.inject(IdService);
+
+      // Act and Assert: Verify identifiers.
+      const number = service.next(42 as unknown as string, 'text-box');
+      expect(number, 'non-string number should produce text-box-1').toBe('text-box-1');
+
+      const bool = service.next(true as unknown as string, 'text-box');
+      expect(bool, 'non-string boolean should produce text-box-2').toBe('text-box-2');
+
+      const object = service.next({} as unknown as string, 'text-box');
+      expect(object, 'non-string object should produce text-box-3').toBe('text-box-3');
+    });
+
     it('should use generated identifier if invalid value', () => {
       // Arrange: Prepare service.
       const service = TestBed.inject(IdService);
@@ -26,11 +55,14 @@ describe('IdService', () => {
       const id0 = service.next(undefined, '');
       expect(id0, 'identifier should be -1').toBe('-1');
 
+      const idNull = service.next(null, '');
+      expect(idNull, 'identifier should be -2').toBe('-2');
+
       const id1 = service.next('', '');
-      expect(id1, 'identifier should be -2').toBe('-2');
+      expect(id1, 'identifier should be -3').toBe('-3');
 
       const id2 = service.next('   ', '');
-      expect(id2, 'identifier should be -3').toBe('-3');
+      expect(id2, 'identifier should be -4').toBe('-4');
     });
   });
 
