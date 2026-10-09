@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { Section } from '@/shared/config/types';
+
 import { AppHeader } from './app-header';
 
 describe('AppHeader', () => {
@@ -59,5 +61,20 @@ describe('AppHeader', () => {
       expect(compiled.querySelector('header')?.classList.contains('app-header')).toBe(true);
       expect(compiled.querySelector('header')?.classList.contains('admin')).toBe(true);
     });
+  });
+
+  it('should not fall back to public nav for unknown section', async () => {
+    // Arrange: Create component with an out-of-contract section value (defensive - SectionLayout
+    // validates route data, so this should never reach the header in practice).
+    const fixture = TestBed.createComponent(AppHeader);
+    fixture.componentRef.setInput('currSection', 'unknown' as Section);
+    await fixture.whenStable();
+
+    // Assert: No section navigation is rendered.
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(
+      compiled.querySelector('nav-public, nav-dev, nav-admin'),
+      'unknown section must not silently render any section nav'
+    ).toBeNull();
   });
 });

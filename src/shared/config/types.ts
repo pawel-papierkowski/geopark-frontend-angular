@@ -30,5 +30,5 @@ export type Lang = typeof languages[number];
 /** Definition of type describing sections. */
 export type Section = typeof sections[number];
 
-/** Route whose `data`, when present, carries the `section` this route belongs to. */
-export type SectionRoute = Route & { data?: { section: Section } };
+/** Route defining a section root. `data.section` is required - SectionLayout reads it to pick the correct header/nav. */
+export type SectionRoute = Route & { data: { section: Section } };
