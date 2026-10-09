@@ -15,10 +15,10 @@ export const adminRoutes: SectionRoute[] = [
     component: SectionLayout,      // Has header + footer + child <router-outlet>.
     data: { section: 'admin' },    // Header reads this to know which nav to show.
     children: [
-      { path: '', component: PageOverview }, // Default, always loaded eagerly.
+      { path: '', component: PageOverview, data: { titleKey: 'app.page.overview' } }, // Default, always loaded eagerly.
 
       // Must be last.
-      { path: '**', component: PageNotFound }
+      { path: '**', component: PageNotFound, data: { titleKey: 'app.page.notFound' } }
     ],
   }
 ];

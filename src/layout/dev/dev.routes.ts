@@ -15,11 +15,11 @@ export const devRoutes: SectionRoute[] = [
     component: SectionLayout,    // Has header + footer + child <router-outlet>.
     data: { section: 'dev' },    // Header reads this to know which nav to show.
     children: [
-      { path: '', component: PageDashboard }, // Default, always loaded eagerly.
-      { path: 'components', loadComponent: () => import('./pages/custom-components/page-custom-components').then(m => m.PageCustomComponents) },
+      { path: '', component: PageDashboard, data: { titleKey: 'app.page.dashboard' } }, // Default, always loaded eagerly.
+      { path: 'components', loadComponent: () => import('./pages/custom-components/page-custom-components').then(m => m.PageCustomComponents), data: { titleKey: 'customComponents.title' } },
 
       // Must be last.
-      { path: '**', component: PageNotFound }
+      { path: '**', component: PageNotFound, data: { titleKey: 'app.page.notFound' } }
     ],
   }
 ];

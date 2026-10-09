@@ -26,7 +26,10 @@
       "navLabel": "Section navigation"
     },
     "page": {
-      "notFound": "404 Page Not Found"
+      "notFound": "404 Page Not Found",
+      "about": "About",
+      "dashboard": "Dashboard",
+      "overview": "Overview"
     }
   }
 }
